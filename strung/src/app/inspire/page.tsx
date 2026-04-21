@@ -29,7 +29,7 @@ export default function InspirePage() {
       setBeads(d.beads||[])
       setFindings(d.findings||[])
       setStashLoaded(true)
-    })
+    }).catch(() => setStashLoaded(true))
   }, [])
 
   async function generate() {
