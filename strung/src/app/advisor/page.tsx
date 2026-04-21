@@ -51,7 +51,7 @@ export default function AdvisorPage() {
       .replace(/###\s(.+)/g,'<h3 style="font-family:var(--font-display);font-size:19px;color:var(--gold2);margin:20px 0 8px">$1</h3>')
       .replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--gold3)">$1</strong>')
       .replace(/^[-•]\s(.+)/gm,'<li style="margin-bottom:6px;padding-left:4px">$1</li>')
-      .replace(/(<li[^>]*>.*<\/li>)/gs,'<ul style="margin:10px 0 14px 16px">$1</ul>')
+      .replace(/(<li[^>]*>[\s\S]*?<\/li>)/g,'<ul style="margin:10px 0 14px 16px">$1</ul>')
       .split('\n\n').map(p => p.startsWith('<') ? p : `<p style="margin-bottom:12px">${p}</p>`).join('')
   }
 
