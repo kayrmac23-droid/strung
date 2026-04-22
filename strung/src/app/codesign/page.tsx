@@ -129,14 +129,14 @@ export default function CoDesignPage() {
     <>
       <Nav />
       <main style={{ paddingTop: 60, minHeight: '100vh' }}>
-        <div style={{ maxWidth: 1300, margin: '0 auto', padding: '52px 40px 80px' }}>
+        <div className="page-pad" style={{ maxWidth: 1300, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
           <header style={{ marginBottom: 32 }}>
             <p className="section-eyebrow fade-up">AI Co-Designer</p>
             <h1 className="fade-up-1" style={{ fontSize: 44, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px' }}>Design Studio</h1>
             <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>Chat with your AI co-designer. Describe what you&apos;re imagining and build a blueprint together.</p>
           </header>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: 28, alignItems: 'start' }}>
+          <div className="codesign-grid">
 
             {/* Chat column */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>

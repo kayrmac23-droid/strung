@@ -225,6 +225,17 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   .page-pad { padding-left: 14px; padding-right: 14px; }
 }
 
+/* Codesign page — chat + blueprint panel */
+.codesign-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 28px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .codesign-grid { grid-template-columns: 1fr; }
+}
+
 /* Responsive nav links list */
 .nav-links {
   display: flex;
