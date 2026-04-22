@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const { beads, findings, mood, pieceType, notes } = await req.json()
 
   const stashSummary = [
-    beads.length > 0 ? `BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size_mm}mm, qty: ${b.quantity}${b.shape ? ', '+b.shape : ''})`).join('\n')}` : 'No beads logged.',
+    beads.length > 0 ? `BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size || b.size_mm+'mm'}, qty: ${b.quantity}${b.shape ? ', '+b.shape : ''})`).join('\n')}` : 'No beads logged.',
     findings.length > 0 ? `FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}` : 'No findings logged.',
   ].join('\n\n')
 

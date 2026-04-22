@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   const stashLines: string[] = []
   if (beads?.length) {
-    stashLines.push(`BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size_mm}mm, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
+    stashLines.push(`BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size || b.size_mm+'mm'}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
   }
   if (findings?.length) {
     stashLines.push(`FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)

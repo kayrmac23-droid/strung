@@ -24,7 +24,8 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
 
-  const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size_mm:4, quantity:1, hex:'#7a9ab8' })
+  const beadSizes = ['seed','small','medium','big','statement']
+  const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
   const [findingForm, setFindingForm] = useState<Partial<FindingItem>>({ type:'ear_wire', metal:'silver', quantity:2 })
 
   const load = useCallback(async () => {
@@ -51,7 +52,7 @@ export default function InventoryPage() {
       })
       await load()
       setShowForm(false)
-      setBeadForm({ type:'gemstone', size_mm:4, quantity:1, hex:'#7a9ab8' })
+      setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
     } catch { alert('Failed to save') }
     finally { setSaving(false) }
@@ -170,9 +171,10 @@ export default function InventoryPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="label">Size (mm)</label>
-                    <input className="input-base" type="number" min={1} max={50} value={beadForm.size_mm||4}
-                      onChange={e=>setBeadForm(f=>({...f,size_mm:Number(e.target.value)}))} />
+                    <label className="label">Size</label>
+                    <div style={{position:'relative'}}><select className="select-base" value={beadForm.size||'small'} onChange={e=>setBeadForm(f=>({...f,size:e.target.value}))}>
+                      {beadSizes.map(s=><option key={s} value={s}>{s}</option>)}
+                    </select>{arrow}</div>
                   </div>
                   <div>
                     <label className="label">Quantity</label>
@@ -256,7 +258,7 @@ export default function InventoryPage() {
                     </div>
                     <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
                       <span className="tag">{b.colour}</span>
-                      <span className="tag">{b.size_mm}mm</span>
+                      <span className="tag">{b.size}</span>
                       <span className="tag">qty: {b.quantity}</span>
                     </div>
                     {b.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{b.notes}</p>}

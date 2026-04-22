@@ -11,7 +11,7 @@ export type BeadItem = {
   type: 'gemstone' | 'crystal' | 'glass' | 'seed' | 'metal' | 'pearl' | 'other'
   colour: string
   hex: string
-  size_mm: number
+  size: string
   quantity: number
   shape?: string
   notes?: string
