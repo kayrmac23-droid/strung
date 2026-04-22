@@ -18,7 +18,7 @@ export default function Home() {
         {/* Hero */}
         <section style={{
           minHeight:'92vh',display:'flex',alignItems:'center',justifyContent:'center',
-          position:'relative',overflow:'hidden',padding:'80px 40px'
+          position:'relative',overflow:'hidden',padding:'80px 40px',paddingLeft:'clamp(20px,5vw,80px)',paddingRight:'clamp(20px,5vw,80px)'
         }}>
           {/* Background orb */}
           <div style={{
@@ -70,12 +70,12 @@ export default function Home() {
         </section>
 
         {/* Features */}
-        <section style={{padding:'80px 40px',maxWidth:1200,margin:'0 auto'}}>
+        <section className="page-pad" style={{paddingTop:80,paddingBottom:80,maxWidth:1200,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:56}}>
             <p className="section-eyebrow">Everything in one place</p>
-            <h2 style={{fontSize:38,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginTop:8}}>Your studio. Your stash.</h2>
+            <h2 style={{fontSize:'clamp(28px,4vw,38px)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginTop:8}}>Your studio. Your stash.</h2>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:2}}>
+          <div className="grid-3">
             {features.map((f,i) => (
               <Link href={f.href} key={f.href} className={`fade-up-${Math.min(i+1,4)}`} style={{
                 background:'var(--surface)',border:'1px solid var(--border)',
@@ -108,7 +108,7 @@ export default function Home() {
           ))}
         </div>
 
-        <footer style={{padding:'36px 40px',textAlign:'center',borderTop:'1px solid var(--border)'}}>
+        <footer className="page-pad" style={{paddingTop:36,paddingBottom:36,textAlign:'center',borderTop:'1px solid var(--border)'}}>
           <span className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted2)'}}>STRUNG — AI BEADED JEWELLERY DESIGN STUDIO</span>
         </footer>
       </main>

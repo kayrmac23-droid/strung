@@ -17,9 +17,9 @@ export default function Nav() {
     <nav style={{
       position:'fixed',top:0,left:0,right:0,zIndex:100,
       display:'flex',alignItems:'center',justifyContent:'space-between',
-      padding:'0 40px',height:'60px',
+      padding:'0 clamp(16px,4vw,40px)',minHeight:'60px',
       background:'rgba(9,10,13,0.95)',backdropFilter:'blur(16px)',
-      borderBottom:'1px solid var(--border)'
+      borderBottom:'1px solid var(--border)',flexWrap:'wrap',gap:'8px'
     }}>
       <Link href="/" style={{display:'flex',alignItems:'center',gap:10}}>
         <span style={{
@@ -31,7 +31,7 @@ export default function Nav() {
         }}/>
         <span style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:600,letterSpacing:'0.1em',color:'var(--cream)'}}>Strung</span>
       </Link>
-      <ul style={{display:'flex',listStyle:'none',gap:24,alignItems:'center'}}>
+      <ul className="nav-links">
         {links.map(l => (
           <li key={l.href}>
             <Link href={l.href} style={{

@@ -199,3 +199,44 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--moonstone); margin-bottom: 8px;
 }
+
+/* Responsive grid — 3 → 2 → 1 columns */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+@media (max-width: 900px) {
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* Responsive section padding */
+.page-pad {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+@media (max-width: 680px) {
+  .page-pad { padding-left: 20px; padding-right: 20px; }
+}
+@media (max-width: 400px) {
+  .page-pad { padding-left: 14px; padding-right: 14px; }
+}
+
+/* Responsive nav links list */
+.nav-links {
+  display: flex;
+  list-style: none;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+@media (max-width: 860px) {
+  .nav-links { gap: 14px; }
+}
+@media (max-width: 600px) {
+  .nav-links { gap: 10px; }
+  .nav-links a { font-size: 9px; }
+}
