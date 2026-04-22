@@ -93,7 +93,7 @@ export default function InventoryPage() {
           </header>
 
           {/* Stats */}
-          <div className="fade-up-2" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:2,marginBottom:32}}>
+          <div className="fade-up-2 stats-grid-4" style={{marginBottom:32}}>
             {[
               ['Total Beads',beads.length,'◈'],
               ['Total Findings',findings.length,'◉'],

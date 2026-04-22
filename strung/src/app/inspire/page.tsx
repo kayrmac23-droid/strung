@@ -89,7 +89,7 @@ export default function InspirePage() {
 
           {/* Controls */}
           <div className="card fade-up-2" style={{padding:28,marginBottom:32}}>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20,marginBottom:20}}>
+            <div className="form-grid-3" style={{marginBottom:20}}>
               <div>
                 <label className="label">Mood / Vibe</label>
                 <div style={{position:'relative'}}>
@@ -159,7 +159,7 @@ export default function InspirePage() {
                       </div>
                     </div>
 
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+                    <div className="blueprint-grid" style={{marginBottom:16}}>
                       {/* Build steps */}
                       <div className="card" style={{padding:28}}>
                         <h3 style={{fontFamily:'var(--font-display)',fontSize:22,fontWeight:400,color:'var(--cream)',marginBottom:18}}>◈ Build Steps</h3>

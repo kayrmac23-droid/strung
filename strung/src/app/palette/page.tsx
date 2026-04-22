@@ -118,7 +118,7 @@ export default function PalettePage() {
             <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Pick up to 6 colours from any bead type, choose a metal, and see how they work together.</p>
           </header>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:24,alignItems:'start'}}>
+          <div className="palette-grid">
             {/* Colour picker */}
             <div>
               {colourFamilies.map(family => (

@@ -2,6 +2,8 @@
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 
+const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite','Larimar']
+
 const features = [
   { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire you own. Your stash, organised.', color:'var(--silver)' },
   { href:'/inspire', icon:'◉', label:'Inspire Me', title:'Blueprint Generator', desc:'Stuck staring at your beads? Tell the AI your vibe and it designs around what you actually have.', color:'var(--moonstone)' },
@@ -79,6 +81,7 @@ export default function Home() {
             {features.map((f,i) => (
               <Link href={f.href} key={f.href} className={`fade-up-${Math.min(i+1,4)}`} style={{
                 background:'var(--surface)',border:'1px solid var(--border)',
+                borderTop:`2px solid ${f.color}`,
                 padding:'36px',display:'flex',flexDirection:'column',gap:10,
                 transition:'all 0.2s',textDecoration:'none',color:'inherit'
               }}
@@ -97,15 +100,17 @@ export default function Home() {
         {/* Gemstone strip */}
         <div style={{
           borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)',
-          padding:'16px 0',background:'var(--bg2)',overflow:'hidden',display:'flex'
+          padding:'16px 0',background:'var(--bg2)',overflow:'hidden'
         }}>
-          {['Labradorite','Moonstone','Amethyst','Labradorite','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite'].map((g,i) => (
-            <span key={i} style={{
-              fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.16em',
-              textTransform:'uppercase',color:'var(--muted2)',
-              whiteSpace:'nowrap',padding:'0 28px',borderRight:'1px solid var(--border)',flexShrink:0
-            }}>{g}</span>
-          ))}
+          <div className="marquee-track">
+            {[...gems,...gems].map((g,i) => (
+              <span key={i} style={{
+                fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.16em',
+                textTransform:'uppercase',color:'var(--muted2)',
+                whiteSpace:'nowrap',padding:'0 28px',borderRight:'1px solid var(--border)',flexShrink:0
+              }}>{g}</span>
+            ))}
+          </div>
         </div>
 
         <footer className="page-pad" style={{paddingTop:36,paddingBottom:36,textAlign:'center',borderTop:'1px solid var(--border)'}}>
