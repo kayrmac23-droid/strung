@@ -24,7 +24,7 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
 
-  const beadSizes = ['seed','small','medium','big','statement']
+  const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
   const [findingForm, setFindingForm] = useState<Partial<FindingItem>>({ type:'ear_wire', metal:'silver', quantity:2 })
 
