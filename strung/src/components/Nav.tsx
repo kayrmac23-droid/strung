@@ -29,7 +29,7 @@ export default function Nav() {
           animation:'glow 3s ease-in-out infinite',
           display:'inline-block'
         }}/>
-        <span style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:600,letterSpacing:'0.1em',color:'var(--cream)'}}>Strung</span>
+        <span style={{fontFamily:'var(--font-display)',fontSize:26,fontWeight:600,letterSpacing:'0.08em',color:'var(--cream)'}}>Strung</span>
       </Link>
       <ul className="nav-links">
         {links.map(l => (
