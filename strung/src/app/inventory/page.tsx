@@ -357,24 +357,82 @@ export default function InventoryPage() {
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredFindings.map(f => (
                   <div key={f.id} className="card" style={{padding:'20px 22px'}}>
-                    <div style={{marginBottom:10}}>
-                      <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)'}}>{f.name}</p>
-                      <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--steel2)',letterSpacing:'0.08em',marginTop:2}}>{f.type.replace('_',' ')} · {f.metal.replace('_',' ')}</p>
-                    </div>
-                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
-                      {f.size && <span className="tag">{f.size}</span>}
-                      <span className="tag">qty: {f.quantity}</span>
-                    </div>
-                    {f.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{f.notes}</p>}
-                    <button onClick={()=>deleteItem(f.id!)} disabled={deletingId===f.id} style={{
-                      background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                      fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                      transition:'color 0.15s',padding:0
-                    }}
-                    onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                    onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                      {deletingId===f.id?'removing…':'× remove'}
-                    </button>
+                    {editingId === f.id ? (
+                      <div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                          <div style={{gridColumn:'1/-1'}}>
+                            <label className="label">Name</label>
+                            <input className="input-base" value={(editForm as Partial<FindingItem>).name||''} onChange={e=>setEditForm(fm=>({...fm,name:e.target.value}))} />
+                          </div>
+                          <div>
+                            <label className="label">Type</label>
+                            <div style={{position:'relative'}}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as any}))}>
+                                {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                              </select>
+                              {arrow}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="label">Metal</label>
+                            <div style={{position:'relative'}}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as any}))}>
+                                {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
+                              </select>
+                              {arrow}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="label">Size / Gauge</label>
+                            <input className="input-base" value={(editForm as Partial<FindingItem>).size||''} onChange={e=>setEditForm(fm=>({...fm,size:e.target.value}))} />
+                          </div>
+                          <div>
+                            <label className="label">Quantity</label>
+                            <input className="input-base" type="number" min={1} value={(editForm as Partial<FindingItem>).quantity||1} onChange={e=>setEditForm(fm=>({...fm,quantity:Number(e.target.value)}))} />
+                          </div>
+                          <div style={{gridColumn:'1/-1'}}>
+                            <label className="label">Notes</label>
+                            <input className="input-base" value={(editForm as Partial<FindingItem>).notes||''} onChange={e=>setEditForm(fm=>({...fm,notes:e.target.value}))} />
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <button className="btn-silver" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(f.id!)}>Save</button>
+                          <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{marginBottom:10}}>
+                          <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)'}}>{f.name}</p>
+                          <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--steel2)',letterSpacing:'0.08em',marginTop:2}}>{f.type.replace('_',' ')} · {f.metal.replace('_',' ')}</p>
+                        </div>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
+                          {f.size && <span className="tag">{f.size}</span>}
+                          <span className="tag">qty: {f.quantity}</span>
+                        </div>
+                        {f.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{f.notes}</p>}
+                        <div style={{display:'flex',alignItems:'center'}}>
+                          <button onClick={() => { setEditingId(f.id!); setEditForm(f) }} style={{
+                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                            transition:'color 0.15s',padding:0,marginRight:12
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color='var(--moonstone)'}
+                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                            ✎ edit
+                          </button>
+                          <button onClick={()=>deleteItem(f.id!)} disabled={deletingId===f.id} style={{
+                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                            transition:'color 0.15s',padding:0
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
+                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                            {deletingId===f.id?'removing…':'× remove'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
