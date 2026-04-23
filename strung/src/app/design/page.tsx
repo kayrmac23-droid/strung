@@ -90,6 +90,11 @@ export default function DesignPage() {
             <button className="btn-gold" style={{marginTop:20}} onClick={generate} disabled={loading||!description.trim()}>
               {loading ? <><span className="spinner"/>Generating brief…</> : '◇ Generate Design Brief'}
             </button>
+            {brief && (
+              <button className="btn-outline" onClick={saveToJournal} style={{marginTop:12}}>
+                {saved ? '✓ Saved!' : '◈ Save to Journal'}
+              </button>
+            )}
           </div>
 
           {error && <p style={{color:'var(--rose)',marginTop:16,fontFamily:'var(--font-mono)',fontSize:13}}>{error}</p>}
@@ -107,7 +112,7 @@ export default function DesignPage() {
                 <p style={{color:'var(--text2)',marginTop:14,fontSize:16,lineHeight:1.7}}>{brief.overview}</p>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16,marginBottom:16}}>
+              <div className="blueprint-grid" style={{marginBottom:16}}>
                 <div className="card" style={{padding:28}}>
                   <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)',marginBottom:16}}>◈ Components</h3>
                   {brief.components.map((c,i) => (
@@ -155,7 +160,7 @@ export default function DesignPage() {
                 </div>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="blueprint-grid">
                 <div style={{background:'rgba(201,168,76,0.05)',border:'1px solid rgba(201,168,76,0.2)',padding:'20px 24px'}}>
                   <span className="mono" style={{fontSize:11,letterSpacing:'0.1em',color:'var(--gold)'}}>PRO TIPS</span>
                   <ul style={{listStyle:'none',marginTop:10}}>
