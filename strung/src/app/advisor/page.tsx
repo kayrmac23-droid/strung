@@ -66,7 +66,7 @@ export default function AdvisorPage() {
             <p className="fade-up-2" style={{color:'var(--text2)',fontSize:18}}>Expert guidance on materials, techniques, tools, and design decisions.</p>
           </header>
 
-          <div style={{display:'grid',gridTemplateColumns:'360px 1fr',gap:32,alignItems:'start'}}>
+          <div className="advisor-grid">
             {/* Input pane */}
             <div>
               <div className="card fade-up-2" style={{padding:32}}>

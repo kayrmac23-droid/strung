@@ -106,7 +106,7 @@ export default function GuidesPage() {
             <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Practical techniques for the style of jewellery you actually want to make.</p>
           </header>
 
-          <div style={{display:'grid',gridTemplateColumns:'240px 1fr',gap:20,alignItems:'start'}}>
+          <div className="guides-grid">
             {/* Sidebar */}
             <aside style={{display:'flex',flexDirection:'column',gap:2,position:'sticky',top:76}}>
               {guides.map(g => (

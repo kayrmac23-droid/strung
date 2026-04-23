@@ -2,12 +2,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const links = [
+const primaryLinks = [
   { href: '/', label: 'Home' },
   { href: '/inventory', label: 'My Stash' },
+  { href: '/inspire', label: 'Inspire' },
   { href: '/codesign', label: 'Design Studio' },
   { href: '/palette', label: 'Palette' },
+  { href: '/calculator', label: 'Calculator' },
   { href: '/guides', label: 'Guides' },
+]
+
+const secondaryLinks = [
+  { href: '/journal', label: 'Journal' },
+  { href: '/advisor', label: 'Advisor' },
   { href: '/glossary', label: 'Glossary' },
 ]
 
@@ -31,20 +38,37 @@ export default function Nav() {
         }}/>
         <span style={{fontFamily:'var(--font-display)',fontSize:26,fontWeight:600,letterSpacing:'0.08em',color:'var(--cream)'}}>Strung</span>
       </Link>
-      <ul className="nav-links">
-        {links.map(l => (
-          <li key={l.href}>
-            <Link href={l.href} style={{
-              fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.14em',
-              textTransform:'uppercase',
-              color:path===l.href?'var(--silver2)':'var(--muted)',
-              borderBottom:path===l.href?'1px solid var(--silver)':'none',
-              paddingBottom:path===l.href?'2px':'0',
-              transition:'color 0.2s'
-            }}>{l.label}</Link>
-          </li>
-        ))}
-      </ul>
+      <div style={{display:'flex',alignItems:'center',gap:0,flexWrap:'wrap'}}>
+        <ul className="nav-links">
+          {primaryLinks.map(l => (
+            <li key={l.href}>
+              <Link href={l.href} style={{
+                fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.14em',
+                textTransform:'uppercase',
+                color:path===l.href?'var(--silver2)':'var(--muted)',
+                borderBottom:path===l.href?'1px solid var(--silver)':'none',
+                paddingBottom:path===l.href?'2px':'0',
+                transition:'color 0.2s'
+              }}>{l.label}</Link>
+            </li>
+          ))}
+        </ul>
+        <span style={{width:1,height:16,background:'var(--border2)',alignSelf:'center',margin:'0 4px'}}/>
+        <ul className="nav-links">
+          {secondaryLinks.map(l => (
+            <li key={l.href}>
+              <Link href={l.href} style={{
+                fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.14em',
+                textTransform:'uppercase',
+                color:path===l.href?'var(--silver2)':'var(--muted2)',
+                borderBottom:path===l.href?'1px solid var(--silver)':'none',
+                paddingBottom:path===l.href?'2px':'0',
+                transition:'color 0.2s'
+              }}>{l.label}</Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </nav>
   )
 }

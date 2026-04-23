@@ -17,6 +17,7 @@ export default function DesignPage() {
   const [brief, setBrief] = useState<Brief|null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
 
   async function generate() {
     if (!description.trim()||loading) return
@@ -33,8 +34,28 @@ export default function DesignPage() {
     finally { setLoading(false) }
   }
 
+  async function saveToJournal() {
+    if (!brief) return
+    try {
+      await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: brief.title,
+          type: type || 'Piece',
+          difficulty: brief.difficulty,
+          source: 'design',
+          blueprint: brief,
+          status: 'saved',
+        }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch { alert('Failed to save') }
+  }
+
   const arrow = <span style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none' as const,fontSize:12}}>▾</span>
-  const diffColor = brief?.difficulty==='Beginner'?'var(--emerald)':brief?.difficulty==='Advanced'?'var(--rose)':'var(--gold)'
+  const diffColor = brief?.difficulty==='Beginner'?'var(--sage)':brief?.difficulty==='Advanced'?'var(--rose)':'var(--gold)'
 
   return (
     <>
@@ -52,7 +73,7 @@ export default function DesignPage() {
             <textarea className="input-base" rows={3}
               placeholder="e.g. 'A delicate crescent moon pendant in sterling silver with a small moonstone' or 'Bold Art Deco earrings in brass and black onyx'"
               value={description} onChange={e=>setDescription(e.target.value)} />
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20,marginTop:20}}>
+            <div className="form-grid-3" style={{marginTop:20}}>
               {[['Piece type',type,setType,types,true],['Skill level',skill,setSkill,skills,false],['Budget (AUD)',budget,setBudget,budgets,true]].map(([label,val,setter,opts,hasEmpty]:any) => (
                 <div key={label}>
                   <label className="label">{label}</label>
@@ -69,6 +90,11 @@ export default function DesignPage() {
             <button className="btn-gold" style={{marginTop:20}} onClick={generate} disabled={loading||!description.trim()}>
               {loading ? <><span className="spinner"/>Generating brief…</> : '◇ Generate Design Brief'}
             </button>
+            {brief && (
+              <button className="btn-outline" onClick={saveToJournal} style={{marginTop:12}}>
+                {saved ? '✓ Saved!' : '◈ Save to Journal'}
+              </button>
+            )}
           </div>
 
           {error && <p style={{color:'var(--rose)',marginTop:16,fontFamily:'var(--font-mono)',fontSize:13}}>{error}</p>}
@@ -86,7 +112,7 @@ export default function DesignPage() {
                 <p style={{color:'var(--text2)',marginTop:14,fontSize:16,lineHeight:1.7}}>{brief.overview}</p>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:16,marginBottom:16}}>
+              <div className="blueprint-grid" style={{marginBottom:16}}>
                 <div className="card" style={{padding:28}}>
                   <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)',marginBottom:16}}>◈ Components</h3>
                   {brief.components.map((c,i) => (
@@ -134,7 +160,7 @@ export default function DesignPage() {
                 </div>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="blueprint-grid">
                 <div style={{background:'rgba(201,168,76,0.05)',border:'1px solid rgba(201,168,76,0.2)',padding:'20px 24px'}}>
                   <span className="mono" style={{fontSize:11,letterSpacing:'0.1em',color:'var(--gold)'}}>PRO TIPS</span>
                   <ul style={{listStyle:'none',marginTop:10}}>
