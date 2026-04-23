@@ -5,11 +5,15 @@ import Nav from '@/components/Nav'
 const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite','Larimar']
 
 const features = [
-  { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire you own. Your stash, organised.', color:'var(--silver)' },
-  { href:'/inspire', icon:'◉', label:'Inspire Me', title:'Blueprint Generator', desc:'Stuck staring at your beads? Tell the AI your vibe and it designs around what you actually have.', color:'var(--moonstone)' },
-  { href:'/palette', icon:'◇', label:'Palette', title:'Colour & Gem Pairing', desc:'Generate harmonious colour stories for gemstones, metals, and finishes.', color:'var(--amethyst)' },
-  { href:'/guides', icon:'◎', label:'Guides', title:'Technique Library', desc:'Wire wrapping, head pins, crimping, findings — everything for your style of making.', color:'var(--sage)' },
-  { href:'/glossary', icon:'⊡', label:'Glossary', title:'Maker\'s Glossary', desc:'Every term you\'ll encounter when buying beads and findings, defined plainly.', color:'var(--steel2)' },
+  { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.', color:'var(--silver)' },
+  { href:'/inspire', icon:'◉', label:'Blueprint Generator', title:'Inspire Me', desc:'The AI reads your actual stash and designs three pieces you can make right now.', color:'var(--moonstone)' },
+  { href:'/codesign', icon:'◎', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints.', color:'var(--moonstone2)' },
+  { href:'/design', icon:'◇', label:'Design Brief', title:'Brief Generator', desc:'Describe any piece in plain language and get a full technical brief back in seconds.', color:'var(--gold)' },
+  { href:'/palette', icon:'◆', label:'Colour Theory', title:'Palette Builder', desc:'Build harmonious colour stories for gemstones, metals, and mixed finishes.', color:'var(--amethyst)' },
+  { href:'/calculator', icon:'⊞', label:'Bead Math', title:'Calculator', desc:'Never run out mid-project. Calculate exactly how many beads any piece needs.', color:'var(--sage)' },
+  { href:'/journal', icon:'⊡', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.', color:'var(--rose)' },
+  { href:'/guides', icon:'○', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.', color:'var(--steel2)' },
+  { href:'/advisor', icon:'◐', label:'AI Advisor', title:'Ask the Advisor', desc:'Expert answers on materials, techniques, tools, and design decisions. Streamed live.', color:'var(--gold2)' },
 ]
 
 export default function Home() {
@@ -19,8 +23,8 @@ export default function Home() {
       <main style={{paddingTop:60}}>
         {/* Hero */}
         <section style={{
-          minHeight:'92vh',display:'flex',alignItems:'center',justifyContent:'center',
-          position:'relative',overflow:'hidden',padding:'80px 40px',paddingLeft:'clamp(20px,5vw,80px)',paddingRight:'clamp(20px,5vw,80px)'
+          minHeight:'90vh',display:'flex',alignItems:'center',justifyContent:'center',
+          position:'relative',overflow:'hidden',padding:'80px clamp(20px,5vw,80px)'
         }}>
           {/* Background orb */}
           <div style={{
@@ -67,31 +71,58 @@ export default function Home() {
             <div className="fade-up-3" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
               <Link href="/inventory" className="btn-silver">Add My Beads</Link>
               <Link href="/inspire" className="btn-outline">Get Inspired</Link>
+              <Link href="/design" className="btn-ghost">Design Brief →</Link>
             </div>
           </div>
         </section>
 
-        {/* Features */}
-        <section className="page-pad" style={{paddingTop:80,paddingBottom:80,maxWidth:1200,margin:'0 auto'}}>
-          <div style={{textAlign:'center',marginBottom:56}}>
-            <p className="section-eyebrow">Everything in one place</p>
-            <h2 style={{fontSize:'clamp(28px,4vw,38px)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginTop:8}}>Your studio. Your stash.</h2>
+        {/* How It Works */}
+        <section className="page-pad" style={{paddingTop:80,paddingBottom:80,borderTop:'1px solid var(--border)'}}>
+          <div style={{maxWidth:900,margin:'0 auto'}}>
+            <p className="section-eyebrow" style={{textAlign:'center'}}>How it works</p>
+            <h2 style={{textAlign:'center',fontSize:'clamp(26px,4vw,36px)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 52px'}}>
+              From stash to finished piece
+            </h2>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:2}}>
+              {[
+                { step:'01', icon:'◈', title:'Log your stash', body:'Add every bead and finding you own. The AI needs to know what you have to design around it.' },
+                { step:'02', icon:'◉', title:'Describe the vibe', body:'Tell the AI your mood, piece type, and any notes. It generates 3 complete designs from your actual materials.' },
+                { step:'03', icon:'◇', title:'Build from the blueprint', body:'Each blueprint has components, build steps, techniques, and tips. Save it to your journal and start making.' },
+              ].map(s => (
+                <div key={s.step} style={{padding:'36px 32px',background:'var(--surface)',border:'1px solid var(--border)'}}>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.2em',color:'var(--muted2)',marginBottom:20}}>{s.step}</div>
+                  <div style={{fontSize:22,color:'var(--silver)',marginBottom:12,animation:'shimmer 4s ease-in-out infinite'}}>{s.icon}</div>
+                  <h3 style={{fontFamily:'var(--font-display)',fontSize:19,color:'var(--cream)',fontWeight:400,marginBottom:10}}>{s.title}</h3>
+                  <p style={{fontSize:15,color:'var(--text2)',lineHeight:1.6}}>{s.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Features grid — 9 cards in a 3-col grid */}
+        <section className="page-pad" style={{paddingTop:80,paddingBottom:80,maxWidth:1300,margin:'0 auto'}}>
+          <div style={{textAlign:'center',marginBottom:52}}>
+            <p className="section-eyebrow">Everything you need</p>
+            <h2 style={{fontSize:'clamp(26px,4vw,36px)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginTop:8}}>
+              Your studio. Your stash.
+            </h2>
           </div>
           <div className="grid-3">
             {features.map((f,i) => (
               <Link href={f.href} key={f.href} className={`fade-up-${Math.min(i+1,4)}`} style={{
                 background:'var(--surface)',border:'1px solid var(--border)',
                 borderTop:`2px solid ${f.color}`,
-                padding:'36px',display:'flex',flexDirection:'column',gap:10,
+                padding:'32px',display:'flex',flexDirection:'column',gap:8,
                 transition:'all 0.2s',textDecoration:'none',color:'inherit'
               }}
               onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--surface2)'}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface)'}}>
-                <div style={{fontSize:24,color:f.color,animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
+                <div style={{fontSize:22,color:f.color,animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
                 <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--muted2)'}}>{f.label}</div>
-                <h3 style={{fontFamily:'var(--font-display)',fontSize:22,fontWeight:400,color:'var(--cream)'}}>{f.title}</h3>
-                <p style={{fontSize:15,color:'var(--text2)',lineHeight:1.6,flex:1}}>{f.desc}</p>
-                <span style={{color:'var(--silver)',fontSize:16,alignSelf:'flex-end',marginTop:8}}>→</span>
+                <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)'}}>{f.title}</h3>
+                <p style={{fontSize:14,color:'var(--text2)',lineHeight:1.6,flex:1}}>{f.desc}</p>
+                <span style={{color:'var(--silver)',fontSize:15,alignSelf:'flex-end',marginTop:6}}>→</span>
               </Link>
             ))}
           </div>
@@ -113,8 +144,19 @@ export default function Home() {
           </div>
         </div>
 
-        <footer className="page-pad" style={{paddingTop:36,paddingBottom:36,textAlign:'center',borderTop:'1px solid var(--border)'}}>
-          <span className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted2)'}}>STRUNG — AI BEADED JEWELLERY DESIGN STUDIO</span>
+        <footer className="page-pad" style={{paddingTop:48,paddingBottom:48,borderTop:'1px solid var(--border)'}}>
+          <div style={{maxWidth:1200,margin:'0 auto',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:20}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'var(--silver)',boxShadow:'0 0 8px rgba(168,180,200,0.5)',display:'inline-block'}}/>
+              <span style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:600,color:'var(--cream)',letterSpacing:'0.08em'}}>Strung</span>
+            </div>
+            <span className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted2)'}}>AI BEADED JEWELLERY DESIGN STUDIO</span>
+            <div style={{display:'flex',gap:20}}>
+              {[{href:'/guides',label:'Guides'},{href:'/glossary',label:'Glossary'},{href:'/advisor',label:'Advisor'}].map(l=>(
+                <Link key={l.href} href={l.href} style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)'}}>{l.label}</Link>
+              ))}
+            </div>
+          </div>
         </footer>
       </main>
     </>

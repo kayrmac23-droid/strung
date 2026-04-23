@@ -29,6 +29,8 @@
   --gold: #c8a860;
   --gold2: #d4bc78;
   --gold3: #e8d498;
+  --emerald: #5a9a78;
+  --emerald2: #7ab894;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

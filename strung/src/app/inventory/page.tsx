@@ -21,6 +21,8 @@ export default function InventoryPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string|null>(null)
+  const [editingId, setEditingId] = useState<string|null>(null)
+  const [editForm, setEditForm] = useState<Partial<BeadItem|FindingItem>>({})
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
 
@@ -65,6 +67,19 @@ export default function InventoryPage() {
       await load()
     } catch { alert('Failed to delete') }
     finally { setDeletingId(null) }
+  }
+
+  async function editItem(id: string) {
+    try {
+      await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: tab, id, data: editForm }),
+      })
+      await load()
+      setEditingId(null)
+      setEditForm({})
+    } catch { alert('Failed to update') }
   }
 
   const filteredBeads = beads.filter(b => {
@@ -247,30 +262,87 @@ export default function InventoryPage() {
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredBeads.map(b => (
                   <div key={b.id} className="card" style={{padding:'20px 22px',position:'relative'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
-                      <div style={{width:32,height:32,borderRadius:'50%',background:b.hex,border:'1px solid rgba(255,255,255,0.1)',flexShrink:0,position:'relative'}}>
-                        <div style={{position:'absolute',top:4,left:5,width:6,height:6,background:'rgba(255,255,255,0.3)',borderRadius:'50%',filter:'blur(1px)'}}/>
+                    {editingId === b.id ? (
+                      <div>
+                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                          <div style={{gridColumn:'1/-1'}}>
+                            <label className="label">Name</label>
+                            <input className="input-base" value={(editForm as Partial<BeadItem>).name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))} />
+                          </div>
+                          <div>
+                            <label className="label">Colour</label>
+                            <input className="input-base" value={(editForm as Partial<BeadItem>).colour||''} onChange={e=>setEditForm(f=>({...f,colour:e.target.value}))} />
+                          </div>
+                          <div>
+                            <label className="label">Hex</label>
+                            <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                              <input type="color" value={(editForm as Partial<BeadItem>).hex||'#7a9ab8'} onChange={e=>setEditForm(f=>({...f,hex:e.target.value}))}
+                                style={{width:38,height:32,border:'1px solid var(--border)',background:'none',cursor:'pointer',padding:2}} />
+                              <span className="mono" style={{fontSize:10,color:'var(--muted)'}}>{(editForm as Partial<BeadItem>).hex}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="label">Size</label>
+                            <div style={{position:'relative'}}>
+                              <select className="select-base" value={(editForm as Partial<BeadItem>).size||''} onChange={e=>setEditForm(f=>({...f,size:e.target.value}))}>
+                                {beadSizes.map(s=><option key={s} value={s}>{s}</option>)}
+                              </select>
+                              {arrow}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="label">Quantity</label>
+                            <input className="input-base" type="number" min={1} value={(editForm as Partial<BeadItem>).quantity||1} onChange={e=>setEditForm(f=>({...f,quantity:Number(e.target.value)}))} />
+                          </div>
+                          <div style={{gridColumn:'1/-1'}}>
+                            <label className="label">Notes</label>
+                            <input className="input-base" value={(editForm as Partial<BeadItem>).notes||''} onChange={e=>setEditForm(f=>({...f,notes:e.target.value}))} />
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <button className="btn-silver" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(b.id!)}>Save</button>
+                          <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
+                        </div>
                       </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</p>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:typeColours[b.type]||'var(--muted)',letterSpacing:'0.08em'}}>{b.type}{b.shape?` · ${b.shape}`:''}</p>
-                      </div>
-                    </div>
-                    <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
-                      <span className="tag">{b.colour}</span>
-                      <span className="tag">{b.size}</span>
-                      <span className="tag">qty: {b.quantity}</span>
-                    </div>
-                    {b.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{b.notes}</p>}
-                    <button onClick={()=>deleteItem(b.id!)} disabled={deletingId===b.id} style={{
-                      background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                      fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                      transition:'color 0.15s',padding:0
-                    }}
-                    onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                    onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                      {deletingId===b.id?'removing…':'× remove'}
-                    </button>
+                    ) : (
+                      <>
+                        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
+                          <div style={{width:32,height:32,borderRadius:'50%',background:b.hex,border:'1px solid rgba(255,255,255,0.1)',flexShrink:0,position:'relative'}}>
+                            <div style={{position:'absolute',top:4,left:5,width:6,height:6,background:'rgba(255,255,255,0.3)',borderRadius:'50%',filter:'blur(1px)'}}/>
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</p>
+                            <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:typeColours[b.type]||'var(--muted)',letterSpacing:'0.08em'}}>{b.type}{b.shape?` · ${b.shape}`:''}</p>
+                          </div>
+                        </div>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
+                          <span className="tag">{b.colour}</span>
+                          <span className="tag">{b.size}</span>
+                          <span className="tag">qty: {b.quantity}</span>
+                        </div>
+                        {b.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{b.notes}</p>}
+                        <div style={{display:'flex',alignItems:'center'}}>
+                          <button onClick={() => { setEditingId(b.id!); setEditForm(b) }} style={{
+                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                            transition:'color 0.15s',padding:0,marginRight:12
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color='var(--moonstone)'}
+                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                            ✎ edit
+                          </button>
+                          <button onClick={()=>deleteItem(b.id!)} disabled={deletingId===b.id} style={{
+                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                            transition:'color 0.15s',padding:0
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
+                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                            {deletingId===b.id?'removing…':'× remove'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

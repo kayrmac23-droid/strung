@@ -28,3 +28,15 @@ export type FindingItem = {
   notes?: string
   created_at?: string
 }
+
+export type DesignItem = {
+  id?: string
+  title: string
+  type?: string
+  difficulty?: string
+  source: 'inspire' | 'codesign' | 'design'
+  blueprint: Record<string, any>
+  notes?: string
+  status: 'saved' | 'in_progress' | 'complete'
+  created_at?: string
+}
