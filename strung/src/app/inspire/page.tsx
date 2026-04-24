@@ -23,6 +23,7 @@ export default function InspirePage() {
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
+  const [savedSet, setSavedSet] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     fetch('/api/inventory').then(r=>r.json()).then(d=>{
@@ -46,6 +47,17 @@ export default function InspirePage() {
       setActive(0)
     } catch(e:any) { setError(e.message||'Generation failed') }
     finally { setLoading(false) }
+  }
+
+  async function saveToJournal(bp: Blueprint, idx: number) {
+    try {
+      const res = await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: bp.title, type: bp.type, difficulty: bp.difficulty, source: 'inspire', blueprint: bp, status: 'saved' }),
+      })
+      if (res.ok) setSavedSet(s => new Set([...s, idx]))
+    } catch {}
   }
 
   const diffColor = (d:string) => d==='Beginner'?'var(--sage)':d==='Advanced'?'var(--rose)':'var(--moonstone)'
@@ -157,6 +169,14 @@ export default function InspirePage() {
                         <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)'}}>COLOUR STORY</span>
                         <p style={{color:'var(--text)',fontSize:15,marginTop:6,lineHeight:1.6}}>{bp.colourStory}</p>
                       </div>
+                      <button
+                        className={savedSet.has(active) ? 'btn-outline' : 'btn-silver'}
+                        onClick={() => saveToJournal(bp, active)}
+                        disabled={savedSet.has(active)}
+                        style={{alignSelf:'flex-start',marginTop:4}}
+                      >
+                        {savedSet.has(active) ? '✓ Saved to Journal' : '⊡ Save to Journal'}
+                      </button>
                     </div>
 
                     <div className="blueprint-grid" style={{marginBottom:16}}>

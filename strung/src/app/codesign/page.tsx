@@ -56,6 +56,7 @@ export default function CoDesignPage() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [beads, setBeads] = useState<any[]>([])
   const [findings, setFindings] = useState<any[]>([])
+  const [saved, setSaved] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -121,6 +122,19 @@ export default function CoDesignPage() {
 
     setLoading(false)
     inputRef.current?.focus()
+  }
+
+  async function saveToJournal() {
+    if (!blueprint) return
+    try {
+      await fetch('/api/designs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: blueprint.title, type: blueprint.type, difficulty: blueprint.difficulty, source: 'codesign', blueprint, status: 'saved' }),
+      })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {}
   }
 
   const diffColor = (d: string) => d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
@@ -233,6 +247,14 @@ export default function CoDesignPage() {
                     <h2 style={{ fontSize: 26, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, marginBottom: 6 }}>{blueprint.title}</h2>
                     <p style={{ fontStyle: 'italic', color: 'var(--silver2)', fontSize: 14, marginBottom: 10 }}>{blueprint.tagline}</p>
                     <p style={{ color: 'var(--text2)', fontSize: 13, lineHeight: 1.7 }}>{blueprint.overview}</p>
+                    <button
+                      className={saved ? 'btn-outline' : 'btn-silver'}
+                      onClick={saveToJournal}
+                      disabled={saved}
+                      style={{ width: '100%', justifyContent: 'center', marginTop: 14, fontSize: 11 }}
+                    >
+                      {saved ? '✓ Saved to Journal' : '⊡ Save to Journal'}
+                    </button>
                   </div>
 
                   {/* Components */}
