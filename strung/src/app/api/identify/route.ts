@@ -5,7 +5,31 @@ const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageData, mediaType } = await req.json()
+    const { imageData, mediaType, kind = 'bead' } = await req.json()
+
+    const prompt = kind === 'finding'
+      ? `You are an expert jewellery findings identifier. Analyse this image and identify the finding shown.
+Return ONLY valid JSON with exactly these fields:
+{
+  "name": "descriptive name e.g. 20mm sterling silver hoop ear wire",
+  "type": "one of: ear_wire, head_pin, eye_pin, jump_ring, clasp, chain, wire, crimp, connector, other",
+  "metal": "one of: silver, gold_filled, gold, copper, brass, oxidised, other",
+  "size": "size or gauge e.g. 21g, 6mm, 0.8mm, or empty string if unclear",
+  "notes": "any helpful notes, or empty string"
+}
+No markdown, no backticks, ONLY the JSON object.`
+      : `You are an expert jewellery bead identifier. Analyse this image and identify the bead shown.
+Return ONLY valid JSON with exactly these fields:
+{
+  "name": "descriptive name e.g. Labradorite teardrop briolette",
+  "type": "one of: gemstone, crystal, glass, seed, metal, pearl, resin, other",
+  "colour": "colour description e.g. Steel blue with iridescent flash",
+  "hex": "best matching hex code e.g. #7a9ab8",
+  "size": "one of: seed, small, medium, large, statement",
+  "shape": "one of: round, rondelle, briolette, teardrop, faceted, chip, tube, oval, square, other",
+  "notes": "any helpful notes, or empty string"
+}
+No markdown, no backticks, ONLY the JSON object.`
 
     const response = await client.messages.create({
       model: 'claude-sonnet-4-20250514',
@@ -17,21 +41,7 @@ export async function POST(req: NextRequest) {
             type: 'image',
             source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: imageData },
           },
-          {
-            type: 'text',
-            text: `You are an expert jewellery bead identifier. Analyse this image and identify the bead shown.
-Return ONLY valid JSON with exactly these fields:
-{
-  "name": "descriptive name e.g. Labradorite teardrop briolette",
-  "type": "one of: gemstone, crystal, glass, seed, metal, pearl, other",
-  "colour": "colour description e.g. Steel blue with iridescent flash",
-  "hex": "best matching hex code e.g. #7a9ab8",
-  "size": "one of: seed, small, medium, large, statement",
-  "shape": "one of: round, rondelle, briolette, teardrop, faceted, chip, tube, oval, square, other",
-  "notes": "any helpful notes, or empty string"
-}
-No markdown, no backticks, ONLY the JSON object.`,
-          },
+          { type: 'text', text: prompt },
         ],
       }],
     })

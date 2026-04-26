@@ -8,7 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type BeadItem = {
   id?: string
   name: string
-  type: 'gemstone' | 'crystal' | 'glass' | 'seed' | 'metal' | 'pearl' | 'other'
+  type: 'gemstone' | 'crystal' | 'glass' | 'seed' | 'metal' | 'pearl' | 'resin' | 'other'
   colour: string
   hex: string
   size: string
