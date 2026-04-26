@@ -3,6 +3,33 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 
+const beadColours = [
+  { name:'Amethyst purple',  hex:'#8a70aa' },
+  { name:'Lavender',         hex:'#b8a0d4' },
+  { name:'Rose quartz pink', hex:'#d4a0b0' },
+  { name:'Deep magenta',     hex:'#9b2355' },
+  { name:'Coral pink',       hex:'#e8806a' },
+  { name:'Garnet red',       hex:'#6b1a2a' },
+  { name:'Ruby red',         hex:'#9b1a2a' },
+  { name:'Carnelian orange', hex:'#c8502a' },
+  { name:'Citrine yellow',   hex:'#c8a860' },
+  { name:'Lemon quartz',     hex:'#d4c840' },
+  { name:'Peridot green',    hex:'#8aaa40' },
+  { name:'Sage green',       hex:'#6a9080' },
+  { name:'Emerald green',    hex:'#2a7a50' },
+  { name:'Malachite',        hex:'#1a6a40' },
+  { name:'Aquamarine teal',  hex:'#6aafb8' },
+  { name:'Turquoise',        hex:'#3aa8a0' },
+  { name:'Labradorite blue', hex:'#7a9ab8' },
+  { name:'Moonstone silver', hex:'#a8b4c8' },
+  { name:'Iolite violet',    hex:'#5a5a9a' },
+  { name:'Lapis lazuli',     hex:'#1a3a8a' },
+  { name:'Tiger eye amber',  hex:'#b07840' },
+  { name:'Smoky quartz',     hex:'#6a5a4a' },
+  { name:'Pearl cream',      hex:'#e8e0d0' },
+  { name:'Onyx black',       hex:'#1a1a2e' },
+]
+
 const beadTypes = ['gemstone','crystal','glass','seed','metal','pearl','other']
 const findingTypes = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
 const metals = ['silver','gold_filled','gold','copper','brass','oxidised','other']
@@ -244,8 +271,28 @@ export default function InventoryPage() {
                     <div style={{display:'flex',gap:8,alignItems:'center'}}>
                       <input type="color" value={beadForm.hex||'#7a9ab8'} onChange={e=>setBeadForm(f=>({...f,hex:e.target.value}))}
                         style={{width:44,height:36,border:'1px solid var(--border)',background:'none',cursor:'pointer',padding:2}} />
-                      <span className="mono" style={{fontSize:11,color:'var(--muted)'}}>{beadForm.hex}</span>
+                      <input className="input-base" style={{width:90,fontFamily:'var(--font-mono)',fontSize:12,padding:'6px 10px'}}
+                        value={beadForm.hex||''} placeholder="#000000"
+                        onChange={e=>setBeadForm(f=>({...f,hex:e.target.value}))} />
                     </div>
+                  </div>
+                  <div style={{gridColumn:'1/-1'}}>
+                    <label className="label">Quick colour pick</label>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:6}}>
+                      {beadColours.map(c=>(
+                        <button key={c.hex} type="button" title={c.name}
+                          onClick={()=>setBeadForm(f=>({...f,hex:c.hex,colour:f.colour||c.name}))}
+                          style={{
+                            width:28,height:28,borderRadius:'50%',background:c.hex,
+                            border:beadForm.hex===c.hex?'2px solid var(--silver)':'1px solid rgba(255,255,255,0.12)',
+                            cursor:'pointer',flexShrink:0,transition:'border 0.15s',padding:0
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--muted2)',letterSpacing:'0.06em',minHeight:14}}>
+                      {beadColours.find(c=>c.hex===beadForm.hex)?.name||''}
+                    </p>
                   </div>
                   <div>
                     <label className="label">Size</label>
