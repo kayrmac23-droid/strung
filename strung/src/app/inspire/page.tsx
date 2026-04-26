@@ -12,7 +12,13 @@ interface Blueprint {
   findingsNeeded: string[]; techniques: string[]; warnings?: string
 }
 
+function visualiseUrl(bp: Blueprint): string {
+  const prompt = [bp.title, bp.type, 'beaded jewellery', bp.colourStory, bp.vibe, 'professional jewellery photography, studio lighting, white background, elegant, detailed macro'].join(', ')
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&nologo=true`
+}
+
 export default function InspirePage() {
+  const [freeMode, setFreeMode] = useState(false)
   const [beads, setBeads] = useState<any[]>([])
   const [findings, setFindings] = useState<any[]>([])
   const [stashLoaded, setStashLoaded] = useState(false)
@@ -24,6 +30,8 @@ export default function InspirePage() {
   const [active, setActive] = useState(0)
   const [error, setError] = useState('')
   const [savedSet, setSavedSet] = useState<Set<number>>(new Set())
+  const [bpImages, setBpImages] = useState<Record<number,string>>({})
+  const [loadingImageIdx, setLoadingImageIdx] = useState<number|null>(null)
 
   useEffect(() => {
     fetch('/api/inventory').then(r=>r.json()).then(d=>{
@@ -35,11 +43,11 @@ export default function InspirePage() {
 
   async function generate() {
     if (loading) return
-    setLoading(true); setError(''); setBlueprints([])
+    setLoading(true); setError(''); setBlueprints([]); setBpImages({})
     try {
       const res = await fetch('/api/blueprints', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ beads, findings, mood, pieceType: pieceType==='Any'?'':pieceType, notes }),
+        body: JSON.stringify({ beads, findings, mood, pieceType: pieceType==='Any'?'':pieceType, notes, freeMode }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -47,6 +55,13 @@ export default function InspirePage() {
       setActive(0)
     } catch(e:any) { setError(e.message||'Generation failed') }
     finally { setLoading(false) }
+  }
+
+  function visualise(idx: number) {
+    if (bpImages[idx]) return
+    const url = visualiseUrl(blueprints[idx])
+    setLoadingImageIdx(idx)
+    setBpImages(prev => ({ ...prev, [idx]: url }))
   }
 
   async function saveToJournal(bp: Blueprint, idx: number) {
@@ -71,11 +86,25 @@ export default function InspirePage() {
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Blueprint Generator</p>
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Inspire Me</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Tell the AI what you&apos;re feeling. It reads your actual stash and designs three pieces you can make right now.</p>
+            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Tell the AI what you&apos;re feeling. Get three distinct jewellery blueprints — from your stash or dreamed up fresh.</p>
           </header>
 
-          {/* Stash status */}
-          {stashLoaded && (
+          {/* Mode toggle */}
+          <div className="fade-up-2" style={{display:'flex',gap:0,marginBottom:20}}>
+            {([['◈ From my stash', false],['◇ Any materials', true]] as const).map(([label, mode]) => (
+              <button key={String(mode)} onClick={()=>setFreeMode(mode)} style={{
+                padding:'10px 22px',fontFamily:'var(--font-mono)',fontSize:11,
+                letterSpacing:'0.12em',textTransform:'uppercase',
+                background:freeMode===mode?'var(--surface2)':'var(--surface)',
+                border:`1px solid ${freeMode===mode?'var(--silver)':'var(--border)'}`,
+                color:freeMode===mode?'var(--silver2)':'var(--muted)',
+                cursor:'pointer',transition:'all 0.15s'
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Stash status — only shown in stash mode */}
+          {!freeMode && stashLoaded && (
             <div className="fade-up-2" style={{
               display:'flex',gap:20,padding:'14px 20px',
               background:'var(--surface)',border:'1px solid var(--border)',
@@ -126,7 +155,9 @@ export default function InspirePage() {
               </div>
             </div>
             <button className="btn-silver" onClick={generate} disabled={loading} style={{width:'100%',justifyContent:'center',padding:'14px'}}>
-              {loading ? <><span className="spinner"/>Reading your stash &amp; generating blueprints…</> : '◉ Generate 3 Blueprints'}
+              {loading
+                ? <><span className="spinner"/>{freeMode ? 'Dreaming up blueprints…' : 'Reading your stash & generating blueprints…'}</>
+                : '◉ Generate 3 Blueprints'}
             </button>
           </div>
 
@@ -153,6 +184,8 @@ export default function InspirePage() {
               {/* Active blueprint */}
               {blueprints[active] && (() => {
                 const bp = blueprints[active]
+                const imgUrl = bpImages[active]
+                const imgLoading = loadingImageIdx === active
                 return (
                   <div>
                     {/* Header */}
@@ -165,18 +198,53 @@ export default function InspirePage() {
                       <h2 style={{fontSize:34,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginBottom:8}}>{bp.title}</h2>
                       <p style={{fontStyle:'italic',color:'var(--silver2)',fontSize:18,marginBottom:14}}>{bp.vibe}</p>
                       <p style={{color:'var(--text2)',fontSize:16,lineHeight:1.7,marginBottom:14}}>{bp.description}</p>
-                      <div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:'14px 18px'}}>
+                      <div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:'14px 18px',marginBottom:20}}>
                         <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)'}}>COLOUR STORY</span>
                         <p style={{color:'var(--text)',fontSize:15,marginTop:6,lineHeight:1.6}}>{bp.colourStory}</p>
                       </div>
-                      <button
-                        className={savedSet.has(active) ? 'btn-outline' : 'btn-silver'}
-                        onClick={() => saveToJournal(bp, active)}
-                        disabled={savedSet.has(active)}
-                        style={{alignSelf:'flex-start',marginTop:4}}
-                      >
-                        {savedSet.has(active) ? '✓ Saved to Journal' : '⊡ Save to Journal'}
-                      </button>
+
+                      {/* Image visualisation */}
+                      {imgUrl && (
+                        <div style={{marginBottom:20,position:'relative'}}>
+                          {imgLoading && (
+                            <div style={{
+                              position:'absolute',inset:0,display:'flex',flexDirection:'column',
+                              alignItems:'center',justifyContent:'center',gap:12,
+                              background:'var(--surface)',border:'1px solid var(--border)',minHeight:200
+                            }}>
+                              <span className="spinner-dark"/>
+                              <span className="mono" style={{fontSize:10,color:'var(--muted)',letterSpacing:'0.1em'}}>Generating image…</span>
+                            </div>
+                          )}
+                          <img
+                            src={imgUrl}
+                            alt={bp.title}
+                            onLoad={() => setLoadingImageIdx(null)}
+                            style={{
+                              width:'100%',maxHeight:480,objectFit:'cover',
+                              display:imgLoading?'none':'block',
+                              border:'1px solid var(--border)'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        <button
+                          className={savedSet.has(active) ? 'btn-outline' : 'btn-silver'}
+                          onClick={() => saveToJournal(bp, active)}
+                          disabled={savedSet.has(active)}
+                        >
+                          {savedSet.has(active) ? '✓ Saved to Journal' : '⊡ Save to Journal'}
+                        </button>
+                        <button
+                          className="btn-outline"
+                          onClick={() => visualise(active)}
+                          disabled={!!imgUrl}
+                        >
+                          {imgLoading ? <><span className="spinner-dark"/>Generating…</> : imgUrl ? '◎ Image ready' : '◎ Visualise'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="blueprint-grid" style={{marginBottom:16}}>

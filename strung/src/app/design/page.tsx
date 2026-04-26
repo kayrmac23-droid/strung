@@ -18,10 +18,19 @@ export default function DesignPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [designImage, setDesignImage] = useState<string|null>(null)
+  const [imageLoading, setImageLoading] = useState(false)
+
+  function visualise() {
+    if (!brief || designImage) return
+    const prompt = [brief.title, type||'jewellery', brief.tagline, 'professional jewellery photography, studio lighting, white background, elegant, detailed macro'].join(', ')
+    setImageLoading(true)
+    setDesignImage(`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=768&height=768&nologo=true`)
+  }
 
   async function generate() {
     if (!description.trim()||loading) return
-    setLoading(true); setError(''); setBrief(null)
+    setLoading(true); setError(''); setBrief(null); setDesignImage(null); setImageLoading(false)
     try {
       const res = await fetch('/api/design', {
         method:'POST', headers:{'Content-Type':'application/json'},
@@ -91,9 +100,14 @@ export default function DesignPage() {
               {loading ? <><span className="spinner"/>Generating brief…</> : '◇ Generate Design Brief'}
             </button>
             {brief && (
-              <button className="btn-outline" onClick={saveToJournal} style={{marginTop:12}}>
-                {saved ? '✓ Saved!' : '◈ Save to Journal'}
-              </button>
+              <div style={{display:'flex',gap:10,marginTop:12,flexWrap:'wrap'}}>
+                <button className="btn-outline" onClick={saveToJournal}>
+                  {saved ? '✓ Saved!' : '◈ Save to Journal'}
+                </button>
+                <button className="btn-outline" onClick={visualise} disabled={!!designImage}>
+                  {imageLoading ? <><span className="spinner-dark"/>Generating…</> : designImage ? '◎ Image ready' : '◎ Visualise'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -101,6 +115,25 @@ export default function DesignPage() {
 
           {brief && (
             <div className="fade-up" style={{marginTop:48}}>
+              {designImage && (
+                <div style={{marginBottom:20,position:'relative',border:'1px solid var(--border)'}}>
+                  {imageLoading && (
+                    <div style={{
+                      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                      gap:12,padding:'60px 20px',background:'var(--surface)'
+                    }}>
+                      <span className="spinner-dark"/>
+                      <span className="mono" style={{fontSize:10,color:'var(--muted)',letterSpacing:'0.1em'}}>Generating image…</span>
+                    </div>
+                  )}
+                  <img
+                    src={designImage}
+                    alt={brief.title}
+                    onLoad={() => setImageLoading(false)}
+                    style={{width:'100%',maxHeight:500,objectFit:'cover',display:imageLoading?'none':'block'}}
+                  />
+                </div>
+              )}
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderTop:'3px solid var(--gold)',padding:'36px',marginBottom:20}}>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
                   <span className="tag">{brief.difficulty}</span>

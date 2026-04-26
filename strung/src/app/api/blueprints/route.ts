@@ -4,14 +4,49 @@ import { NextRequest, NextResponse } from 'next/server'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
-  const { beads, findings, mood, pieceType, notes } = await req.json()
+  const { beads, findings, mood, pieceType, notes, freeMode } = await req.json()
 
-  const stashSummary = [
-    beads.length > 0 ? `BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size || b.size_mm+'mm'}, qty: ${b.quantity}${b.shape ? ', '+b.shape : ''})`).join('\n')}` : 'No beads logged.',
-    findings.length > 0 ? `FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}` : 'No findings logged.',
-  ].join('\n\n')
+  let prompt: string
 
-  const prompt = `You are an expert beaded jewellery designer helping a hobbyist maker. Based ONLY on the materials they have in their stash, generate 3 distinct design blueprints.
+  if (freeMode) {
+    prompt = `You are an expert beaded jewellery designer. Generate 3 distinct design blueprints, each suggesting ideal materials and techniques — no inventory constraints.
+
+THEIR REQUEST:
+- Mood/vibe: ${mood || 'open'}
+- Piece type preference: ${pieceType || 'any'}
+- Additional notes: ${notes || 'none'}
+
+Recommend specific bead types, materials, colours, and findings that would work beautifully together. Be creative and specific — name real bead materials like labradorite, seed beads, freshwater pearls, Czech glass, etc.
+
+Return ONLY valid JSON, no markdown, no backticks:
+{
+  "blueprints": [
+    {
+      "title": "Blueprint name",
+      "type": "earrings/necklace/bracelet/etc",
+      "difficulty": "Beginner/Intermediate/Advanced",
+      "time": "estimated time e.g. 45 mins",
+      "vibe": "2-3 word mood descriptor",
+      "description": "2 sentence concept description",
+      "colourStory": "Describe the colour palette and why it works",
+      "layout": [
+        {"step": 1, "component": "component name", "material": "recommended bead or finding", "technique": "what to do", "note": "optional tip"}
+      ],
+      "findingsNeeded": ["recommended finding e.g. sterling silver ear wires"],
+      "techniques": ["technique1", "technique2"],
+      "warnings": "One key thing to watch out for or null"
+    }
+  ]
+}
+
+Make each blueprint genuinely distinct — different piece types, different colour approaches, different complexity levels.`
+  } else {
+    const stashSummary = [
+      beads.length > 0 ? `BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size || b.size_mm+'mm'}, qty: ${b.quantity}${b.shape ? ', '+b.shape : ''})`).join('\n')}` : 'No beads logged.',
+      findings.length > 0 ? `FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}` : 'No findings logged.',
+    ].join('\n\n')
+
+    prompt = `You are an expert beaded jewellery designer helping a hobbyist maker. Based ONLY on the materials they have in their stash, generate 3 distinct design blueprints.
 
 THEIR STASH:
 ${stashSummary}
@@ -45,6 +80,7 @@ Return ONLY valid JSON, no markdown, no backticks:
 }
 
 Make each blueprint genuinely distinct — different piece types, different colour approaches, different complexity levels. Be specific about bead names from their stash.`
+  }
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
