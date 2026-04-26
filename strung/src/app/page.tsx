@@ -83,7 +83,7 @@ export default function Home() {
             <h2 style={{textAlign:'center',fontSize:'clamp(26px,4vw,36px)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 52px'}}>
               From stash to finished piece
             </h2>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:2}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:2}}>
               {[
                 { step:'01', icon:'◈', title:'Log your stash', body:'Add every bead and finding you own. The AI needs to know what you have to design around it.' },
                 { step:'02', icon:'◉', title:'Describe the vibe', body:'Tell the AI your mood, piece type, and any notes. It generates 3 complete designs from your actual materials.' },
