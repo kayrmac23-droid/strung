@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 
@@ -25,6 +25,10 @@ export default function InventoryPage() {
   const [editForm, setEditForm] = useState<Partial<BeadItem|FindingItem>>({})
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
+  const [identifying, setIdentifying] = useState(false)
+  const [identifyError, setIdentifyError] = useState('')
+  const [aiPrefilled, setAiPrefilled] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
@@ -54,6 +58,7 @@ export default function InventoryPage() {
       })
       await load()
       setShowForm(false)
+      setAiPrefilled(false)
       setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
     } catch { alert('Failed to save') }
@@ -80,6 +85,42 @@ export default function InventoryPage() {
       setEditingId(null)
       setEditForm({})
     } catch { alert('Failed to update') }
+  }
+
+  async function identifyImage(file: File) {
+    setIdentifying(true)
+    setIdentifyError('')
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setBeadForm(f => ({
+        ...f,
+        name: data.name || f.name,
+        type: data.type || f.type,
+        colour: data.colour || f.colour,
+        hex: data.hex || f.hex,
+        size: data.size || f.size,
+        shape: data.shape || f.shape,
+        notes: data.notes || f.notes,
+      }))
+      setAiPrefilled(true)
+      setShowForm(true)
+    } catch (e: any) {
+      setIdentifyError(e.message || 'Could not identify bead')
+    } finally {
+      setIdentifying(false)
+    }
   }
 
   const filteredBeads = beads.filter(b => {
@@ -145,13 +186,34 @@ export default function InventoryPage() {
               {arrow}
             </div>
             <button className="btn-silver" onClick={()=>setShowForm(true)}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
+            {tab==='beads' && (
+              <>
+                <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
+                  {identifying ? <><span className="spinner-dark"/>Identifying…</> : '◉ Identify with AI'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{display:'none'}}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) identifyImage(f); e.target.value = '' }}
+                />
+              </>
+            )}
           </div>
+          {identifyError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyError}</p>}
 
           {/* Add form */}
           {showForm && (
             <div className="card fade-up" style={{padding:28,marginBottom:24,border:'1px solid var(--silver)',position:'relative'}}>
               <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
-              <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:20}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+                <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
+                {aiPrefilled && tab==='beads' && (
+                  <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)'}}>◉ AI pre-filled — review &amp; adjust</span>
+                )}
+              </div>
               {tab==='beads' ? (
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
                   <div style={{gridColumn:'1/-1'}}>
@@ -242,7 +304,7 @@ export default function InventoryPage() {
                 <button className="btn-silver" onClick={saveItem} disabled={saving}>
                   {saving?<><span className="spinner"/>Saving…</>:'Save to Stash'}
                 </button>
-                <button className="btn-outline" onClick={()=>setShowForm(false)}>Cancel</button>
+                <button className="btn-outline" onClick={()=>{setShowForm(false);setAiPrefilled(false)}}>Cancel</button>
               </div>
             </div>
           )}

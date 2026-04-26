@@ -108,7 +108,7 @@ export default function Home() {
               Your studio. Your stash.
             </h2>
           </div>
-          <div className="grid-3">
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:2}}>
             {features.map((f,i) => (
               <Link href={f.href} key={f.href} className={`fade-up-${Math.min(i+1,4)}`} style={{
                 background:'var(--surface)',border:'1px solid var(--border)',
