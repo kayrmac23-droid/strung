@@ -3,6 +3,36 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 
+function hexToHsl(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1,3),16)/255
+  const g = parseInt(hex.slice(3,5),16)/255
+  const b = parseInt(hex.slice(5,7),16)/255
+  const max = Math.max(r,g,b), min = Math.min(r,g,b)
+  let h = 0, s = 0
+  const l = (max+min)/2
+  if (max !== min) {
+    const d = max-min
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min)
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break
+      case g: h = ((b-r)/d + 2)/6; break
+      case b: h = ((r-g)/d + 4)/6; break
+    }
+  }
+  return [Math.round(h*360), Math.round(s*100), Math.round(l*100)]
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100; l /= 100
+  const a = s * Math.min(l, 1-l)
+  const f = (n: number) => {
+    const k = (n + h/30) % 12
+    const c = l - a * Math.max(Math.min(k-3, 9-k, 1), -1)
+    return Math.round(255*c).toString(16).padStart(2,'0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
 const beadColours = [
   { name:'Amethyst purple',  hex:'#8a70aa' },
   { name:'Lavender',         hex:'#b8a0d4' },
@@ -30,14 +60,14 @@ const beadColours = [
   { name:'Onyx black',       hex:'#1a1a2e' },
 ]
 
-const beadTypes = ['gemstone','crystal','glass','seed','metal','pearl','other']
+const beadTypes = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
 const findingTypes = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
 const metals = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
 
 const typeColours: Record<string, string> = {
   gemstone:'var(--moonstone)',crystal:'var(--amethyst)',glass:'var(--sage)',
-  seed:'var(--silver)',metal:'var(--steel2)',pearl:'#c8b8a8',other:'var(--muted)'
+  seed:'var(--silver)',metal:'var(--steel2)',pearl:'#c8b8a8',resin:'#c87040',other:'var(--muted)'
 }
 
 export default function InventoryPage() {
@@ -54,8 +84,11 @@ export default function InventoryPage() {
   const [filterType, setFilterType] = useState('')
   const [identifying, setIdentifying] = useState(false)
   const [identifyError, setIdentifyError] = useState('')
+  const [identifyingFinding, setIdentifyingFinding] = useState(false)
+  const [identifyFindingError, setIdentifyFindingError] = useState('')
   const [aiPrefilled, setAiPrefilled] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const findingFileInputRef = useRef<HTMLInputElement>(null)
 
   const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
@@ -150,6 +183,40 @@ export default function InventoryPage() {
     }
   }
 
+  async function identifyFinding(file: File) {
+    setIdentifyingFinding(true)
+    setIdentifyFindingError('')
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg', kind: 'finding' }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setFindingForm(f => ({
+        ...f,
+        name: data.name || f.name,
+        type: data.type || f.type,
+        metal: data.metal || f.metal,
+        size: data.size || f.size,
+        notes: data.notes || f.notes,
+      }))
+      setAiPrefilled(true)
+      setShowForm(true)
+    } catch (e: any) {
+      setIdentifyFindingError(e.message || 'Could not identify finding')
+    } finally {
+      setIdentifyingFinding(false)
+    }
+  }
+
   const filteredBeads = beads.filter(b => {
     const matchSearch = !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.colour.toLowerCase().includes(search.toLowerCase())
     const matchType = !filterType || b.type === filterType
@@ -213,7 +280,7 @@ export default function InventoryPage() {
               {arrow}
             </div>
             <button className="btn-silver" onClick={()=>setShowForm(true)}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
-            {tab==='beads' && (
+            {tab==='beads' ? (
               <>
                 <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
                   {identifying ? <><span className="spinner-dark"/>Identifying…</> : '◉ Identify with AI'}
@@ -227,9 +294,24 @@ export default function InventoryPage() {
                   onChange={e => { const f = e.target.files?.[0]; if (f) identifyImage(f); e.target.value = '' }}
                 />
               </>
+            ) : (
+              <>
+                <button className="btn-outline" onClick={()=>findingFileInputRef.current?.click()} disabled={identifyingFinding} style={{gap:6}}>
+                  {identifyingFinding ? <><span className="spinner-dark"/>Identifying…</> : '◉ Identify with AI'}
+                </button>
+                <input
+                  ref={findingFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{display:'none'}}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) identifyFinding(f); e.target.value = '' }}
+                />
+              </>
             )}
           </div>
           {identifyError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyError}</p>}
+          {identifyFindingError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyFindingError}</p>}
 
           {/* Add form */}
           {showForm && (
@@ -237,7 +319,7 @@ export default function InventoryPage() {
               <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
-                {aiPrefilled && tab==='beads' && (
+                {aiPrefilled && (
                   <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)'}}>◉ AI pre-filled — review &amp; adjust</span>
                 )}
               </div>
@@ -266,24 +348,61 @@ export default function InventoryPage() {
                     <input className="input-base" placeholder="e.g. Steel blue"
                       value={beadForm.colour||''} onChange={e=>setBeadForm(f=>({...f,colour:e.target.value}))} />
                   </div>
-                  <div>
-                    <label className="label">Colour (pick)</label>
+                  <div style={{gridColumn:'2/-1'}}>
+                    <label className="label">Hex</label>
                     <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                      <input type="color" value={beadForm.hex||'#7a9ab8'} onChange={e=>setBeadForm(f=>({...f,hex:e.target.value}))}
-                        style={{width:44,height:36,border:'1px solid var(--border)',background:'none',cursor:'pointer',padding:2}} />
-                      <input className="input-base" style={{width:90,fontFamily:'var(--font-mono)',fontSize:12,padding:'6px 10px'}}
+                      <div style={{width:36,height:36,borderRadius:3,background:beadForm.hex||'#7a9ab8',border:'1px solid var(--border)',flexShrink:0}}/>
+                      <input className="input-base" style={{fontFamily:'var(--font-mono)',fontSize:12,padding:'6px 10px'}}
                         value={beadForm.hex||''} placeholder="#000000"
                         onChange={e=>setBeadForm(f=>({...f,hex:e.target.value}))} />
                     </div>
                   </div>
                   <div style={{gridColumn:'1/-1'}}>
-                    <label className="label">Quick colour pick</label>
-                    <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:6}}>
+                    <label className="label" style={{marginBottom:10}}>Colour</label>
+                    {(()=>{
+                      const hex = /^#[0-9a-fA-F]{6}$/.test(beadForm.hex||'') ? beadForm.hex! : '#7a9ab8'
+                      const [h,s,l] = hexToHsl(hex)
+                      const sliders: Array<{label:string,value:number,min:number,max:number,unit:string,bg:string,onChange:(v:number)=>void}> = [
+                        {
+                          label:'Hue',value:h,min:0,max:360,unit:'°',
+                          bg:'linear-gradient(to right,hsl(0,100%,50%),hsl(60,100%,50%),hsl(120,100%,50%),hsl(180,100%,50%),hsl(240,100%,50%),hsl(300,100%,50%),hsl(360,100%,50%))',
+                          onChange:(v)=>setBeadForm(f=>({...f,hex:hslToHex(v,s,l)}))
+                        },
+                        {
+                          label:'Saturation',value:s,min:0,max:100,unit:'%',
+                          bg:`linear-gradient(to right,hsl(${h},0%,${l}%),hsl(${h},100%,${l}%))`,
+                          onChange:(v)=>setBeadForm(f=>({...f,hex:hslToHex(h,v,l)}))
+                        },
+                        {
+                          label:'Lightness',value:l,min:0,max:100,unit:'%',
+                          bg:`linear-gradient(to right,hsl(${h},${s}%,0%),hsl(${h},${s}%,50%),hsl(${h},${s}%,100%))`,
+                          onChange:(v)=>setBeadForm(f=>({...f,hex:hslToHex(h,s,v)}))
+                        },
+                      ]
+                      return (
+                        <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:16}}>
+                          {sliders.map(sl=>(
+                            <div key={sl.label}>
+                              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase'}}>{sl.label}</span>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--muted2)'}}>{sl.value}{sl.unit}</span>
+                              </div>
+                              <div style={{position:'relative',height:18}}>
+                                <div style={{position:'absolute',top:7,left:0,right:0,height:4,borderRadius:2,background:sl.bg}}/>
+                                <input type="range" className="colour-slider" min={sl.min} max={sl.max} value={sl.value}
+                                  onChange={e=>sl.onChange(+e.target.value)}/>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                    <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:6}}>
                       {beadColours.map(c=>(
                         <button key={c.hex} type="button" title={c.name}
                           onClick={()=>setBeadForm(f=>({...f,hex:c.hex,colour:f.colour||c.name}))}
                           style={{
-                            width:28,height:28,borderRadius:'50%',background:c.hex,
+                            width:26,height:26,borderRadius:'50%',background:c.hex,
                             border:beadForm.hex===c.hex?'2px solid var(--silver)':'1px solid rgba(255,255,255,0.12)',
                             cursor:'pointer',flexShrink:0,transition:'border 0.15s',padding:0
                           }}
