@@ -86,6 +86,7 @@ export default function InventoryPage() {
   const [identifyError, setIdentifyError] = useState('')
   const [identifyingFinding, setIdentifyingFinding] = useState(false)
   const [identifyFindingError, setIdentifyFindingError] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [aiPrefilled, setAiPrefilled] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const findingFileInputRef = useRef<HTMLInputElement>(null)
@@ -108,43 +109,49 @@ export default function InventoryPage() {
   useEffect(() => { load() }, [load])
 
   async function saveItem() {
-    setSaving(true)
+    const form = tab === 'beads' ? beadForm : findingForm
+    if (!form.name?.trim()) { setSaveError('Name is required.'); return }
+    setSaving(true); setSaveError('')
     try {
-      const data = tab === 'beads' ? beadForm : findingForm
-      await fetch('/api/inventory', {
+      const res = await fetch('/api/inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ table: tab, data }),
+        body: JSON.stringify({ table: tab, data: form }),
       })
+      const result = await res.json()
+      if (!res.ok || result.error) throw new Error(result.error || `Save failed (${res.status})`)
       await load()
       setShowForm(false)
       setAiPrefilled(false)
       setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
-    } catch { alert('Failed to save') }
+    } catch (e: any) { setSaveError(e.message || 'Save failed') }
     finally { setSaving(false) }
   }
 
   async function deleteItem(id: string) {
     setDeletingId(id)
     try {
-      await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE' })
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
       await load()
-    } catch { alert('Failed to delete') }
+    } catch (e: any) { alert(e.message || 'Failed to delete') }
     finally { setDeletingId(null) }
   }
 
   async function editItem(id: string) {
     try {
-      await fetch('/api/inventory', {
+      const res = await fetch('/api/inventory', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ table: tab, id, data: editForm }),
       })
+      const result = await res.json()
+      if (!res.ok || result.error) throw new Error(result.error || 'Update failed')
       await load()
       setEditingId(null)
       setEditForm({})
-    } catch { alert('Failed to update') }
+    } catch (e: any) { alert(e.message || 'Failed to update') }
   }
 
   async function identifyImage(file: File) {
@@ -279,7 +286,7 @@ export default function InventoryPage() {
               </select>
               {arrow}
             </div>
-            <button className="btn-silver" onClick={()=>setShowForm(true)}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
+            <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
             {tab==='beads' ? (
               <>
                 <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
@@ -466,11 +473,12 @@ export default function InventoryPage() {
                   </div>
                 </div>
               )}
-              <div style={{display:'flex',gap:10,marginTop:20}}>
+              {saveError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:16,letterSpacing:'0.06em'}}>{saveError}</p>}
+              <div style={{display:'flex',gap:10,marginTop:12}}>
                 <button className="btn-silver" onClick={saveItem} disabled={saving}>
                   {saving?<><span className="spinner"/>Saving…</>:'Save to Stash'}
                 </button>
-                <button className="btn-outline" onClick={()=>{setShowForm(false);setAiPrefilled(false)}}>Cancel</button>
+                <button className="btn-outline" onClick={()=>{setShowForm(false);setAiPrefilled(false);setSaveError('')}}>Cancel</button>
               </div>
             </div>
           )}
