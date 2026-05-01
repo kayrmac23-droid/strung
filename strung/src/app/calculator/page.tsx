@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import Nav from '@/components/Nav'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -107,21 +107,13 @@ export default function CalculatorPage() {
   const [beadMaterial, setBeadMaterial] = useState<'gemstone' | 'glass'>('gemstone')
 
   // Results
-  const [results, setResults] = useState<{
-    beadsPerStrand: number
-    totalBeads: number
-    wireLengthCm: number
-    weightG: number
-    beadMm: number
-  } | null>(null)
-
-  useEffect(() => {
+  const results = useMemo(() => {
     const lengthNum = parseFloat(length)
-    if (!lengthNum || lengthNum <= 0) { setResults(null); return }
+    if (!lengthNum || lengthNum <= 0) return null
 
     const lengthMm = toMm(lengthNum, unit)
     const beadMm = customMm ? parseFloat(customMm) : BEAD_SIZES[beadSizeIdx].mm
-    if (!beadMm || beadMm <= 0) { setResults(null); return }
+    if (!beadMm || beadMm <= 0) return null
 
     const claspMm = claspIdx === 3
       ? (parseFloat(customClaspMm) || 0)
@@ -152,7 +144,7 @@ export default function CalculatorPage() {
       : 0.3 * beadMm
     const weightG = totalBeads * gramsPerBead
 
-    setResults({ beadsPerStrand, totalBeads, wireLengthCm, weightG, beadMm })
+    return { beadsPerStrand, totalBeads, wireLengthCm, weightG, beadMm }
   }, [length, unit, beadSizeIdx, customMm, claspIdx, customClaspMm, knot, strands, beadMaterial])
 
   const isCustomClasp = claspIdx === 3

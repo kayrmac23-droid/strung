@@ -95,11 +95,12 @@ export default function CoDesignPage() {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        full += decoder.decode(value)
-        const liveDisplay = full.replace(/<blueprint>[\s\S]*?(<\/blueprint>)?/g, '').trim()
+        const currentFull = full + decoder.decode(value)
+        full = currentFull
+        const liveDisplay = currentFull.replace(/<blueprint>[\s\S]*?(<\/blueprint>)?/g, '').trim()
         setMessages(m => {
           const updated = [...m]
-          updated[updated.length - 1] = { role: 'assistant', content: full, display: liveDisplay }
+          updated[updated.length - 1] = { role: 'assistant', content: currentFull, display: liveDisplay }
           return updated
         })
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })

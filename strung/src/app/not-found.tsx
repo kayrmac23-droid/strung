@@ -43,7 +43,7 @@ export default function NotFound() {
             fontFamily: 'var(--font-body)', fontSize: 17, color: 'var(--text2)',
             lineHeight: 1.7, maxWidth: 380, margin: '0 auto 36px'
           }}>
-            That page doesn't exist — it may have been moved or you followed a broken link.
+            That page doesn&apos;t exist — it may have been moved or you followed a broken link.
           </p>
           <Link href="/" className="btn-silver">Back to studio</Link>
         </div>
