@@ -8,11 +8,11 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate bl
 
 | Page | What it does |
 |---|---|
-| **Inventory** (`/inventory`) | Log every bead and finding you own — name, type, colour, size, quantity. Full inline edit and delete. |
+| **Inventory** (`/inventory`) | Log every bead and finding you own — name, type, colour, size, quantity. Photograph a bead or finding and Claude identifies it for you. Full inline edit and delete. |
 | **Inspire Me** (`/inspire`) | The AI reads your actual stash and generates three distinct, buildable design blueprints. Save any to your Journal. |
 | **Design Studio** (`/codesign`) | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full blueprint. |
 | **Design Brief** (`/design`) | Describe any piece in plain language and get a complete technical brief back in seconds. |
-| **Palette Builder** (`/palette`) | Build harmonious colour stories across gemstones, metals, and mixed finishes. |
+| **Palette Builder** (`/palette`) | Describe a mood, style, and occasion and Claude generates a full colour palette — gems, metals, finishes, and pairing suggestions. |
 | **Bead Math** (`/calculator`) | Calculate exactly how many beads any piece needs — with length, size, knotting, and strand options. |
 | **Design Journal** (`/journal`) | Every blueprint you save lives here. Track status: Saved → In Progress → Complete. |
 | **Technique Guides** (`/guides`) | Wire wrapping, crimping, head pins — every core technique, clearly explained. |
@@ -25,7 +25,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate bl
 
 - **Framework** — Next.js 15 (App Router)
 - **Language** — TypeScript
-- **AI** — Anthropic Claude (`claude-sonnet-4-20250514`) via the Anthropic SDK
+- **AI** — Anthropic Claude (`claude-sonnet-4-20250514`) via the Anthropic SDK — text, streaming, and vision
 - **Database** — Supabase (PostgreSQL)
 - **Styling** — CSS custom properties + inline styles (no CSS framework)
 - **Fonts** — Playfair Display, Cormorant Garamond, DM Mono
