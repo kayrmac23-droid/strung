@@ -213,7 +213,9 @@ export default function BuildPage() {
               <span className="tag">
                 Step {totalSteps === 0 ? 0 : activeStepIndex + 1} / {totalSteps}
               </span>
-              <span className="tag">{build.status === 'completed' ? 'Completed' : 'In progress'}</span>
+              <span className="tag">
+                {build.status === 'completed' ? 'Completed' : build.status === 'draft' ? 'Draft' : 'In progress'}
+              </span>
             </div>
 
             {activeStep ? (

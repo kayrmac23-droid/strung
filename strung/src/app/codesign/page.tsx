@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Nav from '@/components/Nav'
+import type { BeadItem, FindingItem } from '@/lib/supabase'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -54,8 +55,8 @@ export default function CoDesignPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
-  const [beads, setBeads] = useState<any[]>([])
-  const [findings, setFindings] = useState<any[]>([])
+  const [beads, setBeads] = useState<BeadItem[]>([])
+  const [findings, setFindings] = useState<FindingItem[]>([])
   const [saved, setSaved] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)

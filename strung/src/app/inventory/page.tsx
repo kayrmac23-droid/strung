@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
+
 function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1,3),16)/255
   const g = parseInt(hex.slice(3,5),16)/255
@@ -60,9 +64,9 @@ const beadColours = [
   { name:'Onyx black',       hex:'#1a1a2e' },
 ]
 
-const beadTypes = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
-const findingTypes = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
-const metals = ['silver','gold_filled','gold','copper','brass','oxidised','other']
+const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
+const findingTypes: FindingItem['type'][] = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
+const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
 
 const typeColours: Record<string, string> = {
@@ -126,7 +130,7 @@ export default function InventoryPage() {
       setAiPrefilled(false)
       setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
-    } catch (e: any) { setSaveError(e.message || 'Save failed') }
+    } catch (e: unknown) { setSaveError(getErrorMessage(e, 'Save failed')) }
     finally { setSaving(false) }
   }
 
@@ -136,7 +140,7 @@ export default function InventoryPage() {
       const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE' })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
       await load()
-    } catch (e: any) { alert(e.message || 'Failed to delete') }
+    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to delete')) }
     finally { setDeletingId(null) }
   }
 
@@ -152,7 +156,7 @@ export default function InventoryPage() {
       await load()
       setEditingId(null)
       setEditForm({})
-    } catch (e: any) { alert(e.message || 'Failed to update') }
+    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to update')) }
   }
 
   async function identifyImage(file: File) {
@@ -184,8 +188,8 @@ export default function InventoryPage() {
       }))
       setAiPrefilled(true)
       setShowForm(true)
-    } catch (e: any) {
-      setIdentifyError(e.message || 'Could not identify bead')
+    } catch (e: unknown) {
+      setIdentifyError(getErrorMessage(e, 'Could not identify bead'))
     } finally {
       setIdentifying(false)
     }
@@ -218,8 +222,8 @@ export default function InventoryPage() {
       }))
       setAiPrefilled(true)
       setShowForm(true)
-    } catch (e: any) {
-      setIdentifyFindingError(e.message || 'Could not identify finding')
+    } catch (e: unknown) {
+      setIdentifyFindingError(getErrorMessage(e, 'Could not identify finding'))
     } finally {
       setIdentifyingFinding(false)
     }
@@ -340,7 +344,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Type</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={beadForm.type} onChange={e=>setBeadForm(f=>({...f,type:e.target.value as any}))}>
+                    <div style={{position:'relative'}}><select className="select-base" value={beadForm.type} onChange={e=>setBeadForm(f=>({...f,type:e.target.value as BeadItem['type']}))}>
                       {beadTypes.map(t=><option key={t} value={t}>{t}</option>)}
                     </select>{arrow}</div>
                   </div>
@@ -447,13 +451,13 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Type</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.type} onChange={e=>setFindingForm(f=>({...f,type:e.target.value as any}))}>
+                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.type} onChange={e=>setFindingForm(f=>({...f,type:e.target.value as FindingItem['type']}))}>
                       {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
                     </select>{arrow}</div>
                   </div>
                   <div>
                     <label className="label">Metal</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.metal} onChange={e=>setFindingForm(f=>({...f,metal:e.target.value as any}))}>
+                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.metal} onChange={e=>setFindingForm(f=>({...f,metal:e.target.value as FindingItem['metal']}))}>
                       {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
                     </select>{arrow}</div>
                   </div>
@@ -604,7 +608,7 @@ export default function InventoryPage() {
                           <div>
                             <label className="label">Type</label>
                             <div style={{position:'relative'}}>
-                              <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as any}))}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as FindingItem['type']}))}>
                                 {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
                               </select>
                               {arrow}
@@ -613,7 +617,7 @@ export default function InventoryPage() {
                           <div>
                             <label className="label">Metal</label>
                             <div style={{position:'relative'}}>
-                              <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as any}))}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as FindingItem['metal']}))}>
                                 {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
                               </select>
                               {arrow}

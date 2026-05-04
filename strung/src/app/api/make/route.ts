@@ -3,23 +3,55 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+type StashBead = {
+  name: string
+  colour: string
+  size?: string
+  size_mm?: number
+  quantity: number
+  shape?: string
+}
+
+type StashFinding = {
+  name: string
+  type: string
+  metal: string
+  quantity: number
+  size?: string
+}
+
+type TimeAvailable = '15min' | '1hour' | 'afternoon'
+
 export async function POST(req: NextRequest) {
-  const { beads, findings, pieceType, mood, timeAvailable } = await req.json()
+  const {
+    beads = [],
+    findings = [],
+    pieceType,
+    mood,
+    timeAvailable,
+  }: {
+    beads: StashBead[]
+    findings: StashFinding[]
+    pieceType?: string
+    mood?: string
+    timeAvailable?: TimeAvailable
+  } = await req.json()
 
   const stashSummary = [
     beads.length > 0
-      ? `BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size_mm}mm, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
+      ? `BEADS:\n${beads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
       : 'No beads in stash.',
     findings.length > 0
-      ? `FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})`).join('\n')}`
+      ? `FINDINGS:\n${findings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})`).join('\n')}`
       : 'No findings in stash.',
   ].join('\n\n')
 
-  const timeMap: Record<string, string> = {
+  const timeMap: Record<TimeAvailable, string> = {
     '15min': '15 minutes — extremely simple, 3-5 steps maximum',
     '1hour': 'about 1 hour — moderate complexity, up to 10 steps',
     'afternoon': 'a few hours — can be complex, multiple techniques fine',
   }
+  const selectedTime = timeAvailable ? timeMap[timeAvailable] : '1 hour'
 
   const prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
 
@@ -29,7 +61,7 @@ ${stashSummary}
 THEIR REQUEST:
 - Piece type: ${pieceType || 'any — choose the best fit for the stash'}
 - Mood/vibe: ${mood || 'open'}
-- Time available: ${timeMap[timeAvailable] || '1 hour'}
+- Time available: ${selectedTime}
 
 CRITICAL RULES:
 - Only use materials they actually have. Check quantities — if they have qty:2 of something, use at most 2.

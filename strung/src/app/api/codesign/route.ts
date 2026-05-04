@@ -3,15 +3,44 @@ import { NextRequest } from 'next/server'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+type StashBead = {
+  name: string
+  colour: string
+  size?: string
+  size_mm?: number
+  quantity: number
+  shape?: string
+}
+
+type StashFinding = {
+  name: string
+  type: string
+  metal: string
+  quantity: number
+}
+
+type ChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export async function POST(req: NextRequest) {
-  const { messages, beads, findings } = await req.json()
+  const {
+    messages,
+    beads = [],
+    findings = [],
+  }: {
+    messages: ChatMessage[]
+    beads: StashBead[]
+    findings: StashFinding[]
+  } = await req.json()
 
   const stashLines: string[] = []
   if (beads?.length) {
-    stashLines.push(`BEADS:\n${beads.map((b: any) => `- ${b.name} (${b.colour}, ${b.size || b.size_mm+'mm'}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
+    stashLines.push(`BEADS:\n${beads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
   }
   if (findings?.length) {
-    stashLines.push(`FINDINGS:\n${findings.map((f: any) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
+    stashLines.push(`FINDINGS:\n${findings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
   }
   const stashContext = stashLines.length
     ? `\n\nThe user's stash:\n${stashLines.join('\n\n')}`

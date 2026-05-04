@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
+import type { BeadItem, FindingItem } from '@/lib/supabase'
 
 const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
 const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
@@ -33,8 +34,8 @@ interface Design {
 
 export default function MakePage() {
   const router = useRouter()
-  const [beads, setBeads] = useState<any[]>([])
-  const [findings, setFindings] = useState<any[]>([])
+  const [beads, setBeads] = useState<BeadItem[]>([])
+  const [findings, setFindings] = useState<FindingItem[]>([])
   const [stashLoaded, setStashLoaded] = useState(false)
 
   const [pieceType, setPieceType] = useState('Any')
@@ -74,8 +75,8 @@ export default function MakePage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setDesign(data)
-    } catch (e: any) {
-      setError(e.message || 'Generation failed')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
       setLoading(false)
     }
@@ -99,8 +100,8 @@ export default function MakePage() {
       const build = await res.json()
       if (build.error) throw new Error(build.error)
       router.push(`/make/build/${build.id}`)
-    } catch (e: any) {
-      setError(e.message || 'Failed to start build')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to start build')
       setSaving(false)
     }
   }
@@ -122,26 +123,14 @@ export default function MakePage() {
       const build = await res.json()
       if (build.error) throw new Error(build.error)
       router.push('/journal')
-    } catch (e: any) {
-      setError(e.message || 'Failed to save')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to save')
       setSaving(false)
     }
   }
 
   const diffColor = (d: string) =>
     d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
-
-  const techniqueGuideMap: Record<string, string> = {
-    'Wrapped Loop': 'wrapped-loop',
-    'Simple Loop': 'head-pins',
-    'Jump Ring': 'jump-rings',
-    'Crimping': 'stringing',
-    'Wire Wrapping': 'wire-wrapping',
-    'Wire Coiling': 'wire-wrapping',
-    'Briolette Wrap': 'wrapped-loop',
-    'Stringing': 'stringing',
-    'Knotting': 'stringing',
-  }
 
   return (
     <>

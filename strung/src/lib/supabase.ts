@@ -35,7 +35,7 @@ export type DesignItem = {
   type?: string
   difficulty?: string
   source: 'inspire' | 'codesign' | 'design'
-  blueprint: Record<string, any>
+  blueprint: Record<string, unknown>
   notes?: string
   status: 'saved' | 'in_progress' | 'complete'
   created_at?: string

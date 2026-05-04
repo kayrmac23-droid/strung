@@ -8,7 +8,7 @@ interface Design {
   description: string
   difficulty: string
   estimatedTime: string
-  steps: any[]
+  steps: { id: number; instruction: string }[]
   pieceType: string
 }
 
@@ -148,6 +148,8 @@ export default function JournalPage() {
                 const r = build.rating ? ratingLabels[build.rating] : null
                 const stepsDone = build.status === 'completed' ? build.design.steps.length : build.current_step
                 const stepsTotal = build.design.steps.length
+                const safeStepsTotal = Math.max(stepsTotal, 1)
+                const progressRatio = Math.min(Math.max(stepsDone / safeStepsTotal, 0), 1)
 
                 return (
                   <div key={build.id} className="card" style={{ padding: 28 }}>
@@ -170,7 +172,7 @@ export default function JournalPage() {
                           )}
                           {build.status === 'in_progress' && (
                             <span className="tag" style={{ borderColor: 'var(--moonstone)', color: 'var(--moonstone)' }}>
-                              In progress · step {stepsDone + 1}/{stepsTotal}
+                              In progress · step {Math.min(stepsDone + 1, safeStepsTotal)}/{safeStepsTotal}
                             </span>
                           )}
                           {build.status === 'draft' && (
@@ -218,12 +220,12 @@ export default function JournalPage() {
                             <circle cx="24" cy="24" r="20" fill="none" stroke="var(--silver)"
                               strokeWidth="2" strokeLinecap="round"
                               strokeDasharray={`${2 * Math.PI * 20}`}
-                              strokeDashoffset={`${2 * Math.PI * 20 * (1 - stepsDone / stepsTotal)}`}
+                              strokeDashoffset={`${2 * Math.PI * 20 * (1 - progressRatio)}`}
                               transform="rotate(-90 24 24)"
                               style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
                             <text x="24" y="28" textAnchor="middle"
                               style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--silver2)' }}>
-                              {Math.round(stepsDone / stepsTotal * 100)}%
+                              {Math.round(progressRatio * 100)}%
                             </text>
                           </svg>
                         </div>
