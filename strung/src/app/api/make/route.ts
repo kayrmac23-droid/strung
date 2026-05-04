@@ -65,6 +65,8 @@ THEIR REQUEST:
 
 CRITICAL RULES:
 - Only use materials they actually have. Check quantities — if they have qty:2 of something, use at most 2.
+- Assume basic findings are available by default (e.g. jump rings, ear wires, head pins, clasps, standard wire, and crimps) even if not listed.
+- Treat stash findings marked as "statement_component" as the featured structural pieces (e.g. earring frames, chandeliers, focal connectors) and prioritise using them when present.
 - If stash is empty or very sparse, design a simple piece and note what basic materials they'd need.
 - The steps must be genuinely sequential and buildable — someone should be able to follow them with their hands.
 - Technique tags must be from this exact list only: "Wrapped Loop", "Simple Loop", "Crimping", "Wire Coiling", "Wire Wrapping", "Jump Ring", "Briolette Wrap", "Stringing", "Knotting"
