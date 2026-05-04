@@ -1,0 +1,380 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Nav from '@/components/Nav'
+
+const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
+const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
+const times = [
+  { value: '15min', label: '15 minutes', sub: 'Quick & simple' },
+  { value: '1hour', label: '1 hour', sub: 'Moderate' },
+  { value: 'afternoon', label: 'Afternoon', sub: 'Complex welcome' },
+]
+
+interface Step {
+  id: number
+  instruction: string
+  material: string | null
+  technique: string | null
+  tip: string | null
+}
+
+interface Design {
+  title: string
+  description: string
+  colourStory: string
+  difficulty: string
+  estimatedTime: string
+  pieceType: string
+  materialsCheck: { allAvailable: boolean; notes: string }
+  components: { item: string; quantity: number; note: string }[]
+  steps: Step[]
+}
+
+export default function MakePage() {
+  const router = useRouter()
+  const [beads, setBeads] = useState<any[]>([])
+  const [findings, setFindings] = useState<any[]>([])
+  const [stashLoaded, setStashLoaded] = useState(false)
+
+  const [pieceType, setPieceType] = useState('Any')
+  const [mood, setMood] = useState('')
+  const [timeAvailable, setTimeAvailable] = useState('1hour')
+
+  const [design, setDesign] = useState<Design | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/inventory')
+      .then(r => r.json())
+      .then(d => {
+        setBeads(d.beads || [])
+        setFindings(d.findings || [])
+        setStashLoaded(true)
+      })
+  }, [])
+
+  async function generate() {
+    if (loading) return
+    setLoading(true); setError(''); setDesign(null)
+    try {
+      const res = await fetch('/api/make', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beads,
+          findings,
+          pieceType: pieceType === 'Any' ? '' : pieceType,
+          mood,
+          timeAvailable,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setDesign(data)
+    } catch (e: any) {
+      setError(e.message || 'Generation failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function startBuilding() {
+    if (!design || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/builds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: design.title,
+          design: design,
+          status: 'in_progress',
+          current_step: 0,
+          started_at: new Date().toISOString(),
+        }),
+      })
+      const build = await res.json()
+      if (build.error) throw new Error(build.error)
+      router.push(`/make/build/${build.id}`)
+    } catch (e: any) {
+      setError(e.message || 'Failed to start build')
+      setSaving(false)
+    }
+  }
+
+  async function saveForLater() {
+    if (!design || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/builds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: design.title,
+          design: design,
+          status: 'draft',
+          current_step: 0,
+        }),
+      })
+      const build = await res.json()
+      if (build.error) throw new Error(build.error)
+      router.push('/journal')
+    } catch (e: any) {
+      setError(e.message || 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  const diffColor = (d: string) =>
+    d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
+
+  const techniqueGuideMap: Record<string, string> = {
+    'Wrapped Loop': 'wrapped-loop',
+    'Simple Loop': 'head-pins',
+    'Jump Ring': 'jump-rings',
+    'Crimping': 'stringing',
+    'Wire Wrapping': 'wire-wrapping',
+    'Wire Coiling': 'wire-wrapping',
+    'Briolette Wrap': 'wrapped-loop',
+    'Stringing': 'stringing',
+    'Knotting': 'stringing',
+  }
+
+  return (
+    <>
+      <Nav />
+      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
+
+          <header style={{ marginBottom: 40 }}>
+            <p className="section-eyebrow fade-up">Design Generator</p>
+            <h1 className="fade-up-1" style={{
+              fontSize: 44, color: 'var(--cream)',
+              fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
+            }}>Make Something</h1>
+            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>
+              Tell the AI what you&apos;re after. It reads your stash and designs one piece you can build right now.
+            </p>
+          </header>
+
+          {/* Stash status */}
+          {stashLoaded && (
+            <div className="fade-up-2" style={{
+              display: 'flex', gap: 20, padding: '12px 18px',
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              marginBottom: 24, alignItems: 'center', flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: beads.length > 0 ? 'var(--sage)' : 'var(--rose)' }} />
+                <span className="mono" style={{ fontSize: 11, color: 'var(--text2)', letterSpacing: '0.08em' }}>
+                  {beads.length} bead{beads.length !== 1 ? 's' : ''} in stash
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: findings.length > 0 ? 'var(--sage)' : 'var(--rose)' }} />
+                <span className="mono" style={{ fontSize: 11, color: 'var(--text2)', letterSpacing: '0.08em' }}>
+                  {findings.length} finding{findings.length !== 1 ? 's' : ''} in stash
+                </span>
+              </div>
+              {beads.length === 0 && findings.length === 0 && (
+                <span style={{ fontSize: 14, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                  Add materials to your stash for personalised designs — or generate anyway for a general idea.
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Brief form */}
+          <div className="card fade-up-2" style={{ padding: 32, marginBottom: 32 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+              <div>
+                <label className="label">Piece type</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {pieceTypes.map(p => (
+                    <button key={p} onClick={() => setPieceType(p)} style={{
+                      padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      background: pieceType === p ? 'var(--surface2)' : 'var(--bg2)',
+                      border: `1px solid ${pieceType === p ? 'var(--silver)' : 'var(--border)'}`,
+                      color: pieceType === p ? 'var(--silver2)' : 'var(--muted)',
+                      cursor: 'pointer', transition: 'all 0.15s'
+                    }}>{p}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="label">Time available</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  {times.map(t => (
+                    <button key={t.value} onClick={() => setTimeAvailable(t.value)} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: timeAvailable === t.value ? 'var(--surface2)' : 'var(--bg2)',
+                      border: `1px solid ${timeAvailable === t.value ? 'var(--silver)' : 'var(--border)'}`,
+                      cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left'
+                    }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: timeAvailable === t.value ? 'var(--cream)' : 'var(--text2)' }}>{t.label}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em' }}>{t.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label className="label">Mood / vibe</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                <button onClick={() => setMood('')} style={{
+                  padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  background: mood === '' ? 'var(--surface2)' : 'var(--bg2)',
+                  border: `1px solid ${mood === '' ? 'var(--silver)' : 'var(--border)'}`,
+                  color: mood === '' ? 'var(--silver2)' : 'var(--muted)',
+                  cursor: 'pointer', transition: 'all 0.15s'
+                }}>Open</button>
+                {moods.map(m => (
+                  <button key={m} onClick={() => setMood(m)} style={{
+                    padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    background: mood === m ? 'var(--surface2)' : 'var(--bg2)',
+                    border: `1px solid ${mood === m ? 'var(--silver)' : 'var(--border)'}`,
+                    color: mood === m ? 'var(--silver2)' : 'var(--muted)',
+                    cursor: 'pointer', transition: 'all 0.15s'
+                  }}>{m}</button>
+                ))}
+              </div>
+            </div>
+            <button className="btn-silver" style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
+              onClick={generate} disabled={loading}>
+              {loading
+                ? <><span className="spinner" />Reading stash &amp; designing…</>
+                : '◉ Design Something'}
+            </button>
+          </div>
+
+          {error && (
+            <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 20 }}>{error}</p>
+          )}
+
+          {/* Design output */}
+          {design && (
+            <div className="fade-up">
+              {/* Header card */}
+              <div style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderTop: '3px solid var(--silver)', padding: 36, marginBottom: 16
+              }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+                  <span className="tag" style={{ borderColor: diffColor(design.difficulty), color: diffColor(design.difficulty) }}>
+                    {design.difficulty}
+                  </span>
+                  <span className="tag">{design.estimatedTime}</span>
+                  <span className="tag">{design.pieceType}</span>
+                  {!design.materialsCheck.allAvailable && (
+                    <span className="tag" style={{ borderColor: 'var(--rose)', color: 'var(--rose)' }}>⚠ Check materials</span>
+                  )}
+                </div>
+                <h2 style={{
+                  fontSize: 36, color: 'var(--cream)', fontFamily: 'var(--font-display)',
+                  fontWeight: 400, marginBottom: 8
+                }}>{design.title}</h2>
+                <p style={{ color: 'var(--text2)', fontSize: 17, marginBottom: 16 }}>{design.description}</p>
+
+                <div style={{
+                  background: 'var(--bg2)', border: '1px solid var(--border)',
+                  padding: '14px 18px', marginBottom: 16
+                }}>
+                  <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>COLOUR STORY</span>
+                  <p style={{ color: 'var(--text)', fontSize: 15, marginTop: 6, lineHeight: 1.6 }}>{design.colourStory}</p>
+                </div>
+
+                {design.materialsCheck.notes && (
+                  <div style={{
+                    background: 'rgba(200,112,112,0.05)', border: '1px solid rgba(200,112,112,0.2)',
+                    padding: '12px 16px', marginBottom: 16
+                  }}>
+                    <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--rose)' }}>MATERIALS NOTE</span>
+                    <p style={{ color: 'var(--text2)', fontSize: 14, marginTop: 6 }}>{design.materialsCheck.notes}</p>
+                  </div>
+                )}
+
+                {/* CTAs */}
+                <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                  <button className="btn-silver" style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
+                    onClick={startBuilding} disabled={saving}>
+                    {saving ? <><span className="spinner" />Starting…</> : '→ Start Building'}
+                  </button>
+                  <button className="btn-outline" onClick={saveForLater} disabled={saving}>
+                    Save for later
+                  </button>
+                  <button className="btn-outline" onClick={generate} disabled={loading}>
+                    Try another
+                  </button>
+                </div>
+              </div>
+
+              {/* Materials + Steps preview */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="card" style={{ padding: 28 }}>
+                  <h3 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
+                    color: 'var(--cream)', marginBottom: 16
+                  }}>◈ Materials</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {design.components.map((c, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                        <span style={{
+                          fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--silver)',
+                          minWidth: 20, marginTop: 2
+                        }}>×{c.quantity}</span>
+                        <div>
+                          <p style={{ color: 'var(--cream)', fontSize: 15 }}>{c.item}</p>
+                          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>{c.note}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: 28 }}>
+                  <h3 style={{
+                    fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
+                    color: 'var(--cream)', marginBottom: 16
+                  }}>◉ Steps preview</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {design.steps.slice(0, 5).map((s) => (
+                      <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                        <span style={{
+                          width: 22, height: 22, background: 'var(--surface2)',
+                          border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 10,
+                          color: 'var(--muted)', flexShrink: 0
+                        }}>{s.id}</span>
+                        <div>
+                          <p style={{ color: 'var(--text2)', fontSize: 14, lineHeight: 1.4 }}>{s.instruction}</p>
+                          {s.technique && (
+                            <span style={{
+                              fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em',
+                              color: 'var(--moonstone)', textTransform: 'uppercase', marginTop: 3, display: 'block'
+                            }}>{s.technique}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {design.steps.length > 5 && (
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
+                        + {design.steps.length - 5} more steps in build mode
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </>
+  )
+}
