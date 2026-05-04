@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 
@@ -43,7 +43,6 @@ const ratingLabels: Record<string, string> = {
 }
 
 export default function BuildPage() {
-  const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = params?.id
 
@@ -70,8 +69,9 @@ export default function BuildPage() {
         setBuild(record)
         setNotes(record.notes || '')
         setRating(record.rating || '')
-      } catch (e: any) {
-        if (!cancelled) setError(e.message || 'Failed to load build')
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to load build'
+        if (!cancelled) setError(message)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -109,8 +109,9 @@ export default function BuildPage() {
       setBuild(data)
       if (typeof data.notes === 'string') setNotes(data.notes)
       if (typeof data.rating === 'string' || data.rating === null) setRating(data.rating || '')
-    } catch (e: any) {
-      setError(e.message || 'Failed to save')
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Failed to save'
+      setError(message)
     } finally {
       setSaving(false)
     }
