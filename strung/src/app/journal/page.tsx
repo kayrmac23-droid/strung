@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import { getAuthHeaders } from '@/lib/authClient'
 
 interface Design {
   title: string
@@ -42,19 +43,18 @@ export default function JournalPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/builds')
-      .then(r => r.json())
-      .then(data => {
-        setBuilds(Array.isArray(data) ? data : [])
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    ;(async () => {
+      const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
+      const data = await res.json()
+      setBuilds(Array.isArray(data) ? data : [])
+      setLoading(false)
+    })().catch(() => setLoading(false))
   }, [])
 
   async function deleteBuild(id: string) {
     setDeletingId(id)
     try {
-      await fetch(`/api/builds?id=${id}`, { method: 'DELETE' })
+      await fetch(`/api/builds?id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
       setBuilds(b => b.filter(x => x.id !== id))
     } catch { alert('Failed to delete') }
     finally { setDeletingId(null) }

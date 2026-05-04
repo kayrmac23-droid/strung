@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/authClient'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -62,10 +63,12 @@ export default function CoDesignPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    fetch('/api/inventory').then(r => r.json()).then(d => {
+    ;(async () => {
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      const d = await res.json()
       setBeads(d.beads || [])
       setFindings(d.findings || [])
-    }).catch(() => {})
+    })().catch(() => {})
   }, [])
 
   async function send(override?: string) {
@@ -81,7 +84,7 @@ export default function CoDesignPage() {
     try {
       const res = await fetch('/api/codesign', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           messages: next.map(m => ({ role: m.role, content: m.content })),
           beads,
@@ -131,7 +134,7 @@ export default function CoDesignPage() {
     try {
       await fetch('/api/designs', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title: blueprint.title, type: blueprint.type, difficulty: blueprint.difficulty, source: 'codesign', blueprint, status: 'saved' }),
       })
       setSaved(true)

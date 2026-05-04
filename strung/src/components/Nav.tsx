@@ -7,6 +7,7 @@ const links = [
   { href: '/make', label: 'Make' },
   { href: '/guides', label: 'Learn' },
   { href: '/journal', label: 'Journal' },
+  { href: '/account', label: 'Account' },
 ]
 
 export default function Nav() {
