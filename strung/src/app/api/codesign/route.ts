@@ -46,7 +46,9 @@ export async function POST(req: NextRequest) {
     ? `\n\nThe user's stash:\n${stashLines.join('\n\n')}`
     : ''
 
-  const system = `You are an expert beaded jewellery co-designer. Work collaboratively with the maker through natural conversation — ask focused questions (one or two at a time), suggest specific ideas, reference their actual materials when relevant, and refine the design until they're happy. Be warm, creative, and direct. Don't overwhelm with questions.${stashContext}
+  const system = `You are an expert beaded jewellery co-designer. Work collaboratively with the maker through natural conversation — ask focused questions (one or two at a time), suggest specific ideas, reference their actual materials when relevant, and refine the design until they're happy. Be warm, creative, and direct. Don't overwhelm with questions.
+
+Assume basic findings are available even if not listed (jump rings, ear wires, head pins, clasps, standard wire, crimps). If the stash includes findings of type "statement_component", treat those as primary focal structures (like earring frames or chandelier bases) and design around them first.${stashContext}
 
 When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact format with no markdown fences:
 

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/authClient'
 
 const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
 const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
@@ -48,13 +49,13 @@ export default function MakePage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/inventory')
-      .then(r => r.json())
-      .then(d => {
-        setBeads(d.beads || [])
-        setFindings(d.findings || [])
-        setStashLoaded(true)
-      })
+    ;(async () => {
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      const d = await res.json()
+      setBeads(d.beads || [])
+      setFindings(d.findings || [])
+      setStashLoaded(true)
+    })()
   }, [])
 
   async function generate() {
@@ -63,7 +64,7 @@ export default function MakePage() {
     try {
       const res = await fetch('/api/make', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           beads,
           findings,
@@ -88,7 +89,7 @@ export default function MakePage() {
     try {
       const res = await fetch('/api/builds', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: design.title,
           design: design,
@@ -112,7 +113,7 @@ export default function MakePage() {
     try {
       const res = await fetch('/api/builds', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: design.title,
           design: design,
