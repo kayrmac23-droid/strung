@@ -65,7 +65,7 @@ const beadColours = [
 ]
 
 const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
-const findingTypes: FindingItem['type'][] = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
+const findingTypes: FindingItem['type'][] = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','statement_component','other']
 const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
 
