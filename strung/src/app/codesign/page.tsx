@@ -4,10 +4,15 @@ import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 
+type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+type TextBlock = { type: 'text'; text: string }
+type ContentBlock = ImageBlock | TextBlock
+
 interface Message {
   role: 'user' | 'assistant'
-  content: string
+  content: string | ContentBlock[]
   display: string
+  imageDataUrl?: string
 }
 
 interface Blueprint {
@@ -59,8 +64,10 @@ export default function CoDesignPage() {
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [findings, setFindings] = useState<FindingItem[]>([])
   const [saved, setSaved] = useState(false)
+  const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -71,14 +78,46 @@ export default function CoDesignPage() {
     })().catch(() => {})
   }, [])
 
+  function pickImage() {
+    fileInputRef.current?.click()
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const mediaType = file.type || 'image/jpeg'
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
+      setPendingImage({ base64, mediaType, dataUrl })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   async function send(override?: string) {
     const text = (override ?? input).trim()
-    if (!text || loading) return
+    if ((!text && !pendingImage) || loading) return
 
-    const userMsg: Message = { role: 'user', content: text, display: text }
+    const content: string | ContentBlock[] = pendingImage
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: pendingImage.mediaType, data: pendingImage.base64 } },
+          { type: 'text', text: text || 'What do you think of this?' },
+        ]
+      : text
+
+    const userMsg: Message = {
+      role: 'user',
+      content,
+      display: text || 'What do you think of this?',
+      imageDataUrl: pendingImage?.dataUrl,
+    }
+
     const next = [...messages, userMsg]
     setMessages([...next, { role: 'assistant', content: '', display: '' }])
     setInput('')
+    setPendingImage(null)
     setLoading(true)
 
     try {
@@ -197,6 +236,14 @@ export default function CoDesignPage() {
                           border: `1px solid ${msg.role === 'user' ? 'var(--silver)' : 'var(--border)'}`,
                           color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, lineHeight: 1.7,
                         }}>
+                          {msg.imageDataUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={msg.imageDataUrl}
+                              alt="uploaded reference"
+                              style={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: msg.display ? 10 : 0, border: '1px solid var(--border)' }}
+                            />
+                          )}
                           {msg.role === 'assistant'
                             ? msg.display
                               ? <div dangerouslySetInnerHTML={{ __html: fmt(msg.display) }} />
@@ -212,7 +259,39 @@ export default function CoDesignPage() {
 
               {/* Input */}
               <div style={{ position: 'sticky', bottom: 20, background: 'var(--bg)', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+
+                {/* Pending image preview */}
+                {pendingImage && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={pendingImage.dataUrl} alt="attachment preview" style={{ height: 60, maxWidth: 100, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--moonstone)', letterSpacing: '0.1em', marginBottom: 4 }}>IMAGE ATTACHED</p>
+                      <p style={{ fontSize: 12, color: 'var(--muted)' }}>Add a message or send as-is</p>
+                    </div>
+                    <button onClick={() => setPendingImage(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingTop: 12 }}>
+                  {/* Image attach button */}
+                  <button
+                    onClick={pickImage}
+                    title="Attach a photo"
+                    style={{
+                      background: 'none', border: '1px solid var(--border)',
+                      color: pendingImage ? 'var(--moonstone)' : 'var(--muted)',
+                      width: 44, height: 44, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', fontSize: 18, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--silver)'; e.currentTarget.style.color = 'var(--silver)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = pendingImage ? 'var(--moonstone)' : 'var(--muted)' }}
+                  >
+                    ◉
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+
                   <textarea
                     ref={inputRef}
                     className="input-base"
@@ -223,11 +302,11 @@ export default function CoDesignPage() {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) send() }}
                   />
-                  <button className="btn-silver" onClick={() => send()} disabled={loading || !input.trim()} style={{ padding: '14px 20px', flexShrink: 0, fontSize: 18 }}>
+                  <button className="btn-silver" onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} style={{ padding: '14px 20px', flexShrink: 0, fontSize: 18 }}>
                     {loading ? <span className="spinner" /> : '↑'}
                   </button>
                 </div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘ + Enter to send</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘ + Enter to send · ◉ to attach a photo</p>
               </div>
             </div>
 

@@ -19,10 +19,7 @@ type StashFinding = {
   quantity: number
 }
 
-type ChatMessage = {
-  role: 'user' | 'assistant'
-  content: string
-}
+type ChatMessage = Anthropic.MessageParam
 
 export async function POST(req: NextRequest) {
   const {
