@@ -3,11 +3,15 @@ import { useEffect, useState } from 'react'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase'
 
+type Mode = 'signin' | 'signup'
+
 export default function AccountPage() {
-  const [email, setEmail] = useState('')
   const [sessionEmail, setSessionEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
+  const [mode, setMode] = useState<Mode>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState('')
   const [isError, setIsError] = useState(false)
 
@@ -16,29 +20,35 @@ export default function AccountPage() {
       setSessionEmail(data.user?.email ?? null)
       setLoading(false)
     })
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setSessionEmail(session?.user?.email ?? null)
     })
     return () => subscription.unsubscribe()
   }, [])
 
-  async function signIn() {
-    if (!email.trim()) return
-    setSending(true); setMsg(''); setIsError(false)
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (error) { setMsg(error.message); setIsError(true) }
-    else setMsg('Check your email — we sent you a sign-in link.')
-    setSending(false)
+  function reset() {
+    setMsg('')
+    setIsError(false)
+  }
+
+  async function submit() {
+    if (!email.trim() || !password) return
+    setSubmitting(true); reset()
+    if (mode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setMsg(error.message); setIsError(true) }
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) { setMsg(error.message); setIsError(true) }
+      else setMsg('Account created — you\'re signed in.')
+    }
+    setSubmitting(false)
   }
 
   async function signOut() {
     await supabase.auth.signOut()
     setSessionEmail(null)
-    setMsg('')
+    setEmail(''); setPassword(''); setMsg('')
   }
 
   return (
@@ -53,7 +63,7 @@ export default function AccountPage() {
               fontSize: 44, color: 'var(--cream)',
               fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
             }}>
-              {loading ? '' : sessionEmail ? 'You\'re in.' : 'Sign in.'}
+              {loading ? '' : sessionEmail ? 'You\'re in.' : mode === 'signin' ? 'Sign in.' : 'Sign up.'}
             </h1>
           </header>
 
@@ -69,23 +79,56 @@ export default function AccountPage() {
             </div>
           ) : (
             <div className="card fade-up" style={{ padding: 32 }}>
-              <p style={{ color: 'var(--text2)', fontSize: 16, marginBottom: 24, lineHeight: 1.6 }}>
-                Sign in to save and sync your stash, designs, and builds across devices. No password needed — we&apos;ll email you a link.
+              <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+                {mode === 'signin'
+                  ? 'Sign in to save and sync your stash, designs, and builds across devices.'
+                  : 'Create an account to save your stash, designs, and builds.'}
               </p>
-              <label className="label" style={{ marginBottom: 6 }}>Email address</label>
+
+              {/* Mode toggle */}
+              <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+                {(['signin', 'signup'] as Mode[]).map(m => (
+                  <button key={m} onClick={() => { setMode(m); reset() }} style={{
+                    flex: 1, padding: '9px 0',
+                    fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    background: mode === m ? 'var(--surface2)' : 'var(--surface)',
+                    border: `1px solid ${mode === m ? 'var(--silver)' : 'var(--border)'}`,
+                    color: mode === m ? 'var(--silver2)' : 'var(--muted)',
+                    cursor: 'pointer', transition: 'all 0.15s'
+                  }}>{m === 'signin' ? 'Sign in' : 'Create account'}</button>
+                ))}
+              </div>
+
+              <label className="label" style={{ marginBottom: 6 }}>Email</label>
               <input
                 className="input-base"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && signIn()}
                 style={{ marginBottom: 14 }}
               />
-              <button className="btn-silver" onClick={signIn} disabled={sending || !email.trim()}
-                style={{ width: '100%', justifyContent: 'center', padding: '13px' }}>
-                {sending ? <><span className="spinner" />Sending…</> : 'Email me a sign-in link'}
+              <label className="label" style={{ marginBottom: 6 }}>Password</label>
+              <input
+                className="input-base"
+                type="password"
+                placeholder={mode === 'signup' ? 'Choose a password (min 6 chars)' : 'Your password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submit()}
+                style={{ marginBottom: 14 }}
+              />
+              <button
+                className="btn-silver"
+                onClick={submit}
+                disabled={submitting || !email.trim() || !password}
+                style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
+              >
+                {submitting
+                  ? <><span className="spinner" />{mode === 'signin' ? 'Signing in…' : 'Creating account…'}</>
+                  : mode === 'signin' ? 'Sign in' : 'Create account'}
               </button>
+
               {msg && (
                 <p style={{
                   marginTop: 16, fontSize: 14, lineHeight: 1.5,

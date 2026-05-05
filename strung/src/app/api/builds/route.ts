@@ -8,8 +8,8 @@ async function requireUser(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await requireUser(req)
-  if (userId instanceof NextResponse) return userId
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json([])
   const supabase = getServerSupabase()
   const { data, error } = await supabase
     .from('builds')

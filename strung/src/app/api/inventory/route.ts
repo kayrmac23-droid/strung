@@ -8,8 +8,8 @@ async function requireUser(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await requireUser(req)
-  if (userId instanceof NextResponse) return userId
+  const userId = await getUserIdFromRequest(req)
+  if (!userId) return NextResponse.json({ beads: [], findings: [] })
   const supabase = getServerSupabase()
   const [beads, findings] = await Promise.all([
     supabase.from('beads').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
