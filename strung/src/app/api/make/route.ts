@@ -97,17 +97,17 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }`
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
   try {
+    const response = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const text = response.content[0].type === 'text' ? response.content[0].text : ''
     const clean = text.replace(/```json|```/g, '').trim()
     return NextResponse.json(JSON.parse(clean))
-  } catch {
-    return NextResponse.json({ error: 'Failed to parse design' }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Generation failed'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

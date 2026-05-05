@@ -65,7 +65,7 @@ const beadColours = [
 ]
 
 const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
-const findingTypes: FindingItem['type'][] = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','statement_component','other']
+const findingTypes: FindingItem['type'][] = ['statement_component','ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
 const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
 
@@ -452,8 +452,14 @@ export default function InventoryPage() {
                   <div>
                     <label className="label">Type</label>
                     <div style={{position:'relative'}}><select className="select-base" value={findingForm.type} onChange={e=>setFindingForm(f=>({...f,type:e.target.value as FindingItem['type']}))}>
-                      {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                      {findingTypes.map(t=><option key={t} value={t}>{t === 'statement_component' ? '★ Statement / Chandelier piece' : t.replace(/_/g,' ')}</option>)}
                     </select>{arrow}</div>
+                    {findingForm.type === 'statement_component' && (
+                      <div style={{marginTop:8,padding:'10px 14px',background:'rgba(122,154,184,0.08)',border:'1px solid rgba(122,154,184,0.2)'}}>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--moonstone)',letterSpacing:'0.1em',marginBottom:4}}>◉ FOCAL PIECE</p>
+                        <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.5}}>Chandelier frames, earring hoops, pendant bails, large connectors — the AI will build designs around these.</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="label">Metal</label>

@@ -43,8 +43,9 @@ export default function MakePage() {
   const [mood, setMood] = useState('')
   const [timeAvailable, setTimeAvailable] = useState('1hour')
 
-  const [design, setDesign] = useState<Design | null>(null)
+  const [design, setDesign] = useState<Design & { imageUrl?: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [imageLoading, setImageLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -76,10 +77,28 @@ export default function MakePage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setDesign(data)
+      fetchImage(data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchImage(d: Design) {
+    setImageLoading(true)
+    try {
+      const res = await fetch('/api/make/image', {
+        method: 'POST',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(d),
+      })
+      const data = await res.json()
+      if (data.imageUrl) setDesign(prev => prev ? { ...prev, imageUrl: data.imageUrl } : prev)
+    } catch {
+      // non-critical — fail silently
+    } finally {
+      setImageLoading(false)
     }
   }
 
@@ -279,6 +298,42 @@ export default function MakePage() {
                   <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>COLOUR STORY</span>
                   <p style={{ color: 'var(--text)', fontSize: 15, marginTop: 6, lineHeight: 1.6 }}>{design.colourStory}</p>
                 </div>
+
+                {/* Generated image */}
+                {(imageLoading || design.imageUrl) && (
+                  <div style={{ marginBottom: 16 }}>
+                    {imageLoading && !design.imageUrl ? (
+                      <div style={{
+                        height: 320, background: 'var(--bg2)', border: '1px solid var(--border)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+                        animation: 'shimmer 2s ease-in-out infinite'
+                      }}>
+                        <span className="spinner-dark" />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                          RENDERING DESIGN…
+                        </span>
+                      </div>
+                    ) : design.imageUrl ? (
+                      <div style={{ position: 'relative' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={design.imageUrl}
+                          alt={design.title}
+                          style={{ width: '100%', display: 'block', border: '1px solid var(--border)', maxHeight: 420, objectFit: 'cover' }}
+                        />
+                        <div style={{
+                          position: 'absolute', bottom: 0, left: 0, right: 0,
+                          padding: '24px 16px 10px',
+                          background: 'linear-gradient(to top, rgba(9,10,13,0.8) 0%, transparent 100%)'
+                        }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
+                            AI RENDER · FOR REFERENCE ONLY
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 {design.materialsCheck.notes && (
                   <div style={{
