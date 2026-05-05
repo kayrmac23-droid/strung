@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 const links = [
   { href: '/inventory', label: 'Stash' },
@@ -12,6 +13,7 @@ const links = [
 
 export default function Nav() {
   const path = usePathname()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const isActive = (href: string) => {
     if (href === '/make') return path === '/make' || path.startsWith('/make/')
@@ -23,7 +25,7 @@ export default function Nav() {
     <nav style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 40px', height: '60px',
+      padding: '0 clamp(16px, 4vw, 40px)', height: '60px',
       background: 'rgba(9,10,13,0.95)', backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border)'
     }}>
@@ -40,10 +42,19 @@ export default function Nav() {
           letterSpacing: '0.1em', color: 'var(--cream)'
         }}>Strung</span>
       </Link>
-      <ul style={{ display: 'flex', listStyle: 'none', gap: 32, alignItems: 'center' }}>
+
+      <button
+        className="nav-hamburger"
+        onClick={() => setMenuOpen(o => !o)}
+        aria-label="Toggle menu"
+      >
+        {menuOpen ? '×' : '≡'}
+      </button>
+
+      <ul className={`nav-links${menuOpen ? ' nav-links--open' : ''}`}>
         {links.map(l => (
           <li key={l.href}>
-            <Link href={l.href} style={{
+            <Link href={l.href} onClick={() => setMenuOpen(false)} style={{
               fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em',
               textTransform: 'uppercase',
               color: isActive(l.href) ? 'var(--silver2)' : 'var(--muted)',
