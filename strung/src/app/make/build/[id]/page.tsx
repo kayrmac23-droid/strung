@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import { getAuthHeaders } from '@/lib/authClient'
 
 interface Step {
   id: number
@@ -61,7 +62,7 @@ export default function BuildPage() {
       setLoading(true)
       setError('')
       try {
-        const res = await fetch('/api/builds')
+        const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
         const rows = await res.json()
         const record = Array.isArray(rows) ? rows.find((row) => row.id === id) : null
         if (!record) throw new Error('Build not found')
@@ -101,7 +102,7 @@ export default function BuildPage() {
     try {
       const res = await fetch('/api/builds', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id: build.id, ...updates }),
       })
       const data = await res.json()
