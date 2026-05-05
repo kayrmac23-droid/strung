@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/authClient'
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -102,7 +103,7 @@ export default function InventoryPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/inventory')
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
       const data = await res.json()
       setBeads(data.beads || [])
       setFindings(data.findings || [])
@@ -120,7 +121,7 @@ export default function InventoryPage() {
     try {
       const res = await fetch('/api/inventory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, data: form }),
       })
       const result = await res.json()
@@ -137,7 +138,7 @@ export default function InventoryPage() {
   async function deleteItem(id: string) {
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
       await load()
     } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to delete')) }
@@ -148,7 +149,7 @@ export default function InventoryPage() {
     try {
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, id, data: editForm }),
       })
       const result = await res.json()
