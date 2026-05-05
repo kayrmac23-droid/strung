@@ -5,3 +5,8 @@ export async function getAuthHeaders(base: HeadersInit = {}): Promise<HeadersIni
   const token = data.session?.access_token
   return token ? { ...base, Authorization: `Bearer ${token}` } : base
 }
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession()
+  return data.session
+}

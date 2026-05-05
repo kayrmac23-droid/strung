@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
-import { getAuthHeaders } from '@/lib/authClient'
+import { getAuthHeaders, getSession } from '@/lib/authClient'
 
 const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
 const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
@@ -104,6 +105,7 @@ export default function MakePage() {
 
   async function startBuilding() {
     if (!design || saving) return
+    if (!await getSession()) { setError('Sign in to save your designs.'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/builds', {
@@ -128,6 +130,7 @@ export default function MakePage() {
 
   async function saveForLater() {
     if (!design || saving) return
+    if (!await getSession()) { setError('Sign in to save your designs.'); return }
     setSaving(true)
     try {
       const res = await fetch('/api/builds', {
@@ -264,7 +267,11 @@ export default function MakePage() {
           </div>
 
           {error && (
-            <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 20 }}>{error}</p>
+            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 20, color: 'var(--rose)' }}>
+              {error === 'Sign in to save your designs.'
+                ? <><Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to save your designs.</>
+                : error}
+            </p>
           )}
 
           {/* Design output */}
