@@ -2,6 +2,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/authClient'
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
+}
 
 function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1,3),16)/255
@@ -60,9 +65,9 @@ const beadColours = [
   { name:'Onyx black',       hex:'#1a1a2e' },
 ]
 
-const beadTypes = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
-const findingTypes = ['ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
-const metals = ['silver','gold_filled','gold','copper','brass','oxidised','other']
+const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
+const findingTypes: FindingItem['type'][] = ['statement_component','ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
+const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
 
 const typeColours: Record<string, string> = {
@@ -98,7 +103,7 @@ export default function InventoryPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/inventory')
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
       const data = await res.json()
       setBeads(data.beads || [])
       setFindings(data.findings || [])
@@ -116,7 +121,7 @@ export default function InventoryPage() {
     try {
       const res = await fetch('/api/inventory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, data: form }),
       })
       const result = await res.json()
@@ -126,17 +131,17 @@ export default function InventoryPage() {
       setAiPrefilled(false)
       setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
-    } catch (e: any) { setSaveError(e.message || 'Save failed') }
+    } catch (e: unknown) { setSaveError(getErrorMessage(e, 'Save failed')) }
     finally { setSaving(false) }
   }
 
   async function deleteItem(id: string) {
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
       await load()
-    } catch (e: any) { alert(e.message || 'Failed to delete') }
+    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to delete')) }
     finally { setDeletingId(null) }
   }
 
@@ -144,7 +149,7 @@ export default function InventoryPage() {
     try {
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, id, data: editForm }),
       })
       const result = await res.json()
@@ -152,7 +157,7 @@ export default function InventoryPage() {
       await load()
       setEditingId(null)
       setEditForm({})
-    } catch (e: any) { alert(e.message || 'Failed to update') }
+    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to update')) }
   }
 
   async function identifyImage(file: File) {
@@ -184,8 +189,8 @@ export default function InventoryPage() {
       }))
       setAiPrefilled(true)
       setShowForm(true)
-    } catch (e: any) {
-      setIdentifyError(e.message || 'Could not identify bead')
+    } catch (e: unknown) {
+      setIdentifyError(getErrorMessage(e, 'Could not identify bead'))
     } finally {
       setIdentifying(false)
     }
@@ -218,8 +223,8 @@ export default function InventoryPage() {
       }))
       setAiPrefilled(true)
       setShowForm(true)
-    } catch (e: any) {
-      setIdentifyFindingError(e.message || 'Could not identify finding')
+    } catch (e: unknown) {
+      setIdentifyFindingError(getErrorMessage(e, 'Could not identify finding'))
     } finally {
       setIdentifyingFinding(false)
     }
@@ -340,7 +345,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Type</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={beadForm.type} onChange={e=>setBeadForm(f=>({...f,type:e.target.value as any}))}>
+                    <div style={{position:'relative'}}><select className="select-base" value={beadForm.type} onChange={e=>setBeadForm(f=>({...f,type:e.target.value as BeadItem['type']}))}>
                       {beadTypes.map(t=><option key={t} value={t}>{t}</option>)}
                     </select>{arrow}</div>
                   </div>
@@ -447,13 +452,19 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Type</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.type} onChange={e=>setFindingForm(f=>({...f,type:e.target.value as any}))}>
-                      {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.type} onChange={e=>setFindingForm(f=>({...f,type:e.target.value as FindingItem['type']}))}>
+                      {findingTypes.map(t=><option key={t} value={t}>{t === 'statement_component' ? '★ Statement / Chandelier piece' : t.replace(/_/g,' ')}</option>)}
                     </select>{arrow}</div>
+                    {findingForm.type === 'statement_component' && (
+                      <div style={{marginTop:8,padding:'10px 14px',background:'rgba(122,154,184,0.08)',border:'1px solid rgba(122,154,184,0.2)'}}>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--moonstone)',letterSpacing:'0.1em',marginBottom:4}}>◉ FOCAL PIECE</p>
+                        <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.5}}>Chandelier frames, earring hoops, pendant bails, large connectors — the AI will build designs around these.</p>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="label">Metal</label>
-                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.metal} onChange={e=>setFindingForm(f=>({...f,metal:e.target.value as any}))}>
+                    <div style={{position:'relative'}}><select className="select-base" value={findingForm.metal} onChange={e=>setFindingForm(f=>({...f,metal:e.target.value as FindingItem['metal']}))}>
                       {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
                     </select>{arrow}</div>
                   </div>
@@ -604,7 +615,7 @@ export default function InventoryPage() {
                           <div>
                             <label className="label">Type</label>
                             <div style={{position:'relative'}}>
-                              <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as any}))}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as FindingItem['type']}))}>
                                 {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
                               </select>
                               {arrow}
@@ -613,7 +624,7 @@ export default function InventoryPage() {
                           <div>
                             <label className="label">Metal</label>
                             <div style={{position:'relative'}}>
-                              <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as any}))}>
+                              <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as FindingItem['metal']}))}>
                                 {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
                               </select>
                               {arrow}

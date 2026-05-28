@@ -49,7 +49,8 @@ No markdown, no backticks, ONLY the JSON object.`
     const text = (response.content[0] as Anthropic.TextBlock).text
     const result = JSON.parse(text.replace(/```json|```/g, '').trim())
     return Response.json(result)
-  } catch (e: any) {
-    return Response.json({ error: e.message || 'Identification failed' }, { status: 500 })
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Identification failed'
+    return Response.json({ error: message }, { status: 500 })
   }
 }

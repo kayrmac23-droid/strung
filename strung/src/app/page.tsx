@@ -6,14 +6,14 @@ const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourma
 
 const features = [
   { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.', color:'var(--silver)' },
-  { href:'/inspire', icon:'◉', label:'Blueprint Generator', title:'Inspire Me', desc:'The AI reads your actual stash and designs three pieces you can make right now.', color:'var(--moonstone)' },
+  { href:'/make', icon:'◉', label:'Blueprint Generator', title:'Make Something', desc:'Generate one complete design from your real stash, mood, and available time.', color:'var(--moonstone)' },
   { href:'/codesign', icon:'◎', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints.', color:'var(--moonstone2)' },
-  { href:'/design', icon:'◇', label:'Design Brief', title:'Brief Generator', desc:'Describe any piece in plain language and get a full technical brief back in seconds.', color:'var(--gold)' },
-  { href:'/palette', icon:'◆', label:'Colour Theory', title:'Palette Builder', desc:'Build harmonious colour stories for gemstones, metals, and mixed finishes.', color:'var(--amethyst)' },
+  { href:'/make', icon:'◇', label:'Build Mode', title:'Step-by-step Builder', desc:'Start building right away and track each step from draft to completed piece.', color:'var(--gold)' },
+  { href:'/calculator', icon:'◆', label:'Project Planning', title:'Build Planner', desc:'Estimate bead counts and prep your materials before you start making.', color:'var(--amethyst)' },
   { href:'/calculator', icon:'⊞', label:'Bead Math', title:'Calculator', desc:'Never run out mid-project. Calculate exactly how many beads any piece needs.', color:'var(--sage)' },
   { href:'/journal', icon:'⊡', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.', color:'var(--rose)' },
   { href:'/guides', icon:'○', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.', color:'var(--steel2)' },
-  { href:'/advisor', icon:'◐', label:'AI Advisor', title:'Ask the Advisor', desc:'Expert answers on materials, techniques, tools, and design decisions. Streamed live.', color:'var(--gold2)' },
+  { href:'/codesign', icon:'◐', label:'AI Advice', title:'Ask the Co-Designer', desc:'Get guidance on tools, techniques, and design decisions while planning your piece.', color:'var(--gold2)' },
 ]
 
 export default function Home() {
@@ -70,8 +70,8 @@ export default function Home() {
             </p>
             <div className="fade-up-3" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
               <Link href="/inventory" className="btn-silver">Add My Beads</Link>
-              <Link href="/inspire" className="btn-outline">Get Inspired</Link>
-              <Link href="/design" className="btn-ghost">Design Brief →</Link>
+              <Link href="/make" className="btn-outline">Make Something</Link>
+              <Link href="/codesign" className="btn-ghost">Co-Design →</Link>
             </div>
           </div>
         </section>
@@ -86,8 +86,8 @@ export default function Home() {
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:2}}>
               {[
                 { step:'01', icon:'◈', title:'Log your stash', body:'Add every bead and finding you own. The AI needs to know what you have to design around it.' },
-                { step:'02', icon:'◉', title:'Describe the vibe', body:'Tell the AI your mood, piece type, and any notes. It generates 3 complete designs from your actual materials.' },
-                { step:'03', icon:'◇', title:'Build from the blueprint', body:'Each blueprint has components, build steps, techniques, and tips. Save it to your journal and start making.' },
+                { step:'02', icon:'◉', title:'Describe the vibe', body:'Tell the AI your mood, piece type, and time available. It generates a complete buildable design from your materials.' },
+                { step:'03', icon:'◇', title:'Build from the blueprint', body:'Follow step-by-step build mode, save reflections, and track progress in your journal.' },
               ].map(s => (
                 <div key={s.step} style={{padding:'36px 32px',background:'var(--surface)',border:'1px solid var(--border)'}}>
                   <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.2em',color:'var(--muted2)',marginBottom:20}}>{s.step}</div>
@@ -152,7 +152,7 @@ export default function Home() {
             </div>
             <span className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted2)'}}>AI BEADED JEWELLERY DESIGN STUDIO</span>
             <div style={{display:'flex',gap:20}}>
-              {[{href:'/guides',label:'Guides'},{href:'/glossary',label:'Glossary'},{href:'/advisor',label:'Advisor'}].map(l=>(
+              {[{href:'/guides',label:'Guides'},{href:'/glossary',label:'Glossary'},{href:'/codesign',label:'Co-Design'}].map(l=>(
                 <Link key={l.href} href={l.href} style={{fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--muted)'}}>{l.label}</Link>
               ))}
             </div>

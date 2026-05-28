@@ -1,359 +1,267 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import Nav from '@/components/Nav'
-import type { DesignItem } from '@/lib/supabase'
+import { getAuthHeaders } from '@/lib/authClient'
 
-const STATUS_CONFIG = {
-  saved:       { label: 'Saved',       color: 'var(--moonstone)' },
-  in_progress: { label: 'In Progress', color: 'var(--gold)' },
-  complete:    { label: 'Complete',    color: 'var(--sage)' },
-} as const
-
-const SOURCE_LABELS: Record<string, string> = {
-  inspire:  'Inspire',
-  codesign: 'Co-design',
-  design:   'Design',
+interface Design {
+  title: string
+  description: string
+  difficulty: string
+  estimatedTime: string
+  steps: { id: number; instruction: string }[]
+  pieceType: string
 }
 
-const DIFF_COLOR = (d?: string) =>
+interface Build {
+  id: string
+  title: string
+  design: Design
+  status: string
+  current_step: number
+  started_at: string | null
+  completed_at: string | null
+  time_taken_minutes: number | null
+  rating: string | null
+  notes: string | null
+  created_at: string
+}
+
+const ratingLabels: Record<string, { label: string; icon: string; color: string }> = {
+  loved_it: { label: 'Loved it', icon: '◈', color: 'var(--silver)' },
+  good: { label: 'Good', icon: '◉', color: 'var(--sage)' },
+  could_be_better: { label: 'Could be better', icon: '◎', color: 'var(--moonstone)' },
+}
+
+const diffColor = (d: string) =>
   d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
 
-type Status = DesignItem['status']
-
-function formatDate(iso?: string) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function DesignCard({ design, onDelete, onPatch }: {
-  design: DesignItem
-  onDelete: (id: string) => void
-  onPatch: (id: string, patch: Partial<DesignItem>) => void
-}) {
-  const [notes, setNotes] = useState(design.notes || '')
-  const [status, setStatus] = useState<Status>(design.status)
-  const [deleting, setDeleting] = useState(false)
-  const notesRef = useRef<HTMLTextAreaElement>(null)
-
-  const statusColor = STATUS_CONFIG[status].color
-
-  async function handleStatusChange(s: Status) {
-    setStatus(s)
-    onPatch(design.id!, { status: s })
-  }
-
-  async function handleNotesBlur() {
-    if (notes !== design.notes) {
-      onPatch(design.id!, { notes })
-    }
-  }
-
-  async function handleDelete() {
-    if (!design.id) return
-    setDeleting(true)
-    await fetch(`/api/designs?id=${design.id}`, { method: 'DELETE' })
-    onDelete(design.id)
-  }
-
-  // Auto-resize textarea
-  function handleNotesChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setNotes(e.target.value)
-    const el = notesRef.current
-    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }
-  }
-
-  return (
-    <div className="card" style={{
-      display: 'flex',
-      flexDirection: 'column',
-      borderLeft: `3px solid ${statusColor}`,
-      transition: 'border-color 0.3s',
-      overflow: 'hidden',
-    }}>
-      {/* Card header */}
-      <div style={{ padding: '22px 22px 16px' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-          {design.type && <span className="tag">{design.type}</span>}
-          {design.difficulty && (
-            <span className="tag" style={{ borderColor: DIFF_COLOR(design.difficulty), color: DIFF_COLOR(design.difficulty) }}>
-              {design.difficulty}
-            </span>
-          )}
-          <span className="tag" style={{ borderColor: 'var(--border2)', color: 'var(--muted2)' }}>
-            via {SOURCE_LABELS[design.source] || design.source}
-          </span>
-        </div>
-
-        <h3 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 22,
-          fontWeight: 400,
-          color: 'var(--cream)',
-          lineHeight: 1.25,
-          marginBottom: 6,
-        }}>
-          {design.title}
-        </h3>
-
-        {/* Blueprint preview */}
-        {design.blueprint?.description && (
-          <p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 0 }}>
-            {String(design.blueprint.description).slice(0, 120)}{String(design.blueprint.description).length > 120 ? '…' : ''}
-          </p>
-        )}
-      </div>
-
-      {/* Status row */}
-      <div style={{ padding: '0 22px 14px', display: 'flex', gap: 4 }}>
-        {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([s, cfg]) => (
-          <button
-            key={s}
-            onClick={() => handleStatusChange(s)}
-            style={{
-              flex: 1,
-              padding: '6px 0',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 9,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              border: `1px solid ${status === s ? cfg.color : 'var(--border)'}`,
-              background: status === s ? `${cfg.color}18` : 'transparent',
-              color: status === s ? cfg.color : 'var(--muted)',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
-            {cfg.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Notes */}
-      <div style={{ padding: '0 22px 18px', flex: 1 }}>
-        <textarea
-          ref={notesRef}
-          className="input-base"
-          placeholder="Add notes…"
-          value={notes}
-          onChange={handleNotesChange}
-          onBlur={handleNotesBlur}
-          rows={2}
-          style={{
-            resize: 'none',
-            minHeight: 60,
-            fontSize: 14,
-            lineHeight: 1.6,
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            overflow: 'hidden',
-          }}
-        />
-      </div>
-
-      {/* Footer */}
-      <div style={{
-        padding: '12px 22px',
-        borderTop: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'var(--bg2)',
-      }}>
-        <span className="mono" style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em' }}>
-          {formatDate(design.created_at)}
-        </span>
-        <button
-          className="btn-ghost"
-          onClick={handleDelete}
-          disabled={deleting}
-          style={{ fontSize: 9, padding: '5px 12px', color: 'var(--rose)', borderColor: 'rgba(196,112,112,0.2)' }}
-        >
-          {deleting ? <span className="spinner-dark" style={{ width: 10, height: 10 }} /> : '✕ Delete'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function JournalPage() {
-  const router = useRouter()
-  const [designs, setDesigns] = useState<DesignItem[]>([])
+  const [builds, setBuilds] = useState<Build[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [tableError, setTableError] = useState(false)
+  const [tab, setTab] = useState<'in_progress' | 'completed'>('in_progress')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/designs')
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) {
-          if (
-            data.error.toLowerCase().includes('does not exist') ||
-            data.error.toLowerCase().includes('relation') ||
-            data.error.toLowerCase().includes('table')
-          ) {
-            setTableError(true)
-          } else {
-            setError(data.error)
-          }
-        } else {
-          setDesigns(Array.isArray(data) ? data : [])
-        }
-      })
-      .catch(() => setError('Could not connect to the server.'))
-      .finally(() => setLoading(false))
+    ;(async () => {
+      const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
+      const data = await res.json()
+      setBuilds(Array.isArray(data) ? data : [])
+      setLoading(false)
+    })().catch(() => setLoading(false))
   }, [])
 
-  function handleDelete(id: string) {
-    setDesigns(prev => prev.filter(d => d.id !== id))
+  async function deleteBuild(id: string) {
+    setDeletingId(id)
+    try {
+      await fetch(`/api/builds?id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
+      setBuilds(b => b.filter(x => x.id !== id))
+    } catch { alert('Failed to delete') }
+    finally { setDeletingId(null) }
   }
 
-  async function handlePatch(id: string, patch: Partial<DesignItem>) {
-    const res = await fetch('/api/designs', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, ...patch }),
-    })
-    const updated = await res.json()
-    if (!updated.error) {
-      setDesigns(prev => prev.map(d => d.id === id ? { ...d, ...updated } : d))
-    }
+  const inProgress = builds.filter(b => b.status === 'draft' || b.status === 'in_progress')
+  const completed = builds.filter(b => b.status === 'completed')
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
   }
+
+  const active = tab === 'in_progress' ? inProgress : completed
 
   return (
     <>
       <Nav />
       <main style={{ paddingTop: 60, minHeight: '100vh' }}>
-        <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
 
-          {/* Header */}
           <header style={{ marginBottom: 40 }}>
-            <p className="section-eyebrow fade-up">Your Designs</p>
+            <p className="section-eyebrow fade-up">Your Work</p>
             <h1 className="fade-up-1" style={{
-              fontSize: 44,
-              color: 'var(--cream)',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              margin: '8px 0 10px',
-            }}>
-              Design Journal
-            </h1>
+              fontSize: 44, color: 'var(--cream)',
+              fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
+            }}>Journal</h1>
             <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>
-              Every blueprint you&apos;ve saved — track progress, add notes, and revisit your ideas.
+              Every piece you&apos;ve built or saved to make.
             </p>
           </header>
 
-          {/* Loading */}
-          {loading && (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+          {/* Stats row */}
+          {!loading && builds.length > 0 && (
+            <div className="fade-up-2" style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 32
+            }}>
+              {[
+                ['Saved ideas', inProgress.length, '◎'],
+                ['Completed', completed.length, '◈'],
+                ['Loved it', completed.filter(b => b.rating === 'loved_it').length, '◉'],
+              ].map(([label, val, icon]) => (
+                <div key={String(label)} className="card" style={{ padding: '18px 22px' }}>
+                  <div style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)',
+                    letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6
+                  }}>{String(icon)} {String(label)}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: 'var(--silver2)' }}>{String(val)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
+            {([['in_progress', `Ideas (${inProgress.length})`], ['completed', `Completed (${completed.length})`]] as const).map(([t, label]) => (
+              <button key={t} onClick={() => setTab(t)} style={{
+                padding: '9px 20px', fontFamily: 'var(--font-mono)', fontSize: 11,
+                letterSpacing: '0.12em', textTransform: 'uppercase',
+                background: tab === t ? 'var(--surface2)' : 'var(--surface)',
+                border: `1px solid ${tab === t ? 'var(--silver)' : 'var(--border)'}`,
+                color: tab === t ? 'var(--silver2)' : 'var(--muted)',
+                cursor: 'pointer', transition: 'all 0.15s'
+              }}>{label}</button>
+            ))}
+          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
               <span className="spinner-dark" />
             </div>
-          )}
-
-          {/* Table missing */}
-          {!loading && tableError && (
-            <div className="card fade-up" style={{
-              padding: '40px 36px',
-              borderLeft: '3px solid var(--gold)',
-              maxWidth: 640,
-            }}>
-              <p className="section-eyebrow" style={{ marginBottom: 12 }}>Setup Required</p>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--cream)', marginBottom: 12 }}>
-                Your journal needs a table
-              </h2>
-              <p style={{ color: 'var(--text2)', fontSize: 16, lineHeight: 1.7, marginBottom: 20 }}>
-                Set up your journal by creating the <code style={{ fontFamily: 'var(--font-mono)', fontSize: 13, background: 'var(--surface2)', padding: '2px 6px' }}>designs</code> table in Supabase. See the README for the SQL.
-              </p>
-              <button className="btn-outline" onClick={() => router.push('/inspire')}>
-                ◉ Go to Inspire
-              </button>
-            </div>
-          )}
-
-          {/* API error */}
-          {!loading && !tableError && error && (
+          ) : active.length === 0 ? (
             <div style={{
-              background: 'rgba(196,112,112,0.06)',
-              border: '1px solid rgba(196,112,112,0.2)',
-              padding: '20px 24px',
-              maxWidth: 560,
+              textAlign: 'center', padding: '60px 20px',
+              border: '1px dashed var(--border)', color: 'var(--muted)'
             }}>
-              <p className="mono" style={{ fontSize: 11, color: 'var(--rose)', letterSpacing: '0.12em', marginBottom: 6 }}>ERROR</p>
-              <p style={{ color: 'var(--text2)', fontSize: 15 }}>{error}</p>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!loading && !tableError && !error && designs.length === 0 && (
-            <div className="fade-up" style={{ textAlign: 'center', padding: '80px 20px' }}>
-              <div style={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                margin: '0 auto 24px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 26,
-              }}>◈</div>
-              <h2 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 30,
-                color: 'var(--cream)',
-                fontWeight: 400,
-                marginBottom: 12,
-              }}>
-                Your journal awaits
-              </h2>
-              <p style={{ color: 'var(--text2)', fontSize: 17, maxWidth: 420, margin: '0 auto 28px', lineHeight: 1.7 }}>
-                Save blueprints from Inspire, Design, or Co-design and they&apos;ll appear here. Track your progress, note materials, and collect your favourite ideas.
+              <div style={{ fontSize: 40, marginBottom: 12, color: 'var(--border2)', animation: 'shimmer 3s ease-in-out infinite' }}>
+                {tab === 'in_progress' ? '◎' : '◈'}
+              </div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, marginBottom: 16 }}>
+                {tab === 'in_progress'
+                  ? 'No saved ideas yet. Generate a design and save it for later.'
+                  : 'No completed pieces yet. Start a build to make something.'}
               </p>
-              <button className="btn-silver" onClick={() => router.push('/inspire')}>
-                ◉ Get Inspired
-              </button>
+              <Link href="/make" className="btn-outline">Go to Make →</Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {active.map(build => {
+                const r = build.rating ? ratingLabels[build.rating] : null
+                const stepsDone = build.status === 'completed' ? build.design.steps.length : build.current_step
+                const stepsTotal = build.design.steps.length
+                const safeStepsTotal = Math.max(stepsTotal, 1)
+                const progressRatio = Math.min(Math.max(stepsDone / safeStepsTotal, 0), 1)
+
+                return (
+                  <div key={build.id} className="card" style={{ padding: 28 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                          {build.design.difficulty && (
+                            <span className="tag" style={{
+                              borderColor: diffColor(build.design.difficulty),
+                              color: diffColor(build.design.difficulty)
+                            }}>{build.design.difficulty}</span>
+                          )}
+                          {build.design.pieceType && (
+                            <span className="tag">{build.design.pieceType}</span>
+                          )}
+                          {r && (
+                            <span className="tag" style={{ borderColor: r.color, color: r.color }}>
+                              {r.icon} {r.label}
+                            </span>
+                          )}
+                          {build.status === 'in_progress' && (
+                            <span className="tag" style={{ borderColor: 'var(--moonstone)', color: 'var(--moonstone)' }}>
+                              In progress · step {Math.min(stepsDone + 1, safeStepsTotal)}/{safeStepsTotal}
+                            </span>
+                          )}
+                          {build.status === 'draft' && (
+                            <span className="tag" style={{ color: 'var(--muted)' }}>Saved idea</span>
+                          )}
+                        </div>
+
+                        <h3 style={{
+                          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400,
+                          color: 'var(--cream)', marginBottom: 6
+                        }}>{build.title}</h3>
+                        <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 10 }}>
+                          {build.design.description}
+                        </p>
+
+                        {build.notes && (
+                          <p style={{
+                            fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--muted)',
+                            fontStyle: 'italic', marginBottom: 10, lineHeight: 1.5
+                          }}>{build.notes}</p>
+                        )}
+
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
+                            {formatDate(build.created_at)}
+                          </span>
+                          {build.time_taken_minutes && (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
+                              {build.time_taken_minutes} min
+                            </span>
+                          )}
+                          {build.design.steps.length > 0 && (
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
+                              {build.design.steps.length} steps
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Progress ring for in-progress */}
+                      {build.status === 'in_progress' && (
+                        <div style={{ flexShrink: 0 }}>
+                          <svg width="48" height="48" viewBox="0 0 48 48">
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" strokeWidth="2" />
+                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--silver)"
+                              strokeWidth="2" strokeLinecap="round"
+                              strokeDasharray={`${2 * Math.PI * 20}`}
+                              strokeDashoffset={`${2 * Math.PI * 20 * (1 - progressRatio)}`}
+                              transform="rotate(-90 24 24)"
+                              style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+                            <text x="24" y="28" textAnchor="middle"
+                              style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--silver2)' }}>
+                              {Math.round(progressRatio * 100)}%
+                            </text>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{
+                      display: 'flex', gap: 10, marginTop: 20,
+                      paddingTop: 16, borderTop: '1px solid var(--border)'
+                    }}>
+                      {build.status !== 'completed' && (
+                        <Link href={`/make/build/${build.id}`} className="btn-silver" style={{ padding: '8px 20px' }}>
+                          {build.status === 'in_progress' ? 'Continue →' : 'Start building →'}
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => deleteBuild(build.id)}
+                        disabled={deletingId === build.id}
+                        style={{
+                          background: 'none', border: 'none', color: 'var(--muted2)',
+                          fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer',
+                          letterSpacing: '0.08em', transition: 'color 0.15s',
+                          marginLeft: build.status !== 'completed' ? 'auto' : 0
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--rose)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--muted2)'}
+                      >
+                        {deletingId === build.id ? 'removing…' : '× remove'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
-
-          {/* Design grid */}
-          {!loading && !tableError && !error && designs.length > 0 && (
-            <>
-              <div className="fade-up" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
-                <span className="mono" style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.1em' }}>
-                  {designs.length} design{designs.length !== 1 ? 's' : ''}
-                </span>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([s, cfg]) => {
-                    const count = designs.filter(d => d.status === s).length
-                    return count > 0 ? (
-                      <span key={s} className="mono" style={{ fontSize: 10, color: cfg.color, letterSpacing: '0.08em' }}>
-                        {count} {cfg.label.toLowerCase()}
-                      </span>
-                    ) : null
-                  })}
-                </div>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: 16,
-              }}>
-                {designs.map((d, i) => (
-                  <div key={d.id} className={`fade-up-${Math.min(i + 1, 4) as 1 | 2 | 3 | 4}`}>
-                    <DesignCard
-                      design={d}
-                      onDelete={handleDelete}
-                      onPatch={handlePatch}
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
         </div>
       </main>
     </>
