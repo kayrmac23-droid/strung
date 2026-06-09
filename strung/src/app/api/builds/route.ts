@@ -1,33 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSupabase, getUserIdFromRequest } from '@/lib/serverAuth'
+import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 
-async function requireUser(req: NextRequest) {
-  const userId = await getUserIdFromRequest(req)
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  return userId
+function getToken(req: NextRequest) {
+  return req.headers.get('Authorization')!.replace('Bearer ', '')
 }
 
 export async function GET(req: NextRequest) {
-  const userId = await getUserIdFromRequest(req)
-  if (!userId) return NextResponse.json([])
-  const supabase = getServerSupabase()
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json([])
+  const supabase = getAuthenticatedClient(getToken(req))
   const { data, error } = await supabase
     .from('builds')
     .select('*')
-    .eq('user_id', userId)
     .order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data || [])
 }
 
 export async function POST(req: NextRequest) {
-  const userId = await requireUser(req)
-  if (userId instanceof NextResponse) return userId
-  const supabase = getServerSupabase()
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getAuthenticatedClient(getToken(req))
   const body = await req.json()
   const { data, error } = await supabase
     .from('builds')
-    .insert({ ...body, user_id: userId })
+    .insert({ ...body, user_id: user.id })
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -35,9 +32,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const userId = await requireUser(req)
-  if (userId instanceof NextResponse) return userId
-  const supabase = getServerSupabase()
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getAuthenticatedClient(getToken(req))
   const body = await req.json()
   const { id, ...updates } = body
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
@@ -45,7 +42,6 @@ export async function PATCH(req: NextRequest) {
     .from('builds')
     .update(updates)
     .eq('id', id)
-    .eq('user_id', userId)
     .select()
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -53,13 +49,13 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const userId = await requireUser(req)
-  if (userId instanceof NextResponse) return userId
-  const supabase = getServerSupabase()
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getAuthenticatedClient(getToken(req))
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  const { error } = await supabase.from('builds').delete().eq('id', id).eq('user_id', userId)
+  const { error } = await supabase.from('builds').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })
 }
