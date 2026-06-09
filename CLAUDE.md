@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Strung is an AI-powered beaded jewellery design studio built with Next.js 15 (App Router), TypeScript, the Anthropic SDK, and Supabase. The Next.js app lives in the `strung/` subdirectory — all commands below must be run from there.
+Strung is an AI-powered beaded jewellery design studio. Stack: Next.js 15 (App Router), TypeScript, Supabase (auth + database), Anthropic SDK (Claude), and OpenAI (DALL-E 3 image generation). The Next.js app lives in the `strung/` subdirectory — all commands below must be run from there.
 
 ## Commands
 
@@ -26,53 +26,120 @@ Create `strung/.env.local`:
 ANTHROPIC_API_KEY=...
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+OPENAI_API_KEY=...          # required for DALL-E 3 image generation
 ```
 
-The Supabase database requires two tables: `beads` and `findings`, matching the `BeadItem` and `FindingItem` types defined in `src/lib/supabase.ts`.
+## Core Loop
 
-## Architecture
+**Stash → Make → Build → Journal**
 
-### Pages → API → External Services
+1. User adds beads and findings to their Stash (`/inventory`)
+2. AI reads the stash and generates a bespoke design on the Make page (`/make`)
+3. User steps through the build instructions on the Build page (`/make/build/[id]`)
+4. Completed and saved-for-later pieces appear in the Journal (`/journal`)
 
-Each page is a `'use client'` React component. Pages that need AI or data call Next.js API routes, which in turn call Claude or Supabase:
+## Auth
 
-| Page | API route(s) | What Claude does |
+Supabase email/password auth. Auth is **optional** — unauthenticated users can generate designs but cannot save them. Saving always requires a session. The `getSession()` helper from `@/lib/authClient` is used client-side to check auth state before save actions.
+
+## Pages
+
+| URL | Nav label | Description |
 |---|---|---|
-| `/inventory` | `/api/inventory` | None — CRUD only via Supabase |
-| `/inspire` | `/api/inventory` + `/api/blueprints` | Reads user's actual stash, generates 3 distinct design blueprints as structured JSON |
-| `/design` | `/api/design` | Generates a full design brief (components, steps, tools, variations) as structured JSON |
-| `/advisor` | `/api/advice` | Streams a jewellery advice response (SSE-style `ReadableStream`) |
-| `/palette` | None | Purely client-side gem/metal harmony scoring — no backend |
-| `/guides` | None | Static content |
-| `/glossary` | None | Static content |
+| `/` | — | Landing / home |
+| `/inventory` | Stash | Bead + findings CRUD |
+| `/make` | Make | AI design generator |
+| `/make/build/[id]` | — | Step-by-step build mode |
+| `/codesign` | — | Conversational AI co-designer |
+| `/journal` | Journal | Saved and completed builds |
+| `/account` | Account | Sign in / sign up |
+| `/auth/callback` | — | Supabase OAuth callback |
+| `/guides` | Learn | Static jewellery guides |
+| `/glossary` | — | Static glossary (active under Learn nav item) |
+| `/calculator` | — | Utility calculator |
 
-### AI Response Patterns
+Nav has 4 primary items (Stash, Make, Learn, Journal) plus Account.
 
-Two patterns are used across the API routes:
+## API Routes
 
-1. **Streaming** (`/api/advice`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
+| Route | Method(s) | Auth required | What it does |
+|---|---|---|---|
+| `/api/inventory` | GET, POST, DELETE, PATCH | optional (GET returns empty without auth) | CRUD for `beads` and `findings` tables |
+| `/api/make` | POST | no | AI generates one design as structured JSON |
+| `/api/make/image` | POST | no | Builds a DALL-E 3 prompt via Claude, calls OpenAI DALL-E 3 |
+| `/api/builds` | GET, POST, DELETE, PATCH | yes (GET returns `[]` without auth) | CRUD for `builds` table |
+| `/api/designs` | GET, POST, DELETE, PATCH | yes | CRUD for `designs` table |
+| `/api/codesign` | POST | no | Streaming co-design chat (Claude) |
+| `/api/advice` | POST | no | Streaming jewellery advice (Claude) |
+| `/api/identify` | POST | no | Vision-based bead/finding identification (Claude) |
 
-2. **JSON** (`/api/blueprints`, `/api/design`, `/api/palette`): Uses `client.messages.create()`, strips markdown fences with `.replace(/\`\`\`json|\`\`\`/g, '').trim()`, then `JSON.parse()`. All three routes ask Claude to return "ONLY valid JSON, no markdown, no backticks" in the prompt. If parsing fails, they return `{ error: '...' }` with status 500.
+## AI Response Patterns
 
-All AI routes use model `claude-sonnet-4-20250514`.
+Two patterns:
 
-### Supabase Access
+1. **JSON** (`/api/make`, `/api/identify`): Uses `client.messages.create()`, strips markdown fences with `.replace(/```json|```/g, '').trim()`, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500.
 
-`src/lib/supabase.ts` exports a singleton client and the `BeadItem`/`FindingItem` types. The `/api/inventory` route creates its own client via `getClient()` rather than importing the singleton — this is intentional for server-side use.
+2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
 
-The inventory route handles GET (fetch both tables), POST (insert), DELETE (by id), and PATCH (update) — all validated against an allowlist of `['beads', 'findings']`.
+All AI routes use model `claude-sonnet-4-6` except `/api/advice` which uses `claude-sonnet-4-20250514`.
 
-### Styling Conventions
+## Image Generation
 
-There is no CSS framework. Styling uses two layers:
+`/api/make/image`: Claude first generates an optimised DALL-E prompt (under 850 chars) from the design JSON, then calls OpenAI's `dall-e-3` model at `1024x1024` / `hd` quality. Returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set.
 
-- **Utility classes** defined in `src/app/globals.css`: `.card`, `.btn-silver`, `.btn-outline`, `.btn-ghost`, `.btn-gold`, `.tag`, `.input-base`, `.select-base`, `.label`, `.spinner`, `.spinner-dark`, `.section-eyebrow`, `.fade-up` through `.fade-up-4`, `.mono`, `.prose`.
-- **Inline styles** for layout, spacing, and one-off values — used heavily throughout every page.
+## Supabase Access
 
-CSS custom properties (defined in `:root`) handle the colour palette. All colour references in new code should use these variables (e.g. `var(--silver)`, `var(--moonstone)`, `var(--rose)`, `var(--surface)`, `var(--border)`).
+### Client-side
+`src/lib/supabase.ts` exports the singleton `supabase` client (used for auth session management). `src/lib/authClient.ts` exports `getAuthHeaders()` and `getSession()` for use in `'use client'` components.
 
-Fonts: `var(--font-display)` = Playfair Display (headings), `var(--font-body)` = Cormorant Garamond (prose), `var(--font-mono)` = DM Mono (labels, tags, meta).
+### Server-side (API routes)
+**All API routes that read or write user data must filter rows by `user_id`.**
 
-### Path Alias
+Use `getAuthenticatedClient(token)` from `@/lib/auth` to create a Supabase client with the user's JWT in the `Authorization` header so Row Level Security (RLS) applies. Use `getUserFromRequest(request)` to extract the `User` object from the `Authorization: Bearer <token>` header.
 
-`@/` maps to `src/`. Import shared types and the Supabase client as `@/lib/supabase`, and the Nav component as `@/components/Nav`.
+```typescript
+import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
+
+export async function GET(request: Request) {
+  const user = await getUserFromRequest(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const supabase = getAuthenticatedClient(request.headers.get('Authorization')!.replace('Bearer ', ''))
+  // ...
+}
+```
+
+Do **not** use the singleton client from `src/lib/supabase.ts` in API routes — RLS will not apply.
+
+### Database tables
+
+The Supabase database requires these tables:
+
+| Table | Type exported from |
+|---|---|
+| `beads` | `BeadItem` in `src/lib/supabase.ts` |
+| `findings` | `FindingItem` in `src/lib/supabase.ts` |
+| `builds` | no exported type — shape defined inline in pages |
+| `designs` | `DesignItem` in `src/lib/supabase.ts` |
+
+Shared types (`BeadItem`, `FindingItem`, `DesignItem`) live in `src/lib/supabase.ts`. Import them as `@/lib/supabase`.
+
+## Styling Conventions
+
+No CSS framework. Two layers:
+
+- **Utility classes** in `src/app/globals.css`: `.card`, `.btn-silver`, `.btn-outline`, `.btn-ghost`, `.btn-gold`, `.tag`, `.input-base`, `.select-base`, `.label`, `.spinner`, `.spinner-dark`, `.section-eyebrow`, `.fade-up` through `.fade-up-4`, `.mono`, `.prose`.
+- **Inline styles** for layout, spacing, and one-off values — used heavily throughout.
+
+CSS custom properties (`:root`) handle the colour palette. Use variables in all new code: `var(--silver)`, `var(--moonstone)`, `var(--rose)`, `var(--surface)`, `var(--border)`, etc.
+
+Fonts: `var(--font-display)` = Playfair Display (headings), `var(--font-body)` = Cormorant Garamond (prose), `var(--font-mono)` = DM Mono (labels/tags/meta).
+
+## Path Alias
+
+`@/` maps to `src/`. Examples: `@/lib/supabase`, `@/lib/auth`, `@/lib/authClient`, `@/components/Nav`.
+
+## Known Constraints
+
+- **Vercel**: Root directory must be set to `strung/`. Do not add a `vercel.json` with a `builds` key.
+- **Next.js 15**: Components that use event handlers or browser APIs must have `'use client'` at the top.
+- All pages are `'use client'` React components.
