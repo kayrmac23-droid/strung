@@ -107,7 +107,7 @@ Return ONLY valid JSON, no markdown, no backticks:
     const clean = text.replace(/```json|```/g, '').trim()
     return NextResponse.json(JSON.parse(clean))
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Generation failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('make error:', e)
+    return NextResponse.json({ error: 'Generation failed' }, { status: 500 })
   }
 }

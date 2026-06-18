@@ -66,17 +66,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      return NextResponse.json(
-        { error: (err as { error?: { message?: string } }).error?.message ?? 'Image generation failed' },
-        { status: res.status }
-      )
+      console.error('DALL-E error:', await res.json().catch(() => ({})))
+      return NextResponse.json({ error: 'Image generation failed' }, { status: res.status })
     }
 
     const data = await res.json() as { data: { url: string }[] }
     return NextResponse.json({ imageUrl: data.data[0].url })
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Image generation failed'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('image route error:', e)
+    return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })
   }
 }

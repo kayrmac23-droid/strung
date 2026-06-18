@@ -74,5 +74,5 @@ Keep your conversational text concise and engaging. After generating a blueprint
     },
   })
 
-  return new Response(readable, { headers: { 'Content-Type': 'text/plain' } })
+  return new Response(readable, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
 }
