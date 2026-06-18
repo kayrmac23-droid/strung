@@ -22,6 +22,9 @@ type StashFinding = {
 
 type TimeAvailable = '15min' | '1hour' | 'afternoon'
 
+const VALID_PIECE_TYPES = ['earrings', 'necklace', 'bracelet', 'pendant', 'ring', 'anklet', 'any']
+const VALID_TIME: TimeAvailable[] = ['15min', '1hour', 'afternoon']
+
 export async function POST(req: NextRequest) {
   const {
     beads = [],
@@ -36,6 +39,22 @@ export async function POST(req: NextRequest) {
     mood?: string
     timeAvailable?: TimeAvailable
   } = await req.json()
+
+  if (!Array.isArray(beads) || !Array.isArray(findings)) {
+    return NextResponse.json({ error: 'Invalid stash data' }, { status: 400 })
+  }
+  if (beads.length > 200 || findings.length > 200) {
+    return NextResponse.json({ error: 'Stash too large' }, { status: 400 })
+  }
+  if (pieceType && (!VALID_PIECE_TYPES.includes(pieceType) || pieceType.length > 50)) {
+    return NextResponse.json({ error: 'Invalid piece type' }, { status: 400 })
+  }
+  if (mood && mood.length > 200) {
+    return NextResponse.json({ error: 'Mood too long' }, { status: 400 })
+  }
+  if (timeAvailable && !VALID_TIME.includes(timeAvailable)) {
+    return NextResponse.json({ error: 'Invalid time' }, { status: 400 })
+  }
 
   const stashSummary = [
     beads.length > 0

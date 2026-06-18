@@ -32,6 +32,23 @@ export async function POST(req: NextRequest) {
     findings: StashFinding[]
   } = await req.json()
 
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
+    return new Response('Invalid messages', { status: 400 })
+  }
+  for (const m of messages) {
+    if (!['user', 'assistant'].includes(m.role as string)) {
+      return new Response('Invalid message role', { status: 400 })
+    }
+    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
+    if (content.length > 10000) return new Response('Message too long', { status: 400 })
+  }
+  if (!Array.isArray(beads) || !Array.isArray(findings)) {
+    return new Response('Invalid stash data', { status: 400 })
+  }
+  if (beads.length > 200 || findings.length > 200) {
+    return new Response('Stash too large', { status: 400 })
+  }
+
   const stashLines: string[] = []
   if (beads?.length) {
     stashLines.push(`BEADS:\n${beads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
