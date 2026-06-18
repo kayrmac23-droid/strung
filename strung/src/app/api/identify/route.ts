@@ -3,9 +3,21 @@ import { NextRequest } from 'next/server'
 
 const client = new Anthropic()
 
+const VALID_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
+type ValidMime = typeof VALID_MIMES[number]
+const MAX_BASE64_BYTES = 5 * 1024 * 1024 * 4 / 3 // ~6.7M chars for 5MB image
+
 export async function POST(req: NextRequest) {
   try {
     const { imageData, mediaType, kind = 'bead' } = await req.json()
+
+    if (!imageData || typeof imageData !== 'string') {
+      return Response.json({ error: 'Missing image data' }, { status: 400 })
+    }
+    if (imageData.length > MAX_BASE64_BYTES) {
+      return Response.json({ error: 'Image too large (max 5MB)' }, { status: 400 })
+    }
+    const resolvedMime: ValidMime = VALID_MIMES.includes(mediaType) ? mediaType : 'image/jpeg'
 
     const prompt = kind === 'finding'
       ? `You are an expert jewellery findings identifier. Analyse this image and identify the finding shown.
@@ -39,7 +51,7 @@ No markdown, no backticks, ONLY the JSON object.`
         content: [
           {
             type: 'image',
-            source: { type: 'base64', media_type: mediaType || 'image/jpeg', data: imageData },
+            source: { type: 'base64', media_type: resolvedMime, data: imageData },
           },
           { type: 'text', text: prompt },
         ],
@@ -50,7 +62,7 @@ No markdown, no backticks, ONLY the JSON object.`
     const result = JSON.parse(text.replace(/```json|```/g, '').trim())
     return Response.json(result)
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Identification failed'
-    return Response.json({ error: message }, { status: 500 })
+    console.error('identify error:', e)
+    return Response.json({ error: 'Identification failed' }, { status: 500 })
   }
 }
