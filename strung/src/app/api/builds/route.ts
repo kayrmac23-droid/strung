@@ -5,6 +5,12 @@ function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
 }
 
+const BUILD_FIELDS = ['title', 'design', 'status', 'current_step', 'started_at', 'completed_at', 'time_taken_minutes', 'notes', 'rating'] as const
+
+function pickBuildFields(data: Record<string, unknown>) {
+  return Object.fromEntries(BUILD_FIELDS.filter(f => f in data).map(f => [f, data[f]]))
+}
+
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json([])
@@ -43,8 +49,9 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getAuthenticatedClient(getToken(req))
   const body = await req.json()
-  const { id, ...updates } = body
+  const { id, ...raw } = body
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const updates = pickBuildFields(raw as Record<string, unknown>)
   const { data, error } = await supabase
     .from('builds')
     .update(updates)

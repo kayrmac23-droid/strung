@@ -9,7 +9,8 @@ const MAX_BASE64_BYTES = 5 * 1024 * 1024 * 4 / 3 // ~6.7M chars for 5MB image
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageData, mediaType, kind = 'bead' } = await req.json()
+    const { imageData, mediaType, kind: rawKind = 'bead' } = await req.json()
+    const kind = ['bead', 'finding'].includes(rawKind) ? rawKind : 'bead'
 
     if (!imageData || typeof imageData !== 'string') {
       return Response.json({ error: 'Missing image data' }, { status: 400 })
