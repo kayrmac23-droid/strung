@@ -6,6 +6,8 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export async function POST(req: NextRequest) {
   const { question, context } = await req.json()
   if (!question?.trim()) return new Response('No question', { status: 400 })
+  if (question.length > 2000) return new Response('Question too long', { status: 400 })
+  if (context && context.length > 2000) return new Response('Context too long', { status: 400 })
 
   const system = `You are Strung's AI jewellery advisor — an expert specifically in beaded jewellery making for hobbyists. Your expertise covers:
 - Wire wrapping (coiling, wrapping briolettes/teardrops, making loops)
