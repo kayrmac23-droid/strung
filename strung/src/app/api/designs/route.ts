@@ -5,6 +5,12 @@ function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
 }
 
+const DESIGN_FIELDS = ['title', 'type', 'difficulty', 'source', 'blueprint', 'notes', 'status'] as const
+
+function pickDesignFields(data: Record<string, unknown>) {
+  return Object.fromEntries(DESIGN_FIELDS.filter(f => f in data).map(f => [f, data[f]]))
+}
+
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -57,8 +63,9 @@ export async function PATCH(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getAuthenticatedClient(getToken(req))
-  const { id, ...data } = await req.json()
+  const { id, ...raw } = await req.json()
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const data = pickDesignFields(raw as Record<string, unknown>)
   const { data: result, error } = await supabase
     .from('designs')
     .update(data)
