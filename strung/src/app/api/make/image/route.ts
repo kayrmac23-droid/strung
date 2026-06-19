@@ -47,7 +47,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const design = await req.json()
+    const raw = await req.json()
+    if (!raw || typeof raw !== 'object') return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
+    const design: Record<string, unknown> = {
+      title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : '',
+      description: typeof raw.description === 'string' ? raw.description.slice(0, 500) : '',
+      pieceType: typeof raw.pieceType === 'string' ? raw.pieceType.slice(0, 50) : '',
+      colourStory: typeof raw.colourStory === 'string' ? raw.colourStory.slice(0, 500) : '',
+      components: Array.isArray(raw.components) ? raw.components.slice(0, 50) : [],
+      steps: Array.isArray(raw.steps) ? raw.steps.slice(0, 50) : [],
+    }
+    if (!design.title) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
     const prompt = await buildPrompt(design)
 
     const res = await fetch('https://api.openai.com/v1/images/generations', {

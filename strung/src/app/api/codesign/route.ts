@@ -48,13 +48,16 @@ export async function POST(req: NextRequest) {
   if (beads.length > 200 || findings.length > 200) {
     return new Response('Stash too large', { status: 400 })
   }
+  const trunc = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
+  const safeBeads = beads.map(b => ({ ...b, name: trunc(b.name, 200), colour: trunc(b.colour, 100), size: trunc(b.size, 50), shape: trunc(b.shape, 50) }))
+  const safeFindings = findings.map(f => ({ ...f, name: trunc(f.name, 200), type: trunc(f.type, 50), metal: trunc(f.metal, 50) }))
 
   const stashLines: string[] = []
-  if (beads?.length) {
-    stashLines.push(`BEADS:\n${beads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
+  if (safeBeads?.length) {
+    stashLines.push(`BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
   }
-  if (findings?.length) {
-    stashLines.push(`FINDINGS:\n${findings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
+  if (safeFindings?.length) {
+    stashLines.push(`FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
   }
   const stashContext = stashLines.length
     ? `\n\nThe user's stash:\n${stashLines.join('\n\n')}`

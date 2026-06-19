@@ -32,9 +32,10 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getAuthenticatedClient(getToken(req))
   const body = await req.json()
+  const sanitized = pickDesignFields(body as Record<string, unknown>)
   const { data, error } = await supabase
     .from('designs')
-    .insert({ ...body, user_id: user.id })
+    .insert({ ...sanitized, user_id: user.id })
     .select()
     .single()
   if (error) {

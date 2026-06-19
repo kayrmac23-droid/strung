@@ -46,6 +46,9 @@ export async function POST(req: NextRequest) {
   if (beads.length > 200 || findings.length > 200) {
     return NextResponse.json({ error: 'Stash too large' }, { status: 400 })
   }
+  const truncStr = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
+  const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
+  const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50), size: truncStr(f.size, 50) }))
   if (pieceType && (!VALID_PIECE_TYPES.includes(pieceType) || pieceType.length > 50)) {
     return NextResponse.json({ error: 'Invalid piece type' }, { status: 400 })
   }
@@ -57,11 +60,11 @@ export async function POST(req: NextRequest) {
   }
 
   const stashSummary = [
-    beads.length > 0
-      ? `BEADS:\n${beads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
+    safeBeads.length > 0
+      ? `BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
       : 'No beads in stash.',
-    findings.length > 0
-      ? `FINDINGS:\n${findings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})`).join('\n')}`
+    safeFindings.length > 0
+      ? `FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})`).join('\n')}`
       : 'No findings in stash.',
   ].join('\n\n')
 

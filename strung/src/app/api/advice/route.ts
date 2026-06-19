@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
   if (!question?.trim()) return new Response('No question', { status: 400 })
   if (question.length > 2000) return new Response('Question too long', { status: 400 })
   if (context && context.length > 2000) return new Response('Context too long', { status: 400 })
+  const safeContext = context ? context.replace(/[\r\n]/g, ' ').slice(0, 300) : null
 
   const system = `You are Strung's AI jewellery advisor — an expert specifically in beaded jewellery making for hobbyists. Your expertise covers:
 - Wire wrapping (coiling, wrapping briolettes/teardrops, making loops)
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
 - Colour theory for gemstone combinations
 - Bead sizing and compatibility
 - Tools (round nose pliers, flat nose pliers, wire cutters, crimping pliers, bead mats)
-${context ? `\nContext: ${context}` : ''}
+${safeContext ? `\nContext: ${safeContext}` : ''}
 Be specific, practical, and honest. Warn about common beginner mistakes. Explain why, not just what.`
 
   const stream = await client.messages.stream({

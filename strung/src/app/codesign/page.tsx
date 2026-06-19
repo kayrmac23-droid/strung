@@ -42,8 +42,12 @@ function parseMessage(text: string): { display: string; blueprint: Blueprint | n
   }
 }
 
+function esc(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function fmt(text: string) {
-  return text
+  return esc(text)
     .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--cream)">$1</strong>')
     .replace(/^[-•]\s(.+)/gm, '<li style="margin-bottom:4px;padding-left:4px">$1</li>')
     .replace(/(<li[^>]*>[\s\S]*?<\/li>)/g, '<ul style="margin:8px 0 10px 16px">$1</ul>')
@@ -65,6 +69,7 @@ export default function CoDesignPage() {
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [findings, setFindings] = useState<FindingItem[]>([])
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -185,15 +190,19 @@ export default function CoDesignPage() {
 
   async function saveToJournal() {
     if (!blueprint) return
+    setSaveError('')
+    const { getSession } = await import('@/lib/authClient')
+    if (!await getSession()) { setSaveError('Sign in to save designs.'); return }
     try {
-      await fetch('/api/designs', {
+      const res = await fetch('/api/designs', {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title: blueprint.title, type: blueprint.type, difficulty: blueprint.difficulty, source: 'codesign', blueprint, status: 'saved' }),
       })
+      if (!res.ok) throw new Error('Save failed')
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch {}
+    } catch { setSaveError('Failed to save. Try again.') }
   }
 
   const diffColor = (d: string) => d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
@@ -354,6 +363,9 @@ export default function CoDesignPage() {
                     >
                       {saved ? '✓ Saved to Journal' : '⊡ Save to Journal'}
                     </button>
+                    {saveError && (
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em' }}>{saveError}</p>
+                    )}
                   </div>
 
                   {/* Components */}

@@ -91,7 +91,8 @@ export default function GuidesPage() {
 
   const diffColor = (d:string) => d==='Beginner'?'var(--sage)':d==='Advanced'?'var(--rose)':'var(--moonstone)'
 
-  const fmt = (text:string) => text
+  const esc = (s:string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const fmt = (text:string) => esc(text)
     .replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>')
     .split('\n\n').map(p=>`<p style="margin-bottom:13px;color:var(--text);font-family:var(--font-body);font-size:17px;line-height:1.8">${p.replace(/\n/g,'<br/>')}</p>`).join('')
 
@@ -168,7 +169,7 @@ export default function GuidesPage() {
                   </div>
                 </div>
                 {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:15,color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
-                  dangerouslySetInnerHTML={{__html:aiA.replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>').split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('')}}/>}
+                  dangerouslySetInnerHTML={{__html:esc(aiA).replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>').split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('')}}/>}
                 <div style={{display:'flex',gap:10}}>
                   <input type="text" className="input-base" style={{flex:1}}
                     placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"
