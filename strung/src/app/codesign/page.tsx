@@ -86,12 +86,26 @@ export default function CoDesignPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const mediaType = file.type || 'image/jpeg'
     const reader = new FileReader()
     reader.onload = () => {
-      const dataUrl = reader.result as string
-      const base64 = dataUrl.split(',')[1]
-      setPendingImage({ base64, mediaType, dataUrl })
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 1568
+        let { width, height } = img
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round(height * MAX / width); width = MAX }
+          else { width = Math.round(width * MAX / height); height = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        const base64 = dataUrl.split(',')[1]
+        setPendingImage({ base64, mediaType: 'image/jpeg', dataUrl })
+      }
+      img.src = reader.result as string
     }
     reader.readAsDataURL(file)
     e.target.value = ''
