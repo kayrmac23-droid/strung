@@ -39,8 +39,13 @@ export async function POST(req: NextRequest) {
     if (!['user', 'assistant'].includes(m.role as string)) {
       return new Response('Invalid message role', { status: 400 })
     }
-    const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content)
-    if (content.length > 10000) return new Response('Message too long', { status: 400 })
+    const textOnly = typeof m.content === 'string'
+      ? m.content
+      : (m.content as Array<{ type: string; text?: string }>)
+          .filter(b => b.type === 'text')
+          .map(b => b.text ?? '')
+          .join('')
+    if (textOnly.length > 10000) return new Response('Message too long', { status: 400 })
   }
   if (!Array.isArray(beads) || !Array.isArray(findings)) {
     return new Response('Invalid stash data', { status: 400 })
