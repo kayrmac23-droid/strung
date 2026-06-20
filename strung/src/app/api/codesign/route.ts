@@ -22,15 +22,12 @@ type StashFinding = {
 type ChatMessage = Anthropic.MessageParam
 
 export async function POST(req: NextRequest) {
-  const {
-    messages,
-    beads = [],
-    findings = [],
-  }: {
-    messages: ChatMessage[]
-    beads: StashBead[]
-    findings: StashFinding[]
-  } = await req.json()
+  let messages: ChatMessage[], beads: StashBead[] = [], findings: StashFinding[] = []
+  try {
+    ;({ messages, beads = [], findings = [] } = await req.json())
+  } catch {
+    return new Response('Invalid request body', { status: 400 })
+  }
 
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
     return new Response('Invalid messages', { status: 400 })
@@ -80,20 +77,30 @@ When you have enough detail to create a design (usually after 3–4 exchanges), 
 
 Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 
-  const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1500,
-    system,
-    messages,
-  })
+  let stream: Awaited<ReturnType<typeof client.messages.stream>>
+  try {
+    stream = await client.messages.stream({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      system,
+      messages,
+    })
+  } catch (e) {
+    console.error('Codesign stream init error:', e)
+    return new Response('AI service error. Please try again.', { status: 500 })
+  }
 
   const encoder = new TextEncoder()
   const readable = new ReadableStream({
     async start(controller) {
-      for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-          controller.enqueue(encoder.encode(chunk.delta.text))
+      try {
+        for await (const chunk of stream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            controller.enqueue(encoder.encode(chunk.delta.text))
+          }
         }
+      } catch (e) {
+        console.error('Codesign stream chunk error:', e)
       }
       controller.close()
     },
