@@ -96,6 +96,13 @@ export default function InventoryPage() {
   const [aiPrefilled, setAiPrefilled] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const findingFileInputRef = useRef<HTMLInputElement>(null)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickText, setQuickText] = useState('')
+  const [parsing, setParsing] = useState(false)
+  const [parseError, setParseError] = useState('')
+  const [reviewBeads, setReviewBeads] = useState<BeadItem[]>([])
+  const [reviewFindings, setReviewFindings] = useState<FindingItem[]>([])
+  const [savingAll, setSavingAll] = useState(false)
 
   const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
@@ -231,6 +238,61 @@ export default function InventoryPage() {
     }
   }
 
+  function closeQuickAdd() {
+    setShowQuickAdd(false); setQuickText(''); setReviewBeads([]); setReviewFindings([]); setParseError('')
+  }
+
+  const updateReviewBead = (i: number, patch: Partial<BeadItem>) =>
+    setReviewBeads(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  const removeReviewBead = (i: number) => setReviewBeads(rs => rs.filter((_, idx) => idx !== i))
+  const updateReviewFinding = (i: number, patch: Partial<FindingItem>) =>
+    setReviewFindings(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  const removeReviewFinding = (i: number) => setReviewFindings(rs => rs.filter((_, idx) => idx !== i))
+
+  async function parseStash() {
+    if (!quickText.trim()) { setParseError('Describe your stash first.'); return }
+    setParsing(true); setParseError('')
+    try {
+      const res = await fetch('/api/parse-stash', {
+        method: 'POST',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ text: quickText }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || `Parse failed (${res.status})`)
+      const parsedBeads: BeadItem[] = data.beads || []
+      const parsedFindings: FindingItem[] = data.findings || []
+      setReviewBeads(parsedBeads)
+      setReviewFindings(parsedFindings)
+      if (parsedBeads.length === 0 && parsedFindings.length === 0) {
+        setParseError('No beads or findings found in that description.')
+      }
+    } catch (e: unknown) { setParseError(getErrorMessage(e, 'Parse failed')) }
+    finally { setParsing(false) }
+  }
+
+  async function saveAll() {
+    setSavingAll(true); setParseError('')
+    try {
+      const rows: Array<{ table: 'beads' | 'findings'; data: BeadItem | FindingItem }> = [
+        ...reviewBeads.map(data => ({ table: 'beads' as const, data })),
+        ...reviewFindings.map(data => ({ table: 'findings' as const, data })),
+      ]
+      for (const { table, data } of rows) {
+        const res = await fetch('/api/inventory', {
+          method: 'POST',
+          headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ table, data }),
+        })
+        const result = await res.json()
+        if (!res.ok || result.error) throw new Error(result.error || `Save failed (${res.status})`)
+      }
+      await load()
+      closeQuickAdd()
+    } catch (e: unknown) { setParseError(getErrorMessage(e, 'Save failed')) }
+    finally { setSavingAll(false) }
+  }
+
   const filteredBeads = beads.filter(b => {
     const matchSearch = !search || b.name.toLowerCase().includes(search.toLowerCase()) || b.colour.toLowerCase().includes(search.toLowerCase())
     const matchType = !filterType || b.type === filterType
@@ -294,6 +356,7 @@ export default function InventoryPage() {
               {arrow}
             </div>
             <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
+            <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('')}}>✎ Quick add</button>
             {tab==='beads' ? (
               <>
                 <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
@@ -493,6 +556,78 @@ export default function InventoryPage() {
                 </button>
                 <button className="btn-outline" onClick={()=>{setShowForm(false);setAiPrefilled(false);setSaveError('')}}>Cancel</button>
               </div>
+            </div>
+          )}
+
+          {/* Quick add */}
+          {showQuickAdd && (
+            <div className="card fade-up" style={{padding:28,marginBottom:24,border:'1px solid var(--silver)',position:'relative'}}>
+              <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
+              <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>Quick add</h3>
+              <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Describe your stash in plain words — the AI turns it into beads and findings for you to review before saving.</p>
+              <textarea
+                className="input-base"
+                rows={4}
+                style={{width:'100%',resize:'vertical',fontFamily:'var(--font-body)',lineHeight:1.5}}
+                placeholder="e.g. About 20 blue labradorite teardrops, a dozen silver head pins, two gold lobster clasps, and a handful of 6mm rose quartz rounds…"
+                value={quickText}
+                onChange={e=>setQuickText(e.target.value)}
+              />
+              <div style={{display:'flex',gap:10,marginTop:12}}>
+                <button className="btn-silver" onClick={parseStash} disabled={parsing}>
+                  {parsing?<><span className="spinner"/>Parsing…</>:'Parse'}
+                </button>
+                <button className="btn-outline" onClick={closeQuickAdd}>Cancel</button>
+              </div>
+              {parseError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:14,letterSpacing:'0.06em'}}>{parseError}</p>}
+
+              {(reviewBeads.length>0 || reviewFindings.length>0) && (
+                <div style={{marginTop:24,borderTop:'1px solid var(--border)',paddingTop:20}}>
+                  <p className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)',textTransform:'uppercase',marginBottom:16}}>
+                    ◉ Review — {reviewBeads.length} bead{reviewBeads.length===1?'':'s'}, {reviewFindings.length} finding{reviewFindings.length===1?'':'s'}
+                  </p>
+                  {reviewBeads.length>0 && (
+                    <div style={{marginBottom:18}}>
+                      <label className="label" style={{marginBottom:8}}>Beads</label>
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {reviewBeads.map((b,i)=>(
+                          <div key={i} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'var(--surface)',border:'1px solid var(--border)'}}>
+                            <div style={{width:22,height:22,borderRadius:'50%',background:b.hex||'#7a9ab8',border:'1px solid rgba(255,255,255,0.12)',flexShrink:0}}/>
+                            <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            <input className="input-base" style={{width:130,padding:'6px 10px',fontSize:13}} placeholder="Colour"
+                              value={b.colour||''} onChange={e=>updateReviewBead(i,{colour:e.target.value})}/>
+                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
+                              value={b.quantity||1} onChange={e=>updateReviewBead(i,{quantity:Number(e.target.value)})}/>
+                            <button onClick={()=>removeReviewBead(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
+                              onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {reviewFindings.length>0 && (
+                    <div style={{marginBottom:18}}>
+                      <label className="label" style={{marginBottom:8}}>Findings</label>
+                      <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {reviewFindings.map((f,i)=>(
+                          <div key={i} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'var(--surface)',border:'1px solid var(--border)'}}>
+                            <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
+                            {f.type && <span className="tag">{f.type.replace(/_/g,' ')}</span>}
+                            {f.metal && <span className="tag">{f.metal.replace(/_/g,' ')}</span>}
+                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
+                              value={f.quantity||1} onChange={e=>updateReviewFinding(i,{quantity:Number(e.target.value)})}/>
+                            <button onClick={()=>removeReviewFinding(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
+                              onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button className="btn-silver" onClick={saveAll} disabled={savingAll}>
+                    {savingAll?<><span className="spinner"/>Saving…</>:`Save all (${reviewBeads.length+reviewFindings.length})`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
