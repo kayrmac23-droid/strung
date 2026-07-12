@@ -1,7 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const MAX_IMAGES_PER_MESSAGE = 2
+const MAX_IMAGES_TOTAL = 6
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024
 
 type StashBead = {
   name: string
@@ -22,6 +27,9 @@ type StashFinding = {
 type ChatMessage = Anthropic.MessageParam
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   let messages: ChatMessage[], beads: StashBead[] = [], findings: StashFinding[] = []
   try {
     ;({ messages, beads = [], findings = [] } = await req.json())
@@ -32,16 +40,39 @@ export async function POST(req: NextRequest) {
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
     return new Response('Invalid messages', { status: 400 })
   }
+  let totalImages = 0
   for (const m of messages) {
     if (!['user', 'assistant'].includes(m.role as string)) {
       return new Response('Invalid message role', { status: 400 })
     }
-    const textOnly = typeof m.content === 'string'
-      ? m.content
-      : (m.content as Array<{ type: string; text?: string }>)
-          .filter(b => b.type === 'text')
-          .map(b => b.text ?? '')
-          .join('')
+    let textOnly = ''
+    if (typeof m.content === 'string') {
+      textOnly = m.content
+    } else {
+      const blocks = m.content as Array<{ type: string; text?: string; source?: { type?: string; data?: string } }>
+      let imagesInMessage = 0
+      for (const b of blocks) {
+        if (b.type !== 'text' && b.type !== 'image') {
+          return new Response('Invalid content block', { status: 400 })
+        }
+        if (b.type === 'text') {
+          textOnly += b.text ?? ''
+        } else {
+          imagesInMessage++
+          if (imagesInMessage > MAX_IMAGES_PER_MESSAGE) {
+            return new Response('Too many images in message', { status: 400 })
+          }
+          const data = b.source?.type === 'base64' ? b.source.data ?? '' : ''
+          if (data.length > MAX_IMAGE_BYTES) {
+            return new Response('Image too large', { status: 400 })
+          }
+        }
+      }
+      totalImages += imagesInMessage
+      if (totalImages > MAX_IMAGES_TOTAL) {
+        return new Response('Too many images', { status: 400 })
+      }
+    }
     if (textOnly.length > 10000) return new Response('Message too long', { status: 400 })
   }
   if (!Array.isArray(beads) || !Array.isArray(findings)) {

@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -26,6 +27,9 @@ const VALID_PIECE_TYPES = ['earrings', 'necklace', 'bracelet', 'pendant', 'ring'
 const VALID_TIME: TimeAvailable[] = ['15min', '1hour', 'afternoon']
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const {
     beads = [],
     findings = [],
@@ -122,12 +126,19 @@ Return ONLY valid JSON, no markdown, no backticks:
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 2000,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     const clean = text.replace(/```json|```/g, '').trim()
-    return NextResponse.json(JSON.parse(clean))
+    try {
+      return NextResponse.json(JSON.parse(clean))
+    } catch {
+      const first = clean.indexOf('{')
+      const last = clean.lastIndexOf('}')
+      if (first === -1 || last === -1 || last <= first) throw new Error('No JSON object found in response')
+      return NextResponse.json(JSON.parse(clean.slice(first, last + 1)))
+    }
   } catch (e: unknown) {
     console.error('make error:', e)
     return NextResponse.json({ error: 'Generation failed' }, { status: 500 })

@@ -1,9 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
   const { question, context } = await req.json()
   if (!question?.trim()) return new Response('No question', { status: 400 })
   if (question.length > 2000) return new Response('Question too long', { status: 400 })
@@ -25,7 +29,7 @@ ${safeContext ? `\nContext: ${safeContext}` : ''}
 Be specific, practical, and honest. Warn about common beginner mistakes. Explain why, not just what.`
 
   const stream = await client.messages.stream({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1000,
     system,
     messages: [{ role: 'user', content: question }],
