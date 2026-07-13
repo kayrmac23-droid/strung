@@ -124,6 +124,8 @@ The Supabase database requires these tables:
 
 Shared types (`BeadItem`, `FindingItem`, `DesignItem`) live in `src/lib/supabase.ts`. Import them as `@/lib/supabase`.
 
+The canonical `CREATE TABLE` SQL — including the `user_id` column on every table, `user_id` indexes, and per-user RLS policies — lives in README.md → "Set up the database". All four tables are per-user: the API filters every query by `user_id` and RLS enforces it. A table created without `user_id`/RLS will not work with these routes, and a missing table surfaces as PostgREST error `PGRST205` (logged server-side; the UI shows the sanitized "Database error").
+
 ## Styling Conventions
 
 No CSS framework. Two layers:
