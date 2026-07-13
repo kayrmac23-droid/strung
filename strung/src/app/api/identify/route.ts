@@ -1,11 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
+import { normaliseBead, normaliseFinding, itemConfidence } from '@/lib/stashItems'
 
 const client = new Anthropic()
 
 const VALID_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
 type ValidMime = typeof VALID_MIMES[number]
+
+// Multi mode identifies distinct groups, not individual beads — a strand is
+// one entry. More than this and the photo is better taken as two photos.
+const MAX_ITEMS_PER_KIND = 12
 
 // The client downscales photos to 1568px JPEG before upload (see
 // src/lib/imagePrep.ts), so real payloads are ~200–500KB of base64. Vercel
@@ -37,6 +42,26 @@ Return ONLY valid JSON with exactly these fields:
 }
 No markdown, no backticks, ONLY the JSON object.`
 
+const MULTI_PROMPT = `You are an expert jewellery bead and findings identifier. This photo may contain MULTIPLE distinct beads and findings — strands, groups, or a mixed lot.
+
+Rules:
+- Identify each visually DISTINCT bead or finding as ONE entry. Group identical items: a strand or pile of the same bead is one entry, never one entry per physical bead.
+- quantity: estimate the count visible. A full strand of beads is about 40. If the count is unclear, use 1.
+- confidence must be one of: certain (unmistakable), likely (probable, but the material or stone could differ), unsure (best guess — flag for a closer look).
+- Beads are decorative components. Findings are hardware (ear wires, head pins, eye pins, jump rings, clasps, chain, wire, crimps, connectors, statement components).
+- bead type must be one of: gemstone, crystal, glass, seed, metal, pearl, resin, other
+- bead shape must be one of: round, rondelle, briolette, teardrop, faceted, chip, tube, oval, square, other
+- bead size must be one of: seed, small, medium, large, statement
+- finding type must be one of: ear_wire, head_pin, eye_pin, jump_ring, clasp, chain, wire, crimp, connector, statement_component, other
+- finding metal must be one of: silver, gold_filled, gold, copper, brass, oxidised, other
+- name: short and specific, e.g. "Labradorite teardrop briolettes", "Silver ball-end head pins".
+- colour: the visible colour in plain words. hex: the best-matching CSS hex code.
+- notes: only genuinely useful detail (finish, treatment, "possibly dyed"), or empty string.
+- At most ${MAX_ITEMS_PER_KIND} beads and ${MAX_ITEMS_PER_KIND} findings — prioritise the most prominent. Never invent items that are not visible. If nothing is identifiable, return empty arrays.
+
+Return ONLY valid JSON, no markdown, no backticks:
+{"beads":[{"name":"...","type":"...","colour":"...","hex":"#RRGGBB","size":"...","shape":"...","quantity":1,"notes":"...","confidence":"likely"}],"findings":[{"name":"...","type":"...","metal":"...","size":"...","quantity":1,"notes":"...","confidence":"likely"}]}`
+
 function extractJson(raw: string): unknown {
   const clean = raw.replace(/```json|```/g, '').trim()
   try {
@@ -64,6 +89,7 @@ export async function POST(req: NextRequest) {
   const imageData = body.imageData
   const mediaType = body.mediaType
   const kind = body.kind === 'finding' ? 'finding' : 'bead'
+  const mode = body.mode === 'multi' ? 'multi' : 'single'
 
   if (!imageData || typeof imageData !== 'string') {
     return Response.json({ error: 'Missing image data' }, { status: 400 })
@@ -79,7 +105,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 512,
+      max_tokens: mode === 'multi' ? 3000 : 512,
       temperature: 0.2,
       messages: [{
         role: 'user',
@@ -88,14 +114,17 @@ export async function POST(req: NextRequest) {
             type: 'image',
             source: { type: 'base64', media_type: resolvedMime, data: imageData },
           },
-          { type: 'text', text: kind === 'finding' ? FINDING_PROMPT : BEAD_PROMPT },
+          { type: 'text', text: mode === 'multi' ? MULTI_PROMPT : kind === 'finding' ? FINDING_PROMPT : BEAD_PROMPT },
         ],
       }],
     })
 
     if (response.stop_reason === 'max_tokens') {
-      console.error('identify error: response truncated at max_tokens')
-      return Response.json({ error: 'The AI response was cut off — try again' }, { status: 502 })
+      console.error('identify error: response truncated at max_tokens, mode:', mode)
+      const message = mode === 'multi'
+        ? 'The response was cut off — try photographing fewer groups at once'
+        : 'The AI response was cut off — try again'
+      return Response.json({ error: message }, { status: 502 })
     }
     const block = response.content.find(b => b.type === 'text')
     const text = block?.type === 'text' ? block.text : ''
@@ -110,6 +139,23 @@ export async function POST(req: NextRequest) {
     } catch {
       console.error('identify error: unparseable model output:', text.slice(0, 500))
       return Response.json({ error: 'Could not read the AI response — try again' }, { status: 502 })
+    }
+
+    if (mode === 'multi') {
+      const parsed = (result ?? {}) as { beads?: unknown; findings?: unknown }
+      const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
+        .slice(0, MAX_ITEMS_PER_KIND)
+        .flatMap(item => {
+          const bead = normaliseBead(item)
+          return bead ? [{ ...bead, confidence: itemConfidence(item) }] : []
+        })
+      const findings = (Array.isArray(parsed.findings) ? parsed.findings : [])
+        .slice(0, MAX_ITEMS_PER_KIND)
+        .flatMap(item => {
+          const finding = normaliseFinding(item)
+          return finding ? [{ ...finding, confidence: itemConfidence(item) }] : []
+        })
+      return Response.json({ beads, findings })
     }
     return Response.json(result)
   } catch (e: unknown) {

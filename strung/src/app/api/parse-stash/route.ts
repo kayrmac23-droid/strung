@@ -1,68 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
+import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const MAX_TEXT_CHARS = 4000
 const MAX_ITEMS_PER_LIST = 100
-
-const BEAD_TYPES = ['gemstone', 'crystal', 'glass', 'seed', 'metal', 'pearl', 'resin', 'other'] as const
-const FINDING_TYPES = ['ear_wire', 'head_pin', 'eye_pin', 'jump_ring', 'clasp', 'chain', 'wire', 'crimp', 'connector', 'statement_component', 'other'] as const
-const FINDING_METALS = ['silver', 'gold_filled', 'gold', 'copper', 'brass', 'oxidised', 'other'] as const
-
-type RawItem = Record<string, unknown>
-
-function str(v: unknown, max: number): string {
-  return typeof v === 'string' ? v.trim().slice(0, max) : ''
-}
-
-function qty(v: unknown): number {
-  const n = typeof v === 'number' ? Math.round(v) : parseInt(String(v), 10)
-  if (!Number.isFinite(n) || n < 1) return 1
-  return Math.min(n, 9999)
-}
-
-function pickEnum<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
-  return typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : fallback
-}
-
-function normaliseBead(raw: unknown) {
-  if (!raw || typeof raw !== 'object') return null
-  const item = raw as RawItem
-  const name = str(item.name, 200)
-  if (!name) return null
-  const hex = typeof item.hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(item.hex) ? item.hex : '#888888'
-  const shape = str(item.shape, 50)
-  const notes = str(item.notes, 300)
-  return {
-    name,
-    type: pickEnum(item.type, BEAD_TYPES, 'other'),
-    colour: str(item.colour, 100),
-    hex,
-    size: str(item.size, 50),
-    quantity: qty(item.quantity),
-    ...(shape ? { shape } : {}),
-    ...(notes ? { notes } : {}),
-  }
-}
-
-function normaliseFinding(raw: unknown) {
-  if (!raw || typeof raw !== 'object') return null
-  const item = raw as RawItem
-  const name = str(item.name, 200)
-  if (!name) return null
-  const size = str(item.size, 50)
-  const notes = str(item.notes, 300)
-  return {
-    name,
-    type: pickEnum(item.type, FINDING_TYPES, 'other'),
-    metal: pickEnum(item.metal, FINDING_METALS, 'other'),
-    ...(size ? { size } : {}),
-    quantity: qty(item.quantity),
-    ...(notes ? { notes } : {}),
-  }
-}
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
