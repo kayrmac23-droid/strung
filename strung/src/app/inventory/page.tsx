@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
+import { prepareImageForIdentify } from '@/lib/imagePrep'
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -172,19 +173,16 @@ export default function InventoryPage() {
     setIdentifying(true)
     setIdentifyError('')
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const prepared = await prepareImageForIdentify(file)
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg' }),
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(prepared),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const raw = await res.text()
+      let data: Partial<BeadItem> & { error?: string } = {}
+      try { data = JSON.parse(raw) } catch { data = {} }
+      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
       setBeadForm(f => ({
         ...f,
         name: data.name || f.name,
@@ -208,19 +206,16 @@ export default function InventoryPage() {
     setIdentifyingFinding(true)
     setIdentifyFindingError('')
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const prepared = await prepareImageForIdentify(file)
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg', kind: 'finding' }),
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ...prepared, kind: 'finding' }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const raw = await res.text()
+      let data: Partial<FindingItem> & { error?: string } = {}
+      try { data = JSON.parse(raw) } catch { data = {} }
+      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
       setFindingForm(f => ({
         ...f,
         name: data.name || f.name,

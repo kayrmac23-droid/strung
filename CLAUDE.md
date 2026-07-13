@@ -16,7 +16,7 @@ npm run build      # type-check and build for production
 npm run start      # serve the production build
 ```
 
-There is no test runner or lint script configured.
+Lint with `npm run lint` (ESLint) and test with `npm test` (Vitest).
 
 ## Required Environment Variables
 
@@ -71,13 +71,13 @@ Nav has 4 primary items (Stash, Make, Learn, Journal) plus Account.
 | `/api/designs` | GET, POST, DELETE, PATCH | yes | CRUD for `designs` table |
 | `/api/codesign` | POST | no | Streaming co-design chat (Claude) |
 | `/api/advice` | POST | no | Streaming jewellery advice (Claude) |
-| `/api/identify` | POST | no | Vision-based bead/finding identification (Claude) |
+| `/api/identify` | POST | yes | Vision-based bead/finding identification (Claude) |
 
 ## AI Response Patterns
 
 Two patterns:
 
-1. **JSON** (`/api/make`, `/api/identify`): Uses `client.messages.create()`, strips markdown fences with `.replace(/```json|```/g, '').trim()`, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500.
+1. **JSON** (`/api/make`, `/api/identify`): Uses `client.messages.create()`, strips markdown fences with `.replace(/```json|```/g, '').trim()`, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500. `/api/identify` additionally falls back to extracting the outermost `{...}` block, checks `stop_reason === 'max_tokens'` before parsing, and returns 502 (not 500) for AI-side failures. Images are downscaled client-side to 1568px JPEG via `src/lib/imagePrep.ts` before upload — never send raw camera files (Vercel caps request bodies at 4.5MB).
 
 2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
 
