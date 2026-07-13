@@ -71,7 +71,8 @@ Nav has 4 primary items (Stash, Make, Learn, Journal) plus Account.
 | `/api/designs` | GET, POST, DELETE, PATCH | yes | CRUD for `designs` table |
 | `/api/codesign` | POST | no | Streaming co-design chat (Claude) |
 | `/api/advice` | POST | no | Streaming jewellery advice (Claude) |
-| `/api/identify` | POST | yes | Vision-based bead/finding identification (Claude) |
+| `/api/identify` | POST | yes | Vision identification (Claude). Default: single bead (`kind: 'bead'`) or finding (`kind: 'finding'`). With `mode: 'multi'`: identifies every distinct bead/finding group in one photo, returns `{ beads: [], findings: [] }` with per-item `confidence` (`certain`/`likely`/`unsure`), normalised via `src/lib/stashItems.ts` |
+| `/api/parse-stash` | POST | yes | Parses a plain-text stash description into `{ beads: [], findings: [] }` for the review flow (Claude) |
 
 ## AI Response Patterns
 
