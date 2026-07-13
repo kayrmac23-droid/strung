@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
+import { prepareImageForIdentify } from '@/lib/imagePrep'
+import type { Confidence } from '@/lib/stashItems'
+
+type ReviewBead = BeadItem & { confidence?: Confidence }
+type ReviewFinding = FindingItem & { confidence?: Confidence }
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback
@@ -96,12 +101,16 @@ export default function InventoryPage() {
   const [aiPrefilled, setAiPrefilled] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const findingFileInputRef = useRef<HTMLInputElement>(null)
+  const multiFileInputRef = useRef<HTMLInputElement>(null)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [quickAddSource, setQuickAddSource] = useState<'text' | 'photo'>('text')
   const [quickText, setQuickText] = useState('')
   const [parsing, setParsing] = useState(false)
   const [parseError, setParseError] = useState('')
-  const [reviewBeads, setReviewBeads] = useState<BeadItem[]>([])
-  const [reviewFindings, setReviewFindings] = useState<FindingItem[]>([])
+  const [identifyingMulti, setIdentifyingMulti] = useState(false)
+  const [identifyMultiError, setIdentifyMultiError] = useState('')
+  const [reviewBeads, setReviewBeads] = useState<ReviewBead[]>([])
+  const [reviewFindings, setReviewFindings] = useState<ReviewFinding[]>([])
   const [savingAll, setSavingAll] = useState(false)
 
   const beadSizes = ['seed','small','medium','large','statement']
@@ -172,19 +181,16 @@ export default function InventoryPage() {
     setIdentifying(true)
     setIdentifyError('')
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const prepared = await prepareImageForIdentify(file)
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg' }),
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(prepared),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const raw = await res.text()
+      let data: Partial<BeadItem> & { error?: string } = {}
+      try { data = JSON.parse(raw) } catch { data = {} }
+      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
       setBeadForm(f => ({
         ...f,
         name: data.name || f.name,
@@ -208,19 +214,16 @@ export default function InventoryPage() {
     setIdentifyingFinding(true)
     setIdentifyFindingError('')
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const prepared = await prepareImageForIdentify(file)
       const res = await fetch('/api/identify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageData: base64, mediaType: file.type || 'image/jpeg', kind: 'finding' }),
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ...prepared, kind: 'finding' }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const raw = await res.text()
+      let data: Partial<FindingItem> & { error?: string } = {}
+      try { data = JSON.parse(raw) } catch { data = {} }
+      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
       setFindingForm(f => ({
         ...f,
         name: data.name || f.name,
@@ -238,8 +241,39 @@ export default function InventoryPage() {
     }
   }
 
+  async function identifyMulti(file: File) {
+    setIdentifyingMulti(true)
+    setIdentifyMultiError('')
+    try {
+      const prepared = await prepareImageForIdentify(file)
+      const res = await fetch('/api/identify', {
+        method: 'POST',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ ...prepared, mode: 'multi' }),
+      })
+      const raw = await res.text()
+      let data: { error?: string; beads?: ReviewBead[]; findings?: ReviewFinding[] } = {}
+      try { data = JSON.parse(raw) } catch { data = {} }
+      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
+      const foundBeads = data.beads || []
+      const foundFindings = data.findings || []
+      if (foundBeads.length === 0 && foundFindings.length === 0) {
+        throw new Error('No beads or findings recognised — try spreading groups apart on a plain background.')
+      }
+      setReviewBeads(foundBeads)
+      setReviewFindings(foundFindings)
+      setParseError('')
+      setQuickAddSource('photo')
+      setShowQuickAdd(true)
+    } catch (e: unknown) {
+      setIdentifyMultiError(getErrorMessage(e, 'Could not identify from photo'))
+    } finally {
+      setIdentifyingMulti(false)
+    }
+  }
+
   function closeQuickAdd() {
-    setShowQuickAdd(false); setQuickText(''); setReviewBeads([]); setReviewFindings([]); setParseError('')
+    setShowQuickAdd(false); setQuickText(''); setReviewBeads([]); setReviewFindings([]); setParseError(''); setQuickAddSource('text')
   }
 
   const updateReviewBead = (i: number, patch: Partial<BeadItem>) =>
@@ -356,7 +390,18 @@ export default function InventoryPage() {
               {arrow}
             </div>
             <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
-            <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('')}}>✎ Quick add</button>
+            <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
+            <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti} style={{gap:6}}>
+              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : '◈ Identify many (photo)'}
+            </button>
+            <input
+              ref={multiFileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              style={{display:'none'}}
+              onChange={e => { const f = e.target.files?.[0]; if (f) identifyMulti(f); e.target.value = '' }}
+            />
             {tab==='beads' ? (
               <>
                 <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
@@ -389,6 +434,7 @@ export default function InventoryPage() {
           </div>
           {identifyError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyError}</p>}
           {identifyFindingError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyFindingError}</p>}
+          {identifyMultiError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
 
           {/* Add form */}
           {showForm && (
@@ -563,22 +609,28 @@ export default function InventoryPage() {
           {showQuickAdd && (
             <div className="card fade-up" style={{padding:28,marginBottom:24,border:'1px solid var(--silver)',position:'relative'}}>
               <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
-              <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>Quick add</h3>
-              <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Describe your stash in plain words — the AI turns it into beads and findings for you to review before saving.</p>
-              <textarea
-                className="input-base"
-                rows={4}
-                style={{width:'100%',resize:'vertical',fontFamily:'var(--font-body)',lineHeight:1.5}}
-                placeholder="e.g. About 20 blue labradorite teardrops, a dozen silver head pins, two gold lobster clasps, and a handful of 6mm rose quartz rounds…"
-                value={quickText}
-                onChange={e=>setQuickText(e.target.value)}
-              />
-              <div style={{display:'flex',gap:10,marginTop:12}}>
-                <button className="btn-silver" onClick={parseStash} disabled={parsing}>
-                  {parsing?<><span className="spinner"/>Parsing…</>:'Parse'}
-                </button>
-                <button className="btn-outline" onClick={closeQuickAdd}>Cancel</button>
-              </div>
+              <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>{quickAddSource==='photo'?'Identify from photo':'Quick add'}</h3>
+              {quickAddSource==='photo' ? (
+                <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Read from your photo — check each item, adjust quantities, and save. Distinct groups spread on a plain background identify best.</p>
+              ) : (
+                <>
+                  <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Describe your stash in plain words — the AI turns it into beads and findings for you to review before saving.</p>
+                  <textarea
+                    className="input-base"
+                    rows={4}
+                    style={{width:'100%',resize:'vertical',fontFamily:'var(--font-body)',lineHeight:1.5}}
+                    placeholder="e.g. About 20 blue labradorite teardrops, a dozen silver head pins, two gold lobster clasps, and a handful of 6mm rose quartz rounds…"
+                    value={quickText}
+                    onChange={e=>setQuickText(e.target.value)}
+                  />
+                  <div style={{display:'flex',gap:10,marginTop:12}}>
+                    <button className="btn-silver" onClick={parseStash} disabled={parsing}>
+                      {parsing?<><span className="spinner"/>Parsing…</>:'Parse'}
+                    </button>
+                    <button className="btn-outline" onClick={closeQuickAdd}>Cancel</button>
+                  </div>
+                </>
+              )}
               {parseError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:14,letterSpacing:'0.06em'}}>{parseError}</p>}
 
               {(reviewBeads.length>0 || reviewFindings.length>0) && (
@@ -594,6 +646,11 @@ export default function InventoryPage() {
                           <div key={i} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'var(--surface)',border:'1px solid var(--border)'}}>
                             <div style={{width:22,height:22,borderRadius:'50%',background:b.hex||'#7a9ab8',border:'1px solid rgba(255,255,255,0.12)',flexShrink:0}}/>
                             <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            {b.confidence && b.confidence!=='certain' && (
+                              <span className="tag" style={b.confidence==='unsure'?{color:'var(--rose)',borderColor:'var(--rose)'}:undefined}>
+                                {b.confidence==='unsure'?'? unsure':'~ likely'}
+                              </span>
+                            )}
                             <input className="input-base" style={{width:130,padding:'6px 10px',fontSize:13}} placeholder="Colour"
                               value={b.colour||''} onChange={e=>updateReviewBead(i,{colour:e.target.value})}/>
                             <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
@@ -614,6 +671,11 @@ export default function InventoryPage() {
                             <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
                             {f.type && <span className="tag">{f.type.replace(/_/g,' ')}</span>}
                             {f.metal && <span className="tag">{f.metal.replace(/_/g,' ')}</span>}
+                            {f.confidence && f.confidence!=='certain' && (
+                              <span className="tag" style={f.confidence==='unsure'?{color:'var(--rose)',borderColor:'var(--rose)'}:undefined}>
+                                {f.confidence==='unsure'?'? unsure':'~ likely'}
+                              </span>
+                            )}
                             <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
                               value={f.quantity||1} onChange={e=>updateReviewFinding(i,{quantity:Number(e.target.value)})}/>
                             <button onClick={()=>removeReviewFinding(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
