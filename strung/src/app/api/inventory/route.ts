@@ -20,6 +20,11 @@ export async function GET(req: NextRequest) {
     supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
   ])
+  // Keep the graceful empty-stash response, but never swallow the error:
+  // a missing table (PGRST205) or RLS failure looked identical to an empty
+  // stash for months because these errors were discarded.
+  if (beads.error) console.error('inventory GET beads error:', beads.error)
+  if (findings.error) console.error('inventory GET findings error:', findings.error)
   return NextResponse.json({ beads: beads.data || [], findings: findings.data || [] })
 }
 

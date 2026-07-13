@@ -25,8 +25,9 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate bl
 
 - **Framework** — Next.js 15 (App Router)
 - **Language** — TypeScript
-- **AI** — Anthropic Claude (`claude-sonnet-4-20250514`) via the Anthropic SDK — text, streaming, and vision
-- **Database** — Supabase (PostgreSQL)
+- **AI** — Anthropic Claude (`claude-sonnet-4-6`; `/api/advice` still on `claude-sonnet-4-20250514`) via the Anthropic SDK — text, streaming, and vision
+- **Image generation** — OpenAI DALL-E 3 (`/api/make/image`)
+- **Database** — Supabase (PostgreSQL, per-user rows with Row Level Security)
 - **Styling** — CSS custom properties + inline styles (no CSS framework)
 - **Fonts** — Playfair Display, Cormorant Garamond, DM Mono
 
@@ -50,39 +51,43 @@ Create `strung/.env.local`:
 ANTHROPIC_API_KEY=your_anthropic_api_key
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+OPENAI_API_KEY=your_openai_api_key   # required for DALL-E 3 images (/api/make/image returns 501 without it)
 ```
 
 ### 3. Set up the database
 
-Run the following SQL in your Supabase dashboard:
+Run the following SQL in your Supabase dashboard (SQL Editor → New query). Every table is per-user: each row carries a `user_id`, the API filters every query by it, and Row Level Security enforces it at the database layer.
 
 ```sql
-create table beads (
-  id uuid default gen_random_uuid() primary key,
+create table public.beads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
   type text not null,
-  colour text not null,
+  colour text not null default '',
   hex text not null default '#888888',
-  size text not null,
-  quantity integer not null default 0,
+  size text not null default '',
+  quantity integer not null default 1,
   shape text,
   notes text,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
-create table findings (
-  id uuid default gen_random_uuid() primary key,
+create table public.findings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
   name text not null,
   type text not null,
   metal text not null,
   size text,
-  quantity integer not null default 0,
+  quantity integer not null default 1,
   notes text,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
-create table designs (
-  id uuid default gen_random_uuid() primary key,
+create table public.designs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
   title text not null,
   type text,
   difficulty text,
@@ -90,9 +95,57 @@ create table designs (
   blueprint jsonb not null,
   notes text,
   status text not null default 'saved',
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
+
+create table public.builds (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  title text not null,
+  design jsonb not null,
+  status text not null default 'draft',
+  current_step integer not null default 0,
+  started_at timestamptz,
+  completed_at timestamptz,
+  time_taken_minutes integer,
+  notes text,
+  rating integer,
+  created_at timestamptz not null default now()
+);
+
+create index beads_user_id_idx on public.beads (user_id);
+create index findings_user_id_idx on public.findings (user_id);
+create index designs_user_id_idx on public.designs (user_id);
+create index builds_user_id_idx on public.builds (user_id);
+
+alter table public.beads enable row level security;
+alter table public.findings enable row level security;
+alter table public.designs enable row level security;
+alter table public.builds enable row level security;
+
+-- Each user can only touch their own rows.
+create policy "beads_select_own"    on public.beads    for select using (auth.uid() = user_id);
+create policy "beads_insert_own"    on public.beads    for insert with check (auth.uid() = user_id);
+create policy "beads_update_own"    on public.beads    for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "beads_delete_own"    on public.beads    for delete using (auth.uid() = user_id);
+
+create policy "findings_select_own" on public.findings for select using (auth.uid() = user_id);
+create policy "findings_insert_own" on public.findings for insert with check (auth.uid() = user_id);
+create policy "findings_update_own" on public.findings for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "findings_delete_own" on public.findings for delete using (auth.uid() = user_id);
+
+create policy "designs_select_own"  on public.designs  for select using (auth.uid() = user_id);
+create policy "designs_insert_own"  on public.designs  for insert with check (auth.uid() = user_id);
+create policy "designs_update_own"  on public.designs  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "designs_delete_own"  on public.designs  for delete using (auth.uid() = user_id);
+
+create policy "builds_select_own"   on public.builds   for select using (auth.uid() = user_id);
+create policy "builds_insert_own"   on public.builds   for insert with check (auth.uid() = user_id);
+create policy "builds_update_own"   on public.builds   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "builds_delete_own"   on public.builds   for delete using (auth.uid() = user_id);
 ```
+
+> **Migrating from an earlier version of this README?** The old SQL had no `user_id` column and no RLS — the API filters every query by `user_id`, so tables created from it will not work. Recreate them (or add the column and policies) before using the app.
 
 ### 4. Run the dev server
 
