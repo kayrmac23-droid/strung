@@ -140,6 +140,10 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   transition: border-color 0.2s;
 }
 .select-base:focus { border-color: var(--silver); }
+/* iOS zooms any select with a sub-16px font on focus — bump it on small screens */
+@media (max-width: 640px) {
+  .select-base { font-size: 16px; letter-spacing: 0.02em; }
+}
 
 .label {
   display: block; font-family: var(--font-mono);
