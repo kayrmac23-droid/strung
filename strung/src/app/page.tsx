@@ -90,7 +90,7 @@ export default function Home() {
                 { step:'03', icon:'◇', title:'Build from the blueprint', body:'Follow step-by-step build mode, save reflections, and track progress in your journal.' },
               ].map(s => (
                 <div key={s.step} style={{padding:'36px 32px',background:'var(--surface)',border:'1px solid var(--border)'}}>
-                  <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.2em',color:'var(--muted2)',marginBottom:20}}>{s.step}</div>
+                  <div style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.2em',color:'var(--muted2)',marginBottom:20}}>{s.step}</div>
                   <div style={{fontSize:22,color:'var(--silver)',marginBottom:12,animation:'shimmer 4s ease-in-out infinite'}}>{s.icon}</div>
                   <h3 style={{fontFamily:'var(--font-display)',fontSize:19,color:'var(--cream)',fontWeight:400,marginBottom:10}}>{s.title}</h3>
                   <p style={{fontSize:15,color:'var(--text2)',lineHeight:1.6}}>{s.body}</p>
@@ -119,7 +119,7 @@ export default function Home() {
               onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--surface2)'}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface)'}}>
                 <div style={{fontSize:22,color:f.color,animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
-                <div style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--muted2)'}}>{f.label}</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--muted2)'}}>{f.label}</div>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)'}}>{f.title}</h3>
                 <p style={{fontSize:14,color:'var(--text2)',lineHeight:1.6,flex:1}}>{f.desc}</p>
                 <span style={{color:'var(--silver)',fontSize:15,alignSelf:'flex-end',marginTop:6}}>→</span>

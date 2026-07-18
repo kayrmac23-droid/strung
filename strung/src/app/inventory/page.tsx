@@ -531,8 +531,8 @@ export default function InventoryPage() {
                           {sliders.map(sl=>(
                             <div key={sl.label}>
                               <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase'}}>{sl.label}</span>
-                                <span style={{fontFamily:'var(--font-mono)',fontSize:9,color:'var(--muted2)'}}>{sl.value}{sl.unit}</span>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase'}}>{sl.label}</span>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted2)'}}>{sl.value}{sl.unit}</span>
                               </div>
                               <div style={{position:'relative',height:18}}>
                                 <div style={{position:'absolute',top:7,left:0,right:0,height:4,borderRadius:2,background:sl.bg}}/>

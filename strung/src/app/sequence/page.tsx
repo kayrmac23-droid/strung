@@ -100,7 +100,7 @@ function BeadSequenceStrip({ pattern, sequence }: { pattern: string; sequence: S
                   flexShrink: 0,
                 }} />
                 <span style={{
-                  fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--muted)',
+                  fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)',
                   letterSpacing: '0.06em'
                 }}>{label}</span>
               </div>
@@ -121,7 +121,7 @@ function PaletteSwatch({ entry }: { entry: PaletteEntry }) {
         boxShadow: `0 4px 16px ${entry.hex}40`,
       }} />
       <div>
-        <span className="mono" style={{ fontSize: 9, color: 'var(--moonstone)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        <span className="mono" style={{ fontSize: 11, color: 'var(--moonstone)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
           {entry.role}
         </span>
         <p style={{ color: 'var(--cream)', fontSize: 14, fontFamily: 'var(--font-display)', fontWeight: 400, marginTop: 2 }}>
@@ -450,7 +450,7 @@ export default function SequencePage() {
                           )}
                           <div>
                             <p style={{ color: 'var(--cream)', fontSize: 14 }}>{m.beadName}</p>
-                            <span className="mono" style={{ fontSize: 9, color: 'var(--moonstone)', letterSpacing: '0.08em' }}>
+                            <span className="mono" style={{ fontSize: 11, color: 'var(--moonstone)', letterSpacing: '0.08em' }}>
                               {m.role}
                             </span>
                           </div>

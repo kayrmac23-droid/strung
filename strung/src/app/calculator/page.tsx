@@ -455,7 +455,7 @@ export default function CalculatorPage() {
 
             {/* Common lengths */}
             <div className="card fade-up-3" style={{ padding: '24px 28px' }}>
-              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 9 }}>Reference</p>
+              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 18,
@@ -490,7 +490,7 @@ export default function CalculatorPage() {
 
             {/* Bead size guide */}
             <div className="card fade-up-3" style={{ padding: '24px 28px' }}>
-              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 9 }}>Reference</p>
+              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 18,

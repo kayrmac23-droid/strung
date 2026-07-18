@@ -118,9 +118,9 @@ export default function GuidesPage() {
                 }}>
                   <span style={{fontSize:16,color:'var(--silver)',marginTop:2,flexShrink:0}}>{g.icon}</span>
                   <div>
-                    <p style={{fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--muted2)'}}>{g.category}</p>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--muted2)'}}>{g.category}</p>
                     <p style={{fontFamily:'var(--font-display)',fontSize:14,color:'var(--cream)',marginTop:2}}>{g.title}</p>
-                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3,fontFamily:'var(--font-mono)',fontSize:9,color:'var(--muted)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3,fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted)'}}>
                       <span style={{color:diffColor(g.difficulty),fontSize:7}}>⬤</span>
                       <span>{g.difficulty}</span><span>·</span><span>{g.time}</span>
                     </div>
