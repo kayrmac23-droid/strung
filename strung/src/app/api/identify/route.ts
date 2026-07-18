@@ -18,30 +18,6 @@ const MAX_ITEMS_PER_KIND = 12
 // cap exists to fail with a clear message rather than an opaque 413.
 const MAX_BASE64_CHARS = 4 * 1024 * 1024
 
-const BEAD_PROMPT = `You are an expert jewellery bead identifier. Analyse this image and identify the bead shown.
-Return ONLY valid JSON with exactly these fields:
-{
-  "name": "descriptive name e.g. Labradorite teardrop briolette",
-  "type": "one of: gemstone, crystal, glass, seed, metal, pearl, resin, other",
-  "colour": "colour description e.g. Steel blue with iridescent flash",
-  "hex": "best matching hex code e.g. #7a9ab8",
-  "size": "one of: seed, small, medium, large, statement",
-  "shape": "one of: round, rondelle, briolette, teardrop, faceted, chip, tube, oval, square, other",
-  "notes": "any helpful notes, or empty string"
-}
-No markdown, no backticks, ONLY the JSON object.`
-
-const FINDING_PROMPT = `You are an expert jewellery findings identifier. Analyse this image and identify the finding shown.
-Return ONLY valid JSON with exactly these fields:
-{
-  "name": "descriptive name e.g. 20mm sterling silver hoop ear wire",
-  "type": "one of: ear_wire, head_pin, eye_pin, jump_ring, clasp, chain, wire, crimp, connector, other",
-  "metal": "one of: silver, gold_filled, gold, copper, brass, oxidised, other",
-  "size": "size or gauge e.g. 21g, 6mm, 0.8mm, or empty string if unclear",
-  "notes": "any helpful notes, or empty string"
-}
-No markdown, no backticks, ONLY the JSON object.`
-
 const MULTI_PROMPT = `You are an expert jewellery bead and findings identifier. This photo may contain MULTIPLE distinct beads and findings — strands, groups, or a mixed lot.
 
 Rules:
@@ -88,8 +64,6 @@ export async function POST(req: NextRequest) {
   }
   const imageData = body.imageData
   const mediaType = body.mediaType
-  const kind = body.kind === 'finding' ? 'finding' : 'bead'
-  const mode = body.mode === 'multi' ? 'multi' : 'single'
 
   if (!imageData || typeof imageData !== 'string') {
     return Response.json({ error: 'Missing image data' }, { status: 400 })
@@ -105,7 +79,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: mode === 'multi' ? 3000 : 512,
+      max_tokens: 3000,
       temperature: 0.2,
       messages: [{
         role: 'user',
@@ -114,17 +88,14 @@ export async function POST(req: NextRequest) {
             type: 'image',
             source: { type: 'base64', media_type: resolvedMime, data: imageData },
           },
-          { type: 'text', text: mode === 'multi' ? MULTI_PROMPT : kind === 'finding' ? FINDING_PROMPT : BEAD_PROMPT },
+          { type: 'text', text: MULTI_PROMPT },
         ],
       }],
     })
 
     if (response.stop_reason === 'max_tokens') {
-      console.error('identify error: response truncated at max_tokens, mode:', mode)
-      const message = mode === 'multi'
-        ? 'The response was cut off — try photographing fewer groups at once'
-        : 'The AI response was cut off — try again'
-      return Response.json({ error: message }, { status: 502 })
+      console.error('identify error: response truncated at max_tokens')
+      return Response.json({ error: 'The response was cut off — try photographing fewer groups at once' }, { status: 502 })
     }
     const block = response.content.find(b => b.type === 'text')
     const text = block?.type === 'text' ? block.text : ''
@@ -141,23 +112,20 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: 'Could not read the AI response — try again' }, { status: 502 })
     }
 
-    if (mode === 'multi') {
-      const parsed = (result ?? {}) as { beads?: unknown; findings?: unknown }
-      const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
-        .slice(0, MAX_ITEMS_PER_KIND)
-        .flatMap(item => {
-          const bead = normaliseBead(item)
-          return bead ? [{ ...bead, confidence: itemConfidence(item) }] : []
-        })
-      const findings = (Array.isArray(parsed.findings) ? parsed.findings : [])
-        .slice(0, MAX_ITEMS_PER_KIND)
-        .flatMap(item => {
-          const finding = normaliseFinding(item)
-          return finding ? [{ ...finding, confidence: itemConfidence(item) }] : []
-        })
-      return Response.json({ beads, findings })
-    }
-    return Response.json(result)
+    const parsed = (result ?? {}) as { beads?: unknown; findings?: unknown }
+    const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
+      .slice(0, MAX_ITEMS_PER_KIND)
+      .flatMap(item => {
+        const bead = normaliseBead(item)
+        return bead ? [{ ...bead, confidence: itemConfidence(item) }] : []
+      })
+    const findings = (Array.isArray(parsed.findings) ? parsed.findings : [])
+      .slice(0, MAX_ITEMS_PER_KIND)
+      .flatMap(item => {
+        const finding = normaliseFinding(item)
+        return finding ? [{ ...finding, confidence: itemConfidence(item) }] : []
+      })
+    return Response.json({ beads, findings })
   } catch (e: unknown) {
     console.error('identify error:', e)
     const status = e instanceof Anthropic.APIError ? 502 : 500
