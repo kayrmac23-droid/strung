@@ -355,7 +355,7 @@ export default function MakePage() {
                           padding: '24px 16px 10px',
                           background: 'linear-gradient(to top, rgba(9,10,13,0.8) 0%, transparent 100%)'
                         }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
                             AI RENDER · FOR REFERENCE ONLY
                           </span>
                         </div>
@@ -430,7 +430,7 @@ export default function MakePage() {
                           <p style={{ color: 'var(--text2)', fontSize: 14, lineHeight: 1.4 }}>{s.instruction}</p>
                           {s.technique && (
                             <span style={{
-                              fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.1em',
+                              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em',
                               color: 'var(--moonstone)', textTransform: 'uppercase', marginTop: 3, display: 'block'
                             }}>{s.technique}</span>
                           )}

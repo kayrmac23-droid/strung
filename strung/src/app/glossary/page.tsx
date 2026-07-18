@@ -93,7 +93,7 @@ export default function GlossaryPage() {
                   padding:'16px 20px',background:'none',border:'none',cursor:'pointer',textAlign:'left'
                 }}>
                   <span style={{
-                    fontFamily:'var(--font-mono)',fontSize:9,letterSpacing:'0.1em',
+                    fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.1em',
                     textTransform:'uppercase',color:catColours[t.cat]||'var(--muted)',
                     flexShrink:0,minWidth:80
                   }}>{t.cat}</span>
