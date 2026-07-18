@@ -14,7 +14,7 @@ function pickFields(data: Record<string, unknown>, fields: readonly string[]) {
 
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
-  if (!user) return NextResponse.json({ beads: [], findings: [] })
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getAuthenticatedClient(getToken(req))
   const [beads, findings] = await Promise.all([
     supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),

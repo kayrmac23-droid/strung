@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
@@ -117,6 +118,7 @@ export default function CoDesignPage() {
   const [findings, setFindings] = useState<FindingItem[]>([])
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [signedOut, setSignedOut] = useState(false)
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -125,6 +127,11 @@ export default function CoDesignPage() {
   useEffect(() => {
     ;(async () => {
       const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      if (res.status === 401) {
+        setSignedOut(true)
+        return
+      }
+      setSignedOut(false)
       const d = await res.json()
       setBeads(d.beads || [])
       setFindings(d.findings || [])
@@ -269,6 +276,14 @@ export default function CoDesignPage() {
             <h1 className="fade-up-1" style={{ fontSize: 44, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px' }}>Design Studio</h1>
             <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>Chat with your AI co-designer. Describe what you&apos;re imagining and build a blueprint together.</p>
           </header>
+
+          {signedOut && (
+            <div style={{ padding: '12px 18px', background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 24 }}>
+              <span style={{ fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>
+                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to load your stash.
+              </span>
+            </div>
+          )}
 
           <div className="codesign-grid">
 

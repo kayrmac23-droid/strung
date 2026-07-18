@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import Nav from '@/components/Nav'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
@@ -112,6 +113,7 @@ export default function InventoryPage() {
   const [reviewBeads, setReviewBeads] = useState<ReviewBead[]>([])
   const [reviewFindings, setReviewFindings] = useState<ReviewFinding[]>([])
   const [savingAll, setSavingAll] = useState(false)
+  const [signedOut, setSignedOut] = useState(false)
 
   const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
@@ -121,6 +123,13 @@ export default function InventoryPage() {
     setLoading(true)
     try {
       const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      if (res.status === 401) {
+        setSignedOut(true)
+        setBeads([])
+        setFindings([])
+        return
+      }
+      setSignedOut(false)
       const data = await res.json()
       setBeads(data.beads || [])
       setFindings(data.findings || [])
@@ -351,6 +360,14 @@ export default function InventoryPage() {
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>My Stash</h1>
             <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Log your beads and findings. The AI reads this to generate designs from what you actually own.</p>
           </header>
+
+          {signedOut && (
+            <div style={{padding:'12px 18px',background:'var(--surface)',border:'1px solid var(--border)',marginBottom:24}}>
+              <span style={{fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>
+                <Link href="/account" style={{color:'var(--moonstone)',textDecoration:'underline'}}>Sign in</Link> to load your stash.
+              </span>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="fade-up-2 stats-grid-4" style={{marginBottom:32}}>

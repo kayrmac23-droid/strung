@@ -40,6 +40,7 @@ export default function MakePage() {
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [findings, setFindings] = useState<FindingItem[]>([])
   const [stashLoaded, setStashLoaded] = useState(false)
+  const [signedOut, setSignedOut] = useState(false)
 
   const [pieceType, setPieceType] = useState('Any')
   const [mood, setMood] = useState('')
@@ -54,6 +55,12 @@ export default function MakePage() {
   useEffect(() => {
     ;(async () => {
       const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      if (res.status === 401) {
+        setSignedOut(true)
+        setStashLoaded(true)
+        return
+      }
+      setSignedOut(false)
       const d = await res.json()
       setBeads(d.beads || [])
       setFindings(d.findings || [])
@@ -173,8 +180,20 @@ export default function MakePage() {
             </p>
           </header>
 
+          {/* Signed-out prompt */}
+          {signedOut && (
+            <div className="fade-up-2" style={{
+              padding: '12px 18px', background: 'var(--surface)',
+              border: '1px solid var(--border)', marginBottom: 24
+            }}>
+              <span style={{ fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>
+                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to load your stash.
+              </span>
+            </div>
+          )}
+
           {/* Stash status */}
-          {stashLoaded && (
+          {stashLoaded && !signedOut && (
             <div className="fade-up-2" style={{
               display: 'flex', gap: 20, padding: '12px 18px',
               background: 'var(--surface)', border: '1px solid var(--border)',
@@ -260,10 +279,12 @@ export default function MakePage() {
               </div>
             </div>
             <button className="btn-silver" style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
-              onClick={generate} disabled={loading}>
+              onClick={generate} disabled={loading || signedOut}>
               {loading
                 ? <><span className="spinner" />Reading stash &amp; designing…</>
-                : '◉ Design Something'}
+                : signedOut
+                  ? 'Sign in to design'
+                  : '◉ Design Something'}
             </button>
           </div>
 
