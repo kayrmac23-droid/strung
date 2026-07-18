@@ -54,6 +54,9 @@ export default function BuildPage() {
   const [error, setError] = useState('')
   const [notes, setNotes] = useState('')
   const [rating, setRating] = useState<string>('')
+  const [showStashPrompt, setShowStashPrompt] = useState(false)
+  const [decrementing, setDecrementing] = useState(false)
+  const [stashNote, setStashNote] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -96,8 +99,8 @@ export default function BuildPage() {
 
   const activeStep = steps[activeStepIndex]
 
-  async function patchBuild(updates: Partial<Build>) {
-    if (!build) return
+  async function patchBuild(updates: Partial<Build>): Promise<Build | null> {
+    if (!build) return null
     setSaving(true)
     setError('')
     try {
@@ -111,11 +114,56 @@ export default function BuildPage() {
       setBuild(data)
       if (typeof data.notes === 'string') setNotes(data.notes)
       if (typeof data.rating === 'string' || data.rating === null) setRating(data.rating || '')
+      return data
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to save'
       setError(message)
+      return null
     } finally {
       setSaving(false)
+    }
+  }
+
+  // After completion, optionally subtract the exact materials used (design
+  // components hold stash item names + quantities) from the stash. Best-effort:
+  // completion has already succeeded, so any failure here is swallowed.
+  async function decrementStash() {
+    if (!build) return
+    setDecrementing(true)
+    try {
+      const authHeaders = await getAuthHeaders({ 'Content-Type': 'application/json' })
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      if (!res.ok) throw new Error('Could not load stash')
+      const inv = await res.json()
+      const beads: Array<{ id: string; name: string; quantity: number }> = inv.beads || []
+      const findings: Array<{ id: string; name: string; quantity: number }> = inv.findings || []
+      const norm = (s: string) => s.trim().toLowerCase()
+
+      await Promise.all((build.design.components || []).map(async (c) => {
+        const used = Number(c.quantity) || 0
+        if (!c.item || used <= 0) return
+        const target = norm(c.item)
+        const bead = beads.find(b => norm(b.name) === target)
+        const finding = bead ? undefined : findings.find(f => norm(f.name) === target)
+        const match = bead
+          ? { table: 'beads' as const, row: bead }
+          : finding
+            ? { table: 'findings' as const, row: finding }
+            : null
+        if (!match) return // no name match — skip silently
+        const newQty = Math.max(0, (Number(match.row.quantity) || 0) - used)
+        await fetch('/api/inventory', {
+          method: 'PATCH',
+          headers: authHeaders,
+          body: JSON.stringify({ table: match.table, id: match.row.id, data: { quantity: newQty } }),
+        })
+      }))
+      setStashNote('Stash updated — used materials subtracted.')
+    } catch {
+      setStashNote('Could not update your stash, but your finished build is saved.')
+    } finally {
+      setDecrementing(false)
+      setShowStashPrompt(false)
     }
   }
 
@@ -138,7 +186,7 @@ export default function BuildPage() {
     const startedAtMs = build.started_at ? new Date(build.started_at).getTime() : Date.now()
     const elapsedMs = Math.max(0, Date.now() - startedAtMs)
     const minutes = Math.max(1, Math.round(elapsedMs / 60000))
-    await patchBuild({
+    const updated = await patchBuild({
       status: 'completed',
       current_step: Math.max(totalSteps - 1, 0),
       completed_at: new Date().toISOString(),
@@ -146,6 +194,10 @@ export default function BuildPage() {
       notes: notes.trim() || null,
       rating: rating || null,
     })
+    if (updated?.status === 'completed' && (build.design.components?.length ?? 0) > 0) {
+      setStashNote('')
+      setShowStashPrompt(true)
+    }
   }
 
   async function saveReflection() {
@@ -267,6 +319,22 @@ export default function BuildPage() {
               )}
             </div>
           </div>
+
+          {showStashPrompt && (
+            <div className="card" style={{ padding: 20, marginBottom: 16, borderColor: 'var(--silver)' }}>
+              <p style={{ color: 'var(--cream)', fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 4 }}>Nice work — you finished it.</p>
+              <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 14 }}>Subtract the materials you used from your stash?</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn-silver" disabled={decrementing} onClick={decrementStash}>
+                  {decrementing ? <><span className="spinner" />Updating…</> : 'Yes, subtract'}
+                </button>
+                <button className="btn-outline" disabled={decrementing} onClick={() => setShowStashPrompt(false)}>Not now</button>
+              </div>
+            </div>
+          )}
+          {stashNote && (
+            <p style={{ color: 'var(--text2)', fontFamily: 'var(--font-mono)', fontSize: 12, marginBottom: 16, letterSpacing: '0.06em' }}>{stashNote}</p>
+          )}
 
           <div className="card" style={{ padding: 24, marginBottom: 16 }}>
             <h3 style={{
