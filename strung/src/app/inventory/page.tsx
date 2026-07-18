@@ -462,7 +462,7 @@ export default function InventoryPage() {
 
           {/* Add form */}
           {showForm && (
-            <div className="card fade-up" style={{padding:28,marginBottom:24,border:'1px solid var(--silver)',position:'relative'}}>
+            <div className="card fade-up stash-modal">
               <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
@@ -631,7 +631,7 @@ export default function InventoryPage() {
 
           {/* Quick add */}
           {showQuickAdd && (
-            <div className="card fade-up" style={{padding:28,marginBottom:24,border:'1px solid var(--silver)',position:'relative'}}>
+            <div className="card fade-up stash-modal">
               <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
               <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>{quickAddSource==='photo'?'Identify from photo':'Quick add'}</h3>
               {quickAddSource==='photo' ? (
@@ -667,7 +667,7 @@ export default function InventoryPage() {
                       <label className="label" style={{marginBottom:8}}>Beads</label>
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
                         {reviewBeads.map((b,i)=>(
-                          <div key={i} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'var(--surface)',border:'1px solid var(--border)'}}>
+                          <div key={i} className="stash-row">
                             <div style={{width:22,height:22,borderRadius:'50%',background:b.hex||'#7a9ab8',border:'1px solid rgba(255,255,255,0.12)',flexShrink:0}}/>
                             <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                             {b.confidence && b.confidence!=='certain' && (
@@ -691,7 +691,7 @@ export default function InventoryPage() {
                       <label className="label" style={{marginBottom:8}}>Findings</label>
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
                         {reviewFindings.map((f,i)=>(
-                          <div key={i} style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',padding:'10px 12px',background:'var(--surface)',border:'1px solid var(--border)'}}>
+                          <div key={i} className="stash-row">
                             <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
                             {f.type && <span className="tag">{f.type.replace(/_/g,' ')}</span>}
                             {f.metal && <span className="tag">{f.metal.replace(/_/g,' ')}</span>}
@@ -731,7 +731,7 @@ export default function InventoryPage() {
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredBeads.map(b => (
-                  <div key={b.id} className="card" style={{padding:'20px 22px',position:'relative'}}>
+                  <div key={b.id} className="card stash-card" style={{position:'relative'}}>
                     {editingId === b.id ? (
                       <div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
@@ -826,7 +826,7 @@ export default function InventoryPage() {
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredFindings.map(f => (
-                  <div key={f.id} className="card" style={{padding:'20px 22px'}}>
+                  <div key={f.id} className="card stash-card">
                     {editingId === f.id ? (
                       <div>
                         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
