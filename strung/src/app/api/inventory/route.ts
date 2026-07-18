@@ -14,7 +14,7 @@ function pickFields(data: Record<string, unknown>, fields: readonly string[]) {
 
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
-  if (!user) return NextResponse.json({ beads: [], findings: [] })
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const supabase = getAuthenticatedClient(getToken(req))
   const [beads, findings] = await Promise.all([
     supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -35,8 +35,23 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { table, data } = body
   if (!['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
-  if (!data || typeof data !== 'object') return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
   const allowed = table === 'beads' ? BEAD_FIELDS : FINDING_FIELDS
+
+  // Bulk insert: a single request with an array of rows (used by "Save all").
+  if (Array.isArray(data)) {
+    if (data.length === 0) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+    if (data.length > 100) return NextResponse.json({ error: 'Too many rows (max 100)' }, { status: 400 })
+    if (!data.every(row => row && typeof row === 'object')) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+    const rows = data.map(row => ({ ...pickFields(row as Record<string, unknown>, allowed), user_id: user.id }))
+    const { data: result, error } = await supabase.from(table).insert(rows).select()
+    if (error) {
+      console.error('inventory POST error:', error)
+      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    }
+    return NextResponse.json(result)
+  }
+
+  if (!data || typeof data !== 'object') return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
   const sanitized = pickFields(data as Record<string, unknown>, allowed)
   const { data: result, error } = await supabase.from(table).insert({ ...sanitized, user_id: user.id }).select().single()
   if (error) {
