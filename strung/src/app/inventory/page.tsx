@@ -317,18 +317,25 @@ export default function InventoryPage() {
   async function saveAll() {
     setSavingAll(true); setParseError('')
     try {
-      const rows: Array<{ table: 'beads' | 'findings'; data: BeadItem | FindingItem }> = [
-        ...reviewBeads.map(data => ({ table: 'beads' as const, data })),
-        ...reviewFindings.map(data => ({ table: 'findings' as const, data })),
-      ]
-      for (const { table, data } of rows) {
-        const res = await fetch('/api/inventory', {
-          method: 'POST',
-          headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ table, data }),
-        })
-        const result = await res.json()
-        if (!res.ok || result.error) throw new Error(result.error || `Save failed (${res.status})`)
+      const headers = await getAuthHeaders({ 'Content-Type': 'application/json' })
+      // One bulk request per table — two at most — instead of a POST per row.
+      const jobs: Array<{ table: 'beads' | 'findings'; rows: Array<BeadItem | FindingItem> }> = []
+      if (reviewBeads.length > 0) jobs.push({ table: 'beads', rows: reviewBeads })
+      if (reviewFindings.length > 0) jobs.push({ table: 'findings', rows: reviewFindings })
+      if (jobs.length === 0) { closeQuickAdd(); return }
+
+      const responses = await Promise.all(
+        jobs.map(({ table, rows }) =>
+          fetch('/api/inventory', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ table, data: rows }),
+          })
+        )
+      )
+      for (const res of responses) {
+        const result = await res.json().catch(() => null)
+        if (!res.ok || result?.error) throw new Error(result?.error || `Save failed (${res.status})`)
       }
       await load()
       closeQuickAdd()
