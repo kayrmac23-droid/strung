@@ -15,6 +15,24 @@ export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json([])
   const supabase = getAuthenticatedClient(getToken(req))
+  const id = new URL(req.url).searchParams.get('id')
+
+  // ?id= returns a single build (or 404) instead of the full list.
+  if (id) {
+    const { data, error } = await supabase
+      .from('builds')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('id', id)
+      .maybeSingle()
+    if (error) {
+      console.error('builds GET error:', error)
+      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    }
+    if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json(data)
+  }
+
   const { data, error } = await supabase
     .from('builds')
     .select('*')

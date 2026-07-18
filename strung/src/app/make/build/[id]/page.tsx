@@ -66,10 +66,9 @@ export default function BuildPage() {
       setLoading(true)
       setError('')
       try {
-        const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
-        const rows = await res.json()
-        const record = Array.isArray(rows) ? rows.find((row) => row.id === id) : null
-        if (!record) throw new Error('Build not found')
+        const res = await fetch(`/api/builds?id=${encodeURIComponent(id)}`, { headers: await getAuthHeaders() })
+        const record = await res.json()
+        if (!res.ok || record?.error || !record?.id) throw new Error(record?.error || 'Build not found')
         if (cancelled) return
         setBuild(record)
         setNotes(record.notes || '')

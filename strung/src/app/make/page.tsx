@@ -78,8 +78,6 @@ export default function MakePage() {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          beads,
-          findings,
           pieceType: pieceType === 'Any' ? '' : pieceType,
           mood,
           timeAvailable,
@@ -106,8 +104,6 @@ export default function MakePage() {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          beads,
-          findings,
           pieceType: pieceType === 'Any' ? '' : pieceType,
           mood,
           timeAvailable,

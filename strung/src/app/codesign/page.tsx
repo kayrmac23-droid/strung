@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
-import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -114,8 +113,6 @@ export default function CoDesignPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
-  const [beads, setBeads] = useState<BeadItem[]>([])
-  const [findings, setFindings] = useState<FindingItem[]>([])
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [signedOut, setSignedOut] = useState(false)
@@ -126,15 +123,8 @@ export default function CoDesignPage() {
 
   useEffect(() => {
     ;(async () => {
-      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
-      if (res.status === 401) {
-        setSignedOut(true)
-        return
-      }
-      setSignedOut(false)
-      const d = await res.json()
-      setBeads(d.beads || [])
-      setFindings(d.findings || [])
+      const { getSession } = await import('@/lib/authClient')
+      setSignedOut(!(await getSession()))
     })().catch(() => {})
   }, [])
 
@@ -200,8 +190,6 @@ export default function CoDesignPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           messages: next.map(m => ({ role: m.role, content: m.content })),
-          beads,
-          findings,
         }),
       })
 
