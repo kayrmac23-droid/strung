@@ -36,17 +36,29 @@ export async function POST(req: NextRequest) {
     pieceType,
     mood,
     timeAvailable,
+    previousDesign,
+    adjustment,
   }: {
     beads: StashBead[]
     findings: StashFinding[]
     pieceType?: string
     mood?: string
     timeAvailable?: TimeAvailable
+    previousDesign?: unknown
+    adjustment?: unknown
   } = await req.json()
 
   if (!Array.isArray(beads) || !Array.isArray(findings)) {
     return NextResponse.json({ error: 'Invalid stash data' }, { status: 400 })
   }
+  if (adjustment !== undefined && (typeof adjustment !== 'string' || adjustment.length > 300)) {
+    return NextResponse.json({ error: 'Invalid adjustment' }, { status: 400 })
+  }
+  if (previousDesign !== undefined && (typeof previousDesign !== 'object' || previousDesign === null || Array.isArray(previousDesign))) {
+    return NextResponse.json({ error: 'Invalid previous design' }, { status: 400 })
+  }
+  const isRefine = typeof adjustment === 'string' && adjustment.trim().length > 0
+    && typeof previousDesign === 'object' && previousDesign !== null && !Array.isArray(previousDesign)
   if (beads.length > 200 || findings.length > 200) {
     return NextResponse.json({ error: 'Stash too large' }, { status: 400 })
   }
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
   }
   const selectedTime = timeAvailable ? timeMap[timeAvailable] : '1 hour'
 
-  const prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
+  let prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
 
 THEIR STASH:
 ${stashSummary}
@@ -122,6 +134,16 @@ Return ONLY valid JSON, no markdown, no backticks:
     }
   ]
 }`
+
+  if (isRefine) {
+    prompt += `
+
+The maker already has this design:
+${JSON.stringify(previousDesign)}
+
+Apply ONLY this requested change: "${(adjustment as string).trim()}"
+Produce a revised version of the SAME design that applies this change while keeping everything else as stable as possible — keep the title, overall structure, and any unaffected components and steps unchanged unless the change requires otherwise. Return the full revised design in the exact same JSON schema described above, ONLY valid JSON, no markdown, no backticks.`
+  }
 
   try {
     const response = await client.messages.create({
