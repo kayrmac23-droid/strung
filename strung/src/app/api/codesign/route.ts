@@ -110,11 +110,13 @@ export async function POST(req: NextRequest) {
 
 Assume basic findings are available even if not listed (jump rings, ear wires, head pins, clasps, standard wire, crimps). If the stash includes findings of type "statement_component", treat those as primary focal structures (like earring frames or chandelier bases) and design around them first.${stashContext}
 
-When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact format with no markdown fences:
+When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact JSON format with no markdown fences:
 
 <blueprint>
-{"title":"name","tagline":"one evocative sentence","type":"earrings/necklace/bracelet/etc","difficulty":"Beginner/Intermediate/Advanced","time":"e.g. 2–3 hours","overview":"2–3 sentence concept","components":[{"part":"component name","material":"specific material","dimensions":"approx size","note":"construction note"}],"steps":["step 1","step 2","step 3","step 4","step 5"],"techniques":["technique1","technique2"],"tools":["tool1","tool2"],"variations":["variation1","variation2"],"tips":["tip1","tip2"]}
+{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
 </blueprint>
+
+Each step's "technique" must be null or from this exact list only: "Wrapped Loop", "Simple Loop", "Crimping", "Wire Coiling", "Wire Wrapping", "Jump Ring", "Briolette Wrap", "Stringing", "Knotting".
 
 Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 
@@ -122,7 +124,7 @@ Keep your conversational text concise and engaging. After generating a blueprint
   try {
     stream = await client.messages.stream({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+      max_tokens: 3000,
       system,
       messages,
     })

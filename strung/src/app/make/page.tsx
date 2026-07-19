@@ -53,6 +53,7 @@ export default function MakePage() {
   const [error, setError] = useState('')
   const [adjustment, setAdjustment] = useState('')
   const [refining, setRefining] = useState(false)
+  const [recentTitles, setRecentTitles] = useState<string[]>([])
 
   useEffect(() => {
     ;(async () => {
@@ -81,11 +82,15 @@ export default function MakePage() {
           pieceType: pieceType === 'Any' ? '' : pieceType,
           mood,
           timeAvailable,
+          recentTitles,
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setDesign(data)
+      if (typeof data.title === 'string' && data.title) {
+        setRecentTitles(prev => [data.title, ...prev.filter(t => t !== data.title)].slice(0, 5))
+      }
       fetchImage(data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed')

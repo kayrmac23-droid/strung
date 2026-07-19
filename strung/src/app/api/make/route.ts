@@ -30,6 +30,76 @@ type TimeAvailable = '15min' | '1hour' | 'afternoon'
 const VALID_PIECE_TYPES = ['earrings', 'necklace', 'bracelet', 'pendant', 'ring', 'anklet', 'any']
 const VALID_TIME: TimeAvailable[] = ['15min', '1hour', 'afternoon']
 
+const ALLOWED_TECHNIQUES = ['Wrapped Loop', 'Simple Loop', 'Crimping', 'Wire Coiling', 'Wire Wrapping', 'Jump Ring', 'Briolette Wrap', 'Stringing', 'Knotting']
+// Loose terms that mark a component as a basic finding the maker is assumed to
+// own (the prompt tells the model to assume these), so they need not be in stash.
+const BASIC_FINDING_TERMS = ['jump ring', 'ear wire', 'earwire', 'head pin', 'headpin', 'eye pin', 'eyepin', 'clasp', 'crimp', 'beading wire', 'wire']
+
+function parseDesignText(text: string): unknown {
+  const clean = text.replace(/```json|```/g, '').trim()
+  try {
+    return JSON.parse(clean)
+  } catch {
+    const first = clean.indexOf('{')
+    const last = clean.lastIndexOf('}')
+    if (first === -1 || last === -1 || last <= first) throw new Error('No JSON object found in response')
+    return JSON.parse(clean.slice(first, last + 1))
+  }
+}
+
+// Validate a parsed design against the real stash. Returns a list of
+// human-readable violation strings (empty === valid).
+function validateDesign(design: unknown, beads: StashBead[], findings: StashFinding[]): string[] {
+  const violations: string[] = []
+  const d = (design && typeof design === 'object' ? design : {}) as {
+    components?: unknown
+    steps?: unknown
+  }
+
+  // Canonical stash: lowercased name -> owned quantity, plus display names.
+  const owned = new Map<string, number>()
+  const display = new Map<string, string>()
+  for (const b of [...beads, ...findings]) {
+    if (!b.name) continue
+    const key = b.name.toLowerCase()
+    owned.set(key, (owned.get(key) ?? 0) + (Number(b.quantity) || 0))
+    if (!display.has(key)) display.set(key, b.name)
+  }
+
+  const used = new Map<string, number>()
+  const components = Array.isArray(d.components) ? d.components : []
+  for (const raw of components) {
+    const c = (raw && typeof raw === 'object' ? raw : {}) as { item?: unknown; quantity?: unknown }
+    const item = typeof c.item === 'string' ? c.item.trim() : ''
+    if (!item) continue
+    const key = item.toLowerCase()
+    const qty = Number(c.quantity) || 0
+    if (owned.has(key)) {
+      used.set(key, (used.get(key) ?? 0) + qty)
+    } else if (!BASIC_FINDING_TERMS.some((t) => key.includes(t))) {
+      violations.push(`You used "${item}" which is not in the stash`)
+    }
+  }
+  for (const [key, total] of used) {
+    const have = owned.get(key) ?? 0
+    if (total > have) {
+      violations.push(`You used ${total} of "${display.get(key) ?? key}" but only ${have} are owned`)
+    }
+  }
+
+  const steps = Array.isArray(d.steps) ? d.steps : []
+  for (const raw of steps) {
+    const s = (raw && typeof raw === 'object' ? raw : {}) as { technique?: unknown }
+    const tech = s.technique
+    if (tech === null || tech === undefined || tech === '') continue
+    if (typeof tech !== 'string' || !ALLOWED_TECHNIQUES.includes(tech)) {
+      violations.push(`You used technique "${String(tech)}" which is not in the allowed technique list`)
+    }
+  }
+
+  return violations
+}
+
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,13 +110,22 @@ export async function POST(req: NextRequest) {
     timeAvailable,
     previousDesign,
     adjustment,
+    recentTitles,
   }: {
     pieceType?: string
     mood?: string
     timeAvailable?: TimeAvailable
     previousDesign?: unknown
     adjustment?: unknown
+    recentTitles?: unknown
   } = await req.json()
+
+  const recentTitlesClean =
+    Array.isArray(recentTitles) &&
+    recentTitles.length <= 5 &&
+    recentTitles.every((t) => typeof t === 'string' && t.length <= 100)
+      ? (recentTitles as string[])
+      : []
 
   if (adjustment !== undefined && (typeof adjustment !== 'string' || adjustment.length > 300)) {
     return NextResponse.json({ error: 'Invalid adjustment' }, { status: 400 })
@@ -117,6 +196,37 @@ CRITICAL RULES:
 - If stash is empty or very sparse, design a simple piece and note what basic materials they'd need.
 - The steps must be genuinely sequential and buildable — someone should be able to follow them with their hands.
 - Technique tags must be from this exact list only: "Wrapped Loop", "Simple Loop", "Crimping", "Wire Coiling", "Wire Wrapping", "Jump Ring", "Briolette Wrap", "Stringing", "Knotting"
+- Earrings: every bead and dangle component must be used in even quantities so the pair is symmetric. If a focal bead has an odd quantity, design around a matched pair or choose a different piece type.
+- Necklaces and bracelets: do rough length math — state the target length and confirm the specified bead counts and sizes plausibly reach it. Bracelets are ~18cm, necklaces 40–45cm unless the design says otherwise.
+- Seed beads cannot go on thick wire or leather; large-hole beads slide off fine chain — keep the stringing material sensible for the bead sizes used.
+- Difficulty gating: for 15min/Beginner designs use ONLY "Stringing", "Simple Loop", "Jump Ring", and "Crimping". "Wrapped Loop" and "Wire Coiling" are Intermediate or above. "Briolette Wrap" and "Wire Wrapping" are Advanced or "afternoon" only.
+
+Here is an EXAMPLE of the quality and granularity expected — it uses a made-up stash. Do NOT copy its materials or wording; only mirror its structure and level of detail:
+EXAMPLE STASH — BEADS: matte teal seed beads (2mm, qty:40), amazonite rounds (8mm, qty:6), rose quartz chips (qty:14). FINDINGS: silver lobster clasp (qty:1), silver jump rings (qty:20).
+EXAMPLE OUTPUT:
+{
+  "title": "Tidepool Wrap",
+  "description": "A calm amazonite bracelet with a whisper of teal — everyday sea-glass softness.",
+  "colourStory": "Milky amazonite rounds carry a soft blue-green, punctuated by matte teal seed beads that deepen the tone, with rose quartz chips warming the palette at the ends.",
+  "difficulty": "Beginner",
+  "estimatedTime": "20 mins",
+  "pieceType": "bracelet",
+  "materialsCheck": { "allAvailable": true, "notes": "Targets ~18cm: six 8mm amazonite plus seed-bead spacers reach length comfortably within stock." },
+  "components": [
+    { "item": "amazonite rounds", "quantity": 6, "note": "main stations along the strand" },
+    { "item": "matte teal seed beads", "quantity": 20, "note": "spacers between each amazonite round" },
+    { "item": "rose quartz chips", "quantity": 6, "note": "warm accents near the clasp" },
+    { "item": "silver lobster clasp", "quantity": 1, "note": "closure" }
+  ],
+  "steps": [
+    { "id": 1, "instruction": "Cut ~22cm of beading wire and crimp one end to the lobster clasp loop.", "material": "silver lobster clasp", "technique": "Crimping", "tip": "Leave a 2cm tail to thread back through the crimp bead." },
+    { "id": 2, "instruction": "String three rose quartz chips, then one amazonite round.", "material": "rose quartz chips", "technique": "Stringing", "tip": "Keep tension snug so no wire shows between beads." },
+    { "id": 3, "instruction": "Add four teal seed beads, then another amazonite round; repeat to the last round.", "material": "matte teal seed beads", "technique": "Stringing", "tip": "Check length against your wrist near the 18cm mark." },
+    { "id": 4, "instruction": "Finish with three rose quartz chips to mirror the start.", "material": "rose quartz chips", "technique": "Stringing", "tip": "Symmetry at both ends reads as intentional." },
+    { "id": 5, "instruction": "Crimp the closing end to a jump ring and trim the tail flush.", "material": "silver jump rings", "technique": "Crimping", "tip": "Twist jump rings sideways to open, never pull them apart." }
+  ]
+}
+This example shows the target granularity — one physical action per step, a real material and technique on each, and a colourStory that names specific beads. It is an example of quality, not content to reuse.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -144,6 +254,12 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }`
 
+  if (recentTitlesClean.length > 0) {
+    prompt += `
+
+Do not repeat these recent designs — differ meaningfully in structure or featured materials: ${recentTitlesClean.join(', ')}`
+  }
+
   if (isRefine) {
     prompt += `
 
@@ -165,15 +281,48 @@ Produce a revised version of the SAME design that applies this change while keep
       return NextResponse.json({ error: 'Design too long — try again' }, { status: 502 })
     }
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    const clean = text.replace(/```json|```/g, '').trim()
-    try {
-      return NextResponse.json(JSON.parse(clean))
-    } catch {
-      const first = clean.indexOf('{')
-      const last = clean.lastIndexOf('}')
-      if (first === -1 || last === -1 || last <= first) throw new Error('No JSON object found in response')
-      return NextResponse.json(JSON.parse(clean.slice(first, last + 1)))
+    let design = parseDesignText(text)
+
+    let violations = validateDesign(design, beads, findings)
+    if (violations.length > 0) {
+      // Retry ONCE: hand the model the exact violations and ask it to fix only those.
+      const retryPrompt = `${prompt}
+
+Your previous design had these problems that must be corrected:
+${violations.map((v) => `- ${v}`).join('\n')}
+Correct ONLY these issues while keeping everything else the same, and return the full corrected design in the exact same JSON schema, ONLY valid JSON, no markdown, no backticks.`
+      try {
+        const retry = await client.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4500,
+          messages: [{ role: 'user', content: retryPrompt }],
+        })
+        if (retry.stop_reason !== 'max_tokens') {
+          const retryText = retry.content[0].type === 'text' ? retry.content[0].text : ''
+          const retryDesign = parseDesignText(retryText)
+          const retryViolations = validateDesign(retryDesign, beads, findings)
+          if (retryViolations.length === 0) {
+            return NextResponse.json(retryDesign)
+          }
+          // Retry still invalid — prefer it and surface its remaining issues.
+          design = retryDesign
+          violations = retryViolations
+        }
+      } catch (retryErr) {
+        console.error('make retry error:', retryErr)
+        // Keep the original design + violations and fall through to soft-fail.
+      }
+
+      // Never hard-fail on validation: return the design with an honest check.
+      if (design && typeof design === 'object') {
+        ;(design as Record<string, unknown>).materialsCheck = {
+          allAvailable: false,
+          notes: `Automatic stash check found issues: ${violations.join('; ')}.`,
+        }
+      }
     }
+
+    return NextResponse.json(design)
   } catch (e: unknown) {
     console.error('make error:', e)
     return NextResponse.json({ error: 'Generation failed' }, { status: 500 })

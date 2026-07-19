@@ -16,19 +16,25 @@ interface Message {
   imageDataUrl?: string
 }
 
+interface BlueprintStep {
+  id: number
+  instruction: string
+  material: string | null
+  technique: string | null
+  tip: string | null
+}
+
+// Mirrors the /api/make design schema so a blueprint is already build-compatible.
 interface Blueprint {
   title: string
-  tagline: string
-  type: string
+  description: string
+  colourStory: string
   difficulty: string
-  time: string
-  overview: string
-  components: { part: string; material: string; dimensions: string; note: string }[]
-  steps: string[]
-  techniques: string[]
-  tools: string[]
-  variations?: string[]
-  tips?: string[]
+  estimatedTime: string
+  pieceType: string
+  materialsCheck?: { allAvailable: boolean; notes: string }
+  components: { item: string; quantity: number; note: string }[]
+  steps: BlueprintStep[]
 }
 
 function parseMessage(text: string): { display: string; blueprint: Blueprint | null } {
@@ -44,53 +50,6 @@ function parseMessage(text: string): { display: string; blueprint: Blueprint | n
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-type BuildStep = { id: number; instruction: string; material?: string; technique?: string; tip?: string }
-
-// The Journal + Build pages read design.steps as [{ id, instruction, material?, technique?, tip? }].
-// Codesign blueprints carry steps as a plain string[], so normalise defensively —
-// also tolerating an object shape in case the model returns richer steps.
-function normaliseSteps(steps: unknown): BuildStep[] {
-  if (!Array.isArray(steps)) return []
-  return steps.map((s, i) => {
-    if (typeof s === 'string') return { id: i + 1, instruction: s }
-    if (s && typeof s === 'object') {
-      const o = s as Record<string, unknown>
-      return {
-        id: i + 1,
-        instruction: String(o.instruction ?? o.step ?? o.text ?? ''),
-        material: typeof o.material === 'string' ? o.material : undefined,
-        technique: typeof o.technique === 'string' ? o.technique : undefined,
-        tip: typeof o.tip === 'string' ? o.tip : undefined,
-      }
-    }
-    return { id: i + 1, instruction: String(s) }
-  })
-}
-
-// Map a codesign blueprint onto the `design` shape the Journal and Build pages render:
-// { title, description, difficulty, estimatedTime, pieceType, steps, components }.
-function blueprintToDesign(bp: Blueprint) {
-  return {
-    title: bp.title,
-    description: bp.overview || bp.tagline || '',
-    difficulty: bp.difficulty || '',
-    estimatedTime: bp.time || '',
-    pieceType: bp.type || '',
-    steps: normaliseSteps(bp.steps),
-    components: Array.isArray(bp.components)
-      ? bp.components.map(c => ({
-          item: c.part,
-          quantity: 1,
-          note: [c.material, c.dimensions, c.note].filter(Boolean).join(' · '),
-        }))
-      : [],
-    techniques: bp.techniques || [],
-    tools: bp.tools || [],
-    variations: bp.variations || [],
-    tips: bp.tips || [],
-  }
 }
 
 function fmt(text: string) {
@@ -241,7 +200,7 @@ export default function CoDesignPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: blueprint.title,
-          design: blueprintToDesign(blueprint),
+          design: blueprint,
           status: 'draft',
           current_step: 0,
         }),
@@ -403,13 +362,21 @@ export default function CoDesignPage() {
                   {/* Header */}
                   <div className="card" style={{ padding: 24, borderTop: '2px solid var(--silver)' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      <span className="tag">{blueprint.type}</span>
-                      <span className="tag" style={{ borderColor: diffColor(blueprint.difficulty), color: diffColor(blueprint.difficulty) }}>{blueprint.difficulty}</span>
-                      <span className="tag">{blueprint.time}</span>
+                      {blueprint.pieceType && <span className="tag">{blueprint.pieceType}</span>}
+                      {blueprint.difficulty && <span className="tag" style={{ borderColor: diffColor(blueprint.difficulty), color: diffColor(blueprint.difficulty) }}>{blueprint.difficulty}</span>}
+                      {blueprint.estimatedTime && <span className="tag">{blueprint.estimatedTime}</span>}
+                      {blueprint.materialsCheck && !blueprint.materialsCheck.allAvailable && (
+                        <span className="tag" style={{ borderColor: 'var(--rose)', color: 'var(--rose)' }}>⚠ Check materials</span>
+                      )}
                     </div>
                     <h2 style={{ fontSize: 26, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, marginBottom: 6 }}>{blueprint.title}</h2>
-                    <p style={{ fontStyle: 'italic', color: 'var(--silver2)', fontSize: 14, marginBottom: 10 }}>{blueprint.tagline}</p>
-                    <p style={{ color: 'var(--text2)', fontSize: 13, lineHeight: 1.7 }}>{blueprint.overview}</p>
+                    {blueprint.description && <p style={{ color: 'var(--text2)', fontSize: 13, lineHeight: 1.7, marginBottom: 10 }}>{blueprint.description}</p>}
+                    {blueprint.colourStory && (
+                      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: '10px 12px' }}>
+                        <span className="mono" style={{ fontSize: 9, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>COLOUR STORY</span>
+                        <p style={{ color: 'var(--text)', fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>{blueprint.colourStory}</p>
+                      </div>
+                    )}
                     <button
                       className={saved ? 'btn-outline' : 'btn-silver'}
                       onClick={saveToJournal}
@@ -423,15 +390,25 @@ export default function CoDesignPage() {
                     )}
                   </div>
 
+                  {/* Materials note */}
+                  {blueprint.materialsCheck?.notes && (
+                    <div style={{ background: 'rgba(200,112,112,0.05)', border: '1px solid rgba(200,112,112,0.2)', padding: '12px 16px' }}>
+                      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--rose)' }}>MATERIALS NOTE</span>
+                      <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 6 }}>{blueprint.materialsCheck.notes}</p>
+                    </div>
+                  )}
+
                   {/* Components */}
                   <div className="card" style={{ padding: 20 }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>◈ Components</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                      {blueprint.components.map((c, i) => (
-                        <div key={i} style={{ borderLeft: '2px solid var(--border2)', paddingLeft: 10 }}>
-                          <p style={{ color: 'var(--cream)', fontSize: 13, fontFamily: 'var(--font-display)' }}>{c.part}</p>
-                          <p className="mono" style={{ fontSize: 10, color: 'var(--moonstone)', marginTop: 2 }}>{c.material} · {c.dimensions}</p>
-                          {c.note && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontStyle: 'italic' }}>{c.note}</p>}
+                      {(blueprint.components ?? []).map((c, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--silver)', minWidth: 20, marginTop: 2 }}>×{c.quantity}</span>
+                          <div>
+                            <p style={{ color: 'var(--cream)', fontSize: 13 }}>{c.item}</p>
+                            {c.note && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{c.note}</p>}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -440,47 +417,21 @@ export default function CoDesignPage() {
                   {/* Steps */}
                   <div className="card" style={{ padding: 20 }}>
                     <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>◇ Build Steps</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {blueprint.steps.map((s, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                          <div style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--silver)', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
-                          <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5, marginTop: 2 }}>{s}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {(blueprint.steps ?? []).map((s, i) => (
+                        <div key={s.id ?? i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <div style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--silver)', flexShrink: 0, marginTop: 1 }}>{s.id ?? i + 1}</div>
+                          <div>
+                            <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{s.instruction}</p>
+                            {s.technique && (
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--moonstone)', textTransform: 'uppercase', marginTop: 3, display: 'block' }}>{s.technique}</span>
+                            )}
+                            {s.tip && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3, fontStyle: 'italic' }}>{s.tip}</p>}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  {/* Techniques + Tools */}
-                  <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 8 }}>◉ Techniques</h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
-                      {blueprint.techniques.map(t => <span key={t} className="tag">{t}</span>)}
-                    </div>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 8 }}>◎ Tools Needed</h3>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                      {blueprint.tools.map(t => <span key={t} className="tag">{t}</span>)}
-                    </div>
-                  </div>
-
-                  {/* Variations */}
-                  {blueprint.variations && blueprint.variations.length > 0 && (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '14px 18px' }}>
-                      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>VARIATIONS</span>
-                      <ul style={{ listStyle: 'none', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {blueprint.variations.map((v, i) => <li key={i} style={{ fontSize: 13, color: 'var(--text2)', paddingLeft: 10, borderLeft: '2px solid var(--border2)' }}>{v}</li>)}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* Tips */}
-                  {blueprint.tips && blueprint.tips.length > 0 && (
-                    <div style={{ background: 'rgba(168,180,200,0.05)', border: '1px solid var(--border)', padding: '14px 18px' }}>
-                      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--silver)' }}>TIPS</span>
-                      <ul style={{ listStyle: 'none', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {blueprint.tips.map((t, i) => <li key={i} style={{ fontSize: 13, color: 'var(--text2)', paddingLeft: 10, borderLeft: '2px solid var(--border2)' }}>{t}</li>)}
-                      </ul>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
