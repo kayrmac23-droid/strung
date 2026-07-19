@@ -40,49 +40,55 @@ OPENAI_API_KEY=...          # required for DALL-E 3 image generation
 
 ## Auth
 
-Supabase email/password auth. Auth is **optional** — unauthenticated users can generate designs but cannot save them. Saving always requires a session. The `getSession()` helper from `@/lib/authClient` is used client-side to check auth state before save actions.
+Supabase email/password auth. **Almost everything requires a session.** `/api/sequence` is the only route with no auth check — the Palette page is the one feature that fully works signed out. Every other route calls `getUserFromRequest(req)` and returns 401 when there is no user (`/api/builds` GET is the exception: it returns `[]` rather than 401).
+
+Client-side, `getSession()` from `@/lib/authClient` checks auth state before save actions, and `getAuthHeaders()` attaches the bearer token. Pages that can render signed-out (e.g. `/make`) track a `signedOut` flag by checking for `res.status === 401` on their initial fetch.
 
 ## Pages
 
 | URL | Nav label | Description |
 |---|---|---|
 | `/` | — | Landing / home |
-| `/inventory` | Stash | Bead + findings CRUD |
-| `/make` | Make | AI design generator |
-| `/make/build/[id]` | — | Step-by-step build mode |
+| `/inventory` | Stash | Bead + findings CRUD, photo identification, bulk text stash parsing |
+| `/make` | Make | AI design generator + refinement + DALL-E preview |
+| `/make/build/[id]` | — | Step-by-step build mode; optional stash decrement on completion |
+| `/sequence` | Palette | Colour palette + repeating bead sequence generator |
 | `/codesign` | — | Conversational AI co-designer |
 | `/journal` | Journal | Saved and completed builds |
 | `/account` | Account | Sign in / sign up |
 | `/auth/callback` | — | Supabase OAuth callback |
-| `/guides` | Learn | Static jewellery guides |
+| `/guides` | Learn | Jewellery guides + streaming AI advisor scoped to the open guide section |
 | `/glossary` | — | Static glossary (active under Learn nav item) |
 | `/calculator` | — | Utility calculator |
+| `/not-found` | — | 404 |
 
-Nav has 4 primary items (Stash, Make, Learn, Journal) plus Account.
+Nav has 5 primary items (Stash, Make, Palette, Learn, Journal) plus Account. Note the mismatch between route and label: `/sequence` is labelled **Palette**.
 
 ## API Routes
 
-| Route | Method(s) | Auth required | What it does |
+| Route | Method(s) | Auth | What it does |
 |---|---|---|---|
-| `/api/inventory` | GET, POST, DELETE, PATCH | optional (GET returns empty without auth) | CRUD for `beads` and `findings` tables |
-| `/api/make` | POST | no | AI generates one design as structured JSON |
-| `/api/make/image` | POST | no | Builds a DALL-E 3 prompt via Claude, calls OpenAI DALL-E 3 |
-| `/api/builds` | GET, POST, DELETE, PATCH | yes (GET returns `[]` without auth) | CRUD for `builds` table |
-| `/api/designs` | GET, POST, DELETE, PATCH | yes | CRUD for `designs` table |
-| `/api/codesign` | POST | no | Streaming co-design chat (Claude) |
-| `/api/advice` | POST | no | Streaming jewellery advice (Claude) |
-| `/api/identify` | POST | yes | Vision identification (Claude). Default: single bead (`kind: 'bead'`) or finding (`kind: 'finding'`). With `mode: 'multi'`: identifies every distinct bead/finding group in one photo, returns `{ beads: [], findings: [] }` with per-item `confidence` (`certain`/`likely`/`unsure`), normalised via `src/lib/stashItems.ts` |
-| `/api/parse-stash` | POST | yes | Parses a plain-text stash description into `{ beads: [], findings: [] }` for the review flow (Claude) |
+| `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables |
+| `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
+| `/api/make/image` | POST | yes — 401 | Builds a DALL-E 3 prompt via Claude, calls OpenAI DALL-E 3 |
+| `/api/builds` | GET, POST, DELETE, PATCH | yes — GET returns `[]` without auth, others 401 | CRUD for `builds` table. `GET ?id=` returns a single build or 404 |
+| `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100 |
+| `/api/codesign` | POST | yes — 401 | Streaming co-design chat (Claude) |
+| `/api/advice` | POST | yes — 401 | Streaming jewellery advice (Claude) |
+| `/api/identify` | POST | yes — 401 | Vision identification (Claude). Default: single bead (`kind: 'bead'`) or finding (`kind: 'finding'`). With `mode: 'multi'`: identifies every distinct bead/finding group in one photo, returns `{ beads: [], findings: [] }` with per-item `confidence` (`certain`/`likely`/`unsure`), normalised via `src/lib/stashItems.ts` |
+| `/api/parse-stash` | POST | yes — 401 | Parses a plain-text stash description into `{ beads: [], findings: [] }` for the review flow (Claude) |
+
+There is no `/api/designs` route.
 
 ## AI Response Patterns
 
 Two patterns:
 
-1. **JSON** (`/api/make`, `/api/identify`): Uses `client.messages.create()`, strips markdown fences with `.replace(/```json|```/g, '').trim()`, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500. `/api/identify` additionally falls back to extracting the outermost `{...}` block, checks `stop_reason === 'max_tokens'` before parsing, and returns 502 (not 500) for AI-side failures. Images are downscaled client-side to 1568px JPEG via `src/lib/imagePrep.ts` before upload — never send raw camera files (Vercel caps request bodies at 4.5MB).
+1. **JSON** (`/api/make`, `/api/identify`, `/api/sequence`, `/api/parse-stash`): Uses `client.messages.create()`, strips markdown fences, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500. Use the shared `stripJsonFences()` helper from `@/lib/colour` rather than re-inlining `.replace(/```json|```/g, '').trim()`. `/api/identify` additionally falls back to extracting the outermost `{...}` block, checks `stop_reason === 'max_tokens'` before parsing, and returns 502 (not 500) for AI-side failures; `/api/make` retries the call once before giving up. Images are downscaled client-side to 1568px JPEG via `src/lib/imagePrep.ts` before upload — never send raw camera files (Vercel caps request bodies at 4.5MB).
 
 2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
 
-All AI routes use model `claude-sonnet-4-6` except `/api/advice` which uses `claude-sonnet-4-20250514`.
+Every AI route uses model `claude-sonnet-4-6`.
 
 ## Image Generation
 
@@ -113,18 +119,27 @@ Do **not** use the singleton client from `src/lib/supabase.ts` in API routes —
 
 ### Database tables
 
-The Supabase database requires these tables:
+The Supabase database requires three tables:
 
 | Table | Type exported from |
 |---|---|
 | `beads` | `BeadItem` in `src/lib/supabase.ts` |
 | `findings` | `FindingItem` in `src/lib/supabase.ts` |
 | `builds` | no exported type — shape defined inline in pages |
-| `designs` | `DesignItem` in `src/lib/supabase.ts` |
 
-Shared types (`BeadItem`, `FindingItem`, `DesignItem`) live in `src/lib/supabase.ts`. Import them as `@/lib/supabase`.
+`src/lib/supabase.ts` exports only `BeadItem` and `FindingItem`. There is no `DesignItem` type and no `designs` table — saved designs are stored as the `design` jsonb column on `builds`.
 
-The canonical `CREATE TABLE` SQL — including the `user_id` column on every table, `user_id` indexes, and per-user RLS policies — lives in README.md → "Set up the database". All four tables are per-user: the API filters every query by `user_id` and RLS enforces it. A table created without `user_id`/RLS will not work with these routes, and a missing table surfaces as PostgREST error `PGRST205` (logged server-side; the UI shows the sanitized "Database error").
+Only `beads` and `findings` are writable through `/api/inventory`; the allowlist lives in `ALLOWED_TABLES` / `isAllowedTable()` in `@/lib/colour`, and any new table reachable by a `?table=` param must be added there.
+
+The canonical `CREATE TABLE` SQL — including the `user_id` column on every table, `user_id` indexes, and per-user RLS policies — lives in README.md → "Set up the database". All three tables are per-user: the API filters every query by `user_id` and RLS enforces it. A table created without `user_id`/RLS will not work with these routes, and a missing table surfaces as PostgREST error `PGRST205` (logged server-side; the UI shows the sanitized "Database error").
+
+`builds.rating` is `text` (`loved_it` / `good` / `could_be_better`), not an integer.
+
+## Build Completion & Stash Decrement
+
+When a build is marked complete, `/make/build/[id]` offers to subtract the materials used from the stash. It matches `design.components[].item` against bead and finding **names** using a trim + lowercase comparison, checking beads first, then findings. Unmatched components are skipped silently, and quantities floor at 0.
+
+This is deliberately best-effort — completion has already been persisted by the time it runs, so failures are swallowed and surfaced only as a note in the UI. Because matching is name-based, a design component whose wording drifts from the stash entry will simply not decrement. Keep that in mind before relying on stash counts being exact.
 
 ## Styling Conventions
 
