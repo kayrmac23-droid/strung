@@ -1,8 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
+import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+function getToken(req: NextRequest) {
+  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+}
 
 const MAX_IMAGES_PER_MESSAGE = 2
 const MAX_IMAGES_TOTAL = 6
@@ -30,9 +34,9 @@ export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return new Response('Unauthorized', { status: 401 })
 
-  let messages: ChatMessage[], beads: StashBead[] = [], findings: StashFinding[] = []
+  let messages: ChatMessage[]
   try {
-    ;({ messages, beads = [], findings = [] } = await req.json())
+    ;({ messages } = await req.json())
   } catch {
     return new Response('Invalid request body', { status: 400 })
   }
@@ -75,12 +79,18 @@ export async function POST(req: NextRequest) {
     }
     if (textOnly.length > 10000) return new Response('Message too long', { status: 400 })
   }
-  if (!Array.isArray(beads) || !Array.isArray(findings)) {
-    return new Response('Invalid stash data', { status: 400 })
+  // Read the stash server-side rather than trusting a client-supplied copy.
+  const supabase = getAuthenticatedClient(getToken(req))
+  const [beadsRes, findingsRes] = await Promise.all([
+    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+  ])
+  if (beadsRes.error || findingsRes.error) {
+    console.error('codesign stash load error:', beadsRes.error || findingsRes.error)
+    return new Response('Could not load your stash', { status: 500 })
   }
-  if (beads.length > 200 || findings.length > 200) {
-    return new Response('Stash too large', { status: 400 })
-  }
+  const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
+  const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
   const trunc = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
   const safeBeads = beads.map(b => ({ ...b, name: trunc(b.name, 200), colour: trunc(b.colour, 100), size: trunc(b.size, 50), shape: trunc(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: trunc(f.name, 200), type: trunc(f.type, 50), metal: trunc(f.metal, 50) }))

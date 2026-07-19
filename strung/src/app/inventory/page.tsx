@@ -94,14 +94,8 @@ export default function InventoryPage() {
   const [editForm, setEditForm] = useState<Partial<BeadItem|FindingItem>>({})
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
-  const [identifying, setIdentifying] = useState(false)
-  const [identifyError, setIdentifyError] = useState('')
-  const [identifyingFinding, setIdentifyingFinding] = useState(false)
-  const [identifyFindingError, setIdentifyFindingError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [aiPrefilled, setAiPrefilled] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const findingFileInputRef = useRef<HTMLInputElement>(null)
   const multiFileInputRef = useRef<HTMLInputElement>(null)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [quickAddSource, setQuickAddSource] = useState<'text' | 'photo'>('text')
@@ -184,70 +178,6 @@ export default function InventoryPage() {
       setEditingId(null)
       setEditForm({})
     } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to update')) }
-  }
-
-  async function identifyImage(file: File) {
-    setIdentifying(true)
-    setIdentifyError('')
-    try {
-      const prepared = await prepareImageForIdentify(file)
-      const res = await fetch('/api/identify', {
-        method: 'POST',
-        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(prepared),
-      })
-      const raw = await res.text()
-      let data: Partial<BeadItem> & { error?: string } = {}
-      try { data = JSON.parse(raw) } catch { data = {} }
-      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
-      setBeadForm(f => ({
-        ...f,
-        name: data.name || f.name,
-        type: data.type || f.type,
-        colour: data.colour || f.colour,
-        hex: data.hex || f.hex,
-        size: data.size || f.size,
-        shape: data.shape || f.shape,
-        notes: data.notes || f.notes,
-      }))
-      setAiPrefilled(true)
-      setShowForm(true)
-    } catch (e: unknown) {
-      setIdentifyError(getErrorMessage(e, 'Could not identify bead'))
-    } finally {
-      setIdentifying(false)
-    }
-  }
-
-  async function identifyFinding(file: File) {
-    setIdentifyingFinding(true)
-    setIdentifyFindingError('')
-    try {
-      const prepared = await prepareImageForIdentify(file)
-      const res = await fetch('/api/identify', {
-        method: 'POST',
-        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ ...prepared, kind: 'finding' }),
-      })
-      const raw = await res.text()
-      let data: Partial<FindingItem> & { error?: string } = {}
-      try { data = JSON.parse(raw) } catch { data = {} }
-      if (!res.ok || data.error) throw new Error(data.error || `Identification failed (${res.status})`)
-      setFindingForm(f => ({
-        ...f,
-        name: data.name || f.name,
-        type: data.type || f.type,
-        metal: data.metal || f.metal,
-        size: data.size || f.size,
-        notes: data.notes || f.notes,
-      }))
-      setAiPrefilled(true)
-      setShowForm(true)
-    } catch (e: unknown) {
-      setIdentifyFindingError(getErrorMessage(e, 'Could not identify finding'))
-    } finally {
-      setIdentifyingFinding(false)
-    }
   }
 
   async function identifyMulti(file: File) {
@@ -416,7 +346,7 @@ export default function InventoryPage() {
             <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
             <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
             <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti} style={{gap:6}}>
-              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : '◈ Identify many (photo)'}
+              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : '◈ Add from photo'}
             </button>
             <input
               ref={multiFileInputRef}
@@ -426,38 +356,7 @@ export default function InventoryPage() {
               style={{display:'none'}}
               onChange={e => { const f = e.target.files?.[0]; if (f) identifyMulti(f); e.target.value = '' }}
             />
-            {tab==='beads' ? (
-              <>
-                <button className="btn-outline" onClick={()=>fileInputRef.current?.click()} disabled={identifying} style={{gap:6}}>
-                  {identifying ? <><span className="spinner-dark"/>Identifying…</> : '◉ Identify with AI'}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{display:'none'}}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) identifyImage(f); e.target.value = '' }}
-                />
-              </>
-            ) : (
-              <>
-                <button className="btn-outline" onClick={()=>findingFileInputRef.current?.click()} disabled={identifyingFinding} style={{gap:6}}>
-                  {identifyingFinding ? <><span className="spinner-dark"/>Identifying…</> : '◉ Identify with AI'}
-                </button>
-                <input
-                  ref={findingFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{display:'none'}}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) identifyFinding(f); e.target.value = '' }}
-                />
-              </>
-            )}
           </div>
-          {identifyError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyError}</p>}
-          {identifyFindingError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyFindingError}</p>}
           {identifyMultiError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
 
           {/* Add form */}

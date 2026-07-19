@@ -51,6 +51,8 @@ export default function MakePage() {
   const [imageLoading, setImageLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [adjustment, setAdjustment] = useState('')
+  const [refining, setRefining] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -76,8 +78,6 @@ export default function MakePage() {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          beads,
-          findings,
           pieceType: pieceType === 'Any' ? '' : pieceType,
           mood,
           timeAvailable,
@@ -91,6 +91,35 @@ export default function MakePage() {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function refine() {
+    if (!design || loading || refining || !adjustment.trim()) return
+    setRefining(true); setError('')
+    try {
+      const previousDesign: Record<string, unknown> = { ...design }
+      delete previousDesign.imageUrl
+      const res = await fetch('/api/make', {
+        method: 'POST',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          pieceType: pieceType === 'Any' ? '' : pieceType,
+          mood,
+          timeAvailable,
+          previousDesign,
+          adjustment: adjustment.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setDesign(data)
+      setAdjustment('')
+      fetchImage(data)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Adjustment failed')
+    } finally {
+      setRefining(false)
     }
   }
 
@@ -386,6 +415,26 @@ export default function MakePage() {
                   <button className="btn-outline" onClick={generate} disabled={loading}>
                     Try another
                   </button>
+                </div>
+
+                {/* Refine */}
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <label className="label">Adjust this design</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="input-base"
+                      style={{ flex: 1 }}
+                      placeholder="e.g. swap the garnets for moonstone · fewer steps"
+                      value={adjustment}
+                      maxLength={300}
+                      onChange={e => setAdjustment(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && adjustment.trim()) refine() }}
+                      disabled={refining || loading}
+                    />
+                    <button className="btn-outline" onClick={refine} disabled={refining || loading || !adjustment.trim()}>
+                      {refining ? <><span className="spinner-dark" />Adjusting…</> : 'Adjust'}
+                    </button>
+                  </div>
                 </div>
               </div>
 

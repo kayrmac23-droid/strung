@@ -1,8 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
+import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+function getToken(req: NextRequest) {
+  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+}
 
 type StashBead = {
   name: string
@@ -31,25 +35,42 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const {
-    beads = [],
-    findings = [],
     pieceType,
     mood,
     timeAvailable,
+    previousDesign,
+    adjustment,
   }: {
-    beads: StashBead[]
-    findings: StashFinding[]
     pieceType?: string
     mood?: string
     timeAvailable?: TimeAvailable
+    previousDesign?: unknown
+    adjustment?: unknown
   } = await req.json()
 
-  if (!Array.isArray(beads) || !Array.isArray(findings)) {
-    return NextResponse.json({ error: 'Invalid stash data' }, { status: 400 })
+  if (adjustment !== undefined && (typeof adjustment !== 'string' || adjustment.length > 300)) {
+    return NextResponse.json({ error: 'Invalid adjustment' }, { status: 400 })
   }
-  if (beads.length > 200 || findings.length > 200) {
-    return NextResponse.json({ error: 'Stash too large' }, { status: 400 })
+  if (previousDesign !== undefined && (typeof previousDesign !== 'object' || previousDesign === null || Array.isArray(previousDesign))) {
+    return NextResponse.json({ error: 'Invalid previous design' }, { status: 400 })
   }
+  const isRefine = typeof adjustment === 'string' && adjustment.trim().length > 0
+    && typeof previousDesign === 'object' && previousDesign !== null && !Array.isArray(previousDesign)
+
+  // Read the stash server-side (same queries as /api/inventory GET) rather
+  // than trusting a client-supplied copy.
+  const supabase = getAuthenticatedClient(getToken(req))
+  const [beadsRes, findingsRes] = await Promise.all([
+    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+  ])
+  if (beadsRes.error || findingsRes.error) {
+    console.error('make stash load error:', beadsRes.error || findingsRes.error)
+    return NextResponse.json({ error: 'Could not load your stash' }, { status: 500 })
+  }
+  const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
+  const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
+
   const truncStr = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
   const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50), size: truncStr(f.size, 50) }))
@@ -79,7 +100,7 @@ export async function POST(req: NextRequest) {
   }
   const selectedTime = timeAvailable ? timeMap[timeAvailable] : '1 hour'
 
-  const prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
+  let prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
 
 THEIR STASH:
 ${stashSummary}
@@ -123,12 +144,26 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }`
 
+  if (isRefine) {
+    prompt += `
+
+The maker already has this design:
+${JSON.stringify(previousDesign)}
+
+Apply ONLY this requested change: "${(adjustment as string).trim()}"
+Produce a revised version of the SAME design that applies this change while keeping everything else as stable as possible — keep the title, overall structure, and any unaffected components and steps unchanged unless the change requires otherwise. Return the full revised design in the exact same JSON schema described above, ONLY valid JSON, no markdown, no backticks.`
+  }
+
   try {
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 3000,
+      max_tokens: 4500,
       messages: [{ role: 'user', content: prompt }],
     })
+    if (response.stop_reason === 'max_tokens') {
+      console.error('make error: response truncated at max_tokens')
+      return NextResponse.json({ error: 'Design too long — try again' }, { status: 502 })
+    }
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
     const clean = text.replace(/```json|```/g, '').trim()
     try {
