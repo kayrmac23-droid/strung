@@ -4,16 +4,15 @@ import Nav from '@/components/Nav'
 
 const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite','Larimar']
 
+// One card per destination route. Chrome (border, top-divider, glyph) is
+// neutral by design — saturated colour is reserved for bead/gem elements only.
 const features = [
-  { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.', color:'var(--silver)' },
-  { href:'/make', icon:'◉', label:'Blueprint Generator', title:'Make Something', desc:'Generate one complete design from your real stash, mood, and available time.', color:'var(--moonstone)' },
-  { href:'/codesign', icon:'◎', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints.', color:'var(--moonstone2)' },
-  { href:'/make', icon:'◇', label:'Build Mode', title:'Step-by-step Builder', desc:'Start building right away and track each step from draft to completed piece.', color:'var(--gold)' },
-  { href:'/calculator', icon:'◆', label:'Project Planning', title:'Build Planner', desc:'Estimate bead counts and prep your materials before you start making.', color:'var(--amethyst)' },
-  { href:'/calculator', icon:'⊞', label:'Bead Math', title:'Calculator', desc:'Never run out mid-project. Calculate exactly how many beads any piece needs.', color:'var(--sage)' },
-  { href:'/journal', icon:'⊡', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.', color:'var(--rose)' },
-  { href:'/guides', icon:'○', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.', color:'var(--steel2)' },
-  { href:'/codesign', icon:'◐', label:'AI Advice', title:'Ask the Co-Designer', desc:'Get guidance on tools, techniques, and design decisions while planning your piece.', color:'var(--gold2)' },
+  { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.' },
+  { href:'/make', icon:'◉', label:'Blueprint Generator', title:'Make Something', desc:'Generate one complete design from your real stash, mood, and time — then build it step-by-step from draft to finished piece.' },
+  { href:'/codesign', icon:'◎', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints and answers questions as you plan.' },
+  { href:'/calculator', icon:'◆', label:'Build Planner', title:'Bead Math Calculator', desc:'Estimate bead counts and prep your materials so you never run out mid-project.' },
+  { href:'/journal', icon:'⊡', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.' },
+  { href:'/guides', icon:'○', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.' },
 ]
 
 export default function Home() {
@@ -110,10 +109,8 @@ export default function Home() {
           </div>
           <div className="grid-3">
             {features.map((f,i) => (
-              <Link href={f.href} key={f.href} className={`card card--link fade-up-${Math.min(i+1,4)}`} style={{
-                borderTop:`2px solid ${f.color}`
-              }}>
-                <div style={{fontSize:22,color:f.color,animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
+              <Link href={f.href} key={f.href} className={`card card--link feature-card fade-up-${Math.min(i+1,4)}`}>
+                <div style={{fontSize:22,color:'var(--silver)',animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
                 <div style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--muted2)'}}>{f.label}</div>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)'}}>{f.title}</h3>
                 <p style={{fontSize:14,color:'var(--text2)',lineHeight:1.6,flex:1}}>{f.desc}</p>
