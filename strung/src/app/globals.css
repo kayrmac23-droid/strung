@@ -13,8 +13,8 @@
   --moonstone2: #9bb8d4;
   --steel: #4a5c72;
   --steel2: #5a6e88;
-  --muted: #7484a0;
-  --muted2: #52627e;
+  --muted: #8a99b5;
+  --muted2: #808ea6;
   --rose: #c47070;
   --sage: #6a9080;
   --amethyst: #8a70aa;
@@ -129,6 +129,15 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1
 .card--link:hover, .card--link:focus-visible {
   border-color: var(--border2);
   background: var(--surface2);
+}
+
+/* Homepage feature cards — neutral chrome only (no jewel-toned dividers/glyphs),
+   the "digital velvet tray" rule. One rule for every card, no per-card overrides.
+   Tighter vertical rhythm so the grid isn't a full-viewport scroll. */
+.feature-card {
+  border-top: 2px solid var(--steel2);
+  padding: 22px 26px;
+  min-height: 210px;
 }
 
 /* Inventory (Stash) — extracted repeated inline style objects */
