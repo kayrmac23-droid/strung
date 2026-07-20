@@ -2,15 +2,22 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
+import { parseJsonLoose } from '@/lib/colour'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const MAX_TEXT_CHARS = 4000
 const MAX_ITEMS_PER_LIST = 100
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60_000
 
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const limit = rateLimit(`parse-stash:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
   let text: unknown
   try {
@@ -56,16 +63,7 @@ Omit "shape" and "notes" when empty. Use an empty string for unknown "size". If 
       messages: [{ role: 'user', content: prompt }],
     })
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
-    const clean = rawText.replace(/```json|```/g, '').trim()
-    let parsed: { beads?: unknown; findings?: unknown }
-    try {
-      parsed = JSON.parse(clean)
-    } catch {
-      const first = clean.indexOf('{')
-      const last = clean.lastIndexOf('}')
-      if (first === -1 || last === -1 || last <= first) throw new Error('No JSON object found in response')
-      parsed = JSON.parse(clean.slice(first, last + 1))
-    }
+    const parsed = parseJsonLoose(rawText) as { beads?: unknown; findings?: unknown }
     const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
       .slice(0, MAX_ITEMS_PER_LIST)
       .map(normaliseBead)

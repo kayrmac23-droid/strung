@@ -76,6 +76,12 @@ export default function GuidesPage() {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ question: aiQ, context }),
       })
+      if (!res.ok) {
+        setAiA(res.status === 429
+          ? 'You are asking a lot quickly — give it a moment and try again.'
+          : 'Something went wrong. Please try again.')
+        return
+      }
       const reader = res.body!.getReader()
       const dec = new TextDecoder()
       let full = ''

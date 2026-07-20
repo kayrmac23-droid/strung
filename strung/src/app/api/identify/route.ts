@@ -2,8 +2,14 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding, itemConfidence } from '@/lib/stashItems'
+import { parseJsonLoose } from '@/lib/colour'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 
 const client = new Anthropic()
+
+// Per-user cap on vision identifications (each sends a full image to Claude).
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60_000
 
 const VALID_MIMES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const
 type ValidMime = typeof VALID_MIMES[number]
@@ -38,23 +44,14 @@ Rules:
 Return ONLY valid JSON, no markdown, no backticks:
 {"beads":[{"name":"...","type":"...","colour":"...","hex":"#RRGGBB","size":"...","shape":"...","quantity":1,"notes":"...","confidence":"likely"}],"findings":[{"name":"...","type":"...","metal":"...","size":"...","quantity":1,"notes":"...","confidence":"likely"}]}`
 
-function extractJson(raw: string): unknown {
-  const clean = raw.replace(/```json|```/g, '').trim()
-  try {
-    return JSON.parse(clean)
-  } catch {
-    const first = clean.indexOf('{')
-    const last = clean.lastIndexOf('}')
-    if (first === -1 || last <= first) throw new Error('No JSON object found in response')
-    return JSON.parse(clean.slice(first, last + 1))
-  }
-}
-
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) {
     return Response.json({ error: 'Sign in to use AI identification' }, { status: 401 })
   }
+
+  const limit = rateLimit(`identify:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
   let body: Record<string, unknown>
   try {
@@ -106,7 +103,7 @@ export async function POST(req: NextRequest) {
 
     let result: unknown
     try {
-      result = extractJson(text)
+      result = parseJsonLoose(text)
     } catch {
       console.error('identify error: unparseable model output:', text.slice(0, 500))
       return Response.json({ error: 'Could not read the AI response — try again' }, { status: 502 })

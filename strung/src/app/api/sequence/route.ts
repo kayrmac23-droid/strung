@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { stripJsonFences } from '@/lib/colour'
+import { parseJsonLoose } from '@/lib/colour'
+import { rateLimit, tooManyRequests, clientIp } from '@/lib/rateLimit'
 import type { BeadItem } from '@/lib/supabase'
 
 const client = new Anthropic()
+
+// This is the only public AI route (Palette works signed out), so it is the
+// most exposed to abuse. Limit by client IP since there is no user id.
+const RATE_LIMIT = 15
+const RATE_WINDOW_MS = 60_000
 
 const VALID_HARMONY_TYPES = [
   'Complementary', 'Analogous', 'Triadic', 'Monochromatic',
@@ -13,6 +19,9 @@ const VALID_HARMONY_TYPES = [
 const VALID_PIECE_TYPES = ['Necklace', 'Bracelet', 'Earrings', 'Anklet', 'Any']
 
 export async function POST(request: Request) {
+  const limit = rateLimit(`sequence:${clientIp(request)}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
+
   let body: unknown
   try {
     body = await request.json()
@@ -113,7 +122,7 @@ Rules:
       messages: [{ role: 'user', content: prompt }],
     })
     const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
-    const json = JSON.parse(stripJsonFences(text))
+    const json = parseJsonLoose(text)
     return NextResponse.json(json)
   } catch (e: unknown) {
     console.error('Sequence API error:', e)

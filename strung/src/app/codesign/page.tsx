@@ -152,6 +152,19 @@ export default function CoDesignPage() {
         }),
       })
 
+      if (!res.ok) {
+        const msg = res.status === 429
+          ? 'You are sending messages quickly — give it a moment and try again.'
+          : 'Something went wrong. Check your API key.'
+        setMessages(m => {
+          const updated = [...m]
+          updated[updated.length - 1] = { role: 'assistant', content: msg, display: msg }
+          return updated
+        })
+        setLoading(false)
+        return
+      }
+
       const reader = res.body!.getReader()
       const decoder = new TextDecoder()
       let full = ''
