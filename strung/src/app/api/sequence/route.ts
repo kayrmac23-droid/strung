@@ -118,9 +118,13 @@ Rules:
   try {
     const msg = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
+    if (msg.stop_reason === 'max_tokens') {
+      console.error('sequence error: response truncated at max_tokens')
+      return NextResponse.json({ error: 'Palette too long — try again' }, { status: 502 })
+    }
     const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
     const json = parseJsonLoose(text)
     return NextResponse.json(json)
