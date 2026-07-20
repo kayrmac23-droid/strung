@@ -49,6 +49,7 @@ export default function MakePage() {
   const [design, setDesign] = useState<Design & { imageUrl?: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [adjustment, setAdjustment] = useState('')
@@ -130,19 +131,34 @@ export default function MakePage() {
 
   async function fetchImage(d: Design) {
     setImageLoading(true)
+    setImageError('')
     try {
       const res = await fetch('/api/make/image', {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(d),
       })
-      const data = await res.json()
-      if (data.imageUrl) setDesign(prev => prev ? { ...prev, imageUrl: data.imageUrl } : prev)
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.imageUrl) {
+        setDesign(prev => prev ? { ...prev, imageUrl: data.imageUrl } : prev)
+        return
+      }
+      // The preview is non-critical to the design, but a silent blank looks
+      // broken — surface why it didn't render so it's actionable.
+      setImageError(
+        res.status === 501
+          ? 'Preview images aren’t configured on this deployment (missing OPENAI_API_KEY).'
+          : 'Couldn’t render a preview image — the design itself is ready to build.'
+      )
     } catch {
-      // non-critical — fail silently
+      setImageError('Couldn’t render a preview image — the design itself is ready to build.')
     } finally {
       setImageLoading(false)
     }
+  }
+
+  function retryImage() {
+    if (design && !imageLoading) fetchImage(design)
   }
 
   async function startBuilding() {
@@ -363,7 +379,7 @@ export default function MakePage() {
                 </div>
 
                 {/* Generated image */}
-                {(imageLoading || design.imageUrl) && (
+                {(imageLoading || design.imageUrl || imageError) && (
                   <div style={{ marginBottom: 16 }}>
                     {imageLoading && !design.imageUrl ? (
                       <div style={{
@@ -393,6 +409,18 @@ export default function MakePage() {
                             AI RENDER · FOR REFERENCE ONLY
                           </span>
                         </div>
+                      </div>
+                    ) : imageError ? (
+                      <div style={{
+                        padding: '14px 16px', background: 'var(--bg2)', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
+                      }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text2)' }}>
+                          {imageError}
+                        </span>
+                        <button className="btn-ghost" onClick={retryImage} disabled={imageLoading} style={{ flexShrink: 0 }}>
+                          Retry preview
+                        </button>
                       </div>
                     ) : null}
                   </div>
