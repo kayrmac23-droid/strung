@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import { getAuthHeaders } from '@/lib/authClient'
+import { planStashDecrements } from '@/lib/stashDecrement'
 
 interface Step {
   id: number
@@ -136,27 +137,17 @@ export default function BuildPage() {
       const inv = await res.json()
       const beads: Array<{ id: string; name: string; quantity: number }> = inv.beads || []
       const findings: Array<{ id: string; name: string; quantity: number }> = inv.findings || []
-      const norm = (s: string) => s.trim().toLowerCase()
 
-      await Promise.all((build.design.components || []).map(async (c) => {
-        const used = Number(c.quantity) || 0
-        if (!c.item || used <= 0) return
-        const target = norm(c.item)
-        const bead = beads.find(b => norm(b.name) === target)
-        const finding = bead ? undefined : findings.find(f => norm(f.name) === target)
-        const match = bead
-          ? { table: 'beads' as const, row: bead }
-          : finding
-            ? { table: 'findings' as const, row: finding }
-            : null
-        if (!match) return // no name match — skip silently
-        const newQty = Math.max(0, (Number(match.row.quantity) || 0) - used)
-        await fetch('/api/inventory', {
+      // Aggregate per stash row first so components that reference the same item
+      // subtract the correct total in a single PATCH (see planStashDecrements).
+      const targets = planStashDecrements(build.design.components || [], beads, findings)
+      await Promise.all(targets.map(t =>
+        fetch('/api/inventory', {
           method: 'PATCH',
           headers: authHeaders,
-          body: JSON.stringify({ table: match.table, id: match.row.id, data: { quantity: newQty } }),
+          body: JSON.stringify({ table: t.table, id: t.id, data: { quantity: t.quantity } }),
         })
-      }))
+      ))
       setStashNote('Stash updated — used materials subtracted.')
     } catch {
       setStashNote('Could not update your stash, but your finished build is saved.')
