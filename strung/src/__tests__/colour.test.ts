@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { harmonyScore, isAllowedTable, stripJsonFences, colourFamilies } from '@/lib/colour'
+import { harmonyScore, isAllowedTable, stripJsonFences, parseJsonLoose, colourFamilies } from '@/lib/colour'
 
 describe('harmonyScore', () => {
   it('returns placeholder when fewer than 2 colours selected', () => {
@@ -82,5 +82,30 @@ describe('stripJsonFences', () => {
 
   it('leaves plain JSON untouched', () => {
     expect(stripJsonFences('{"a":1}')).toBe('{"a":1}')
+  })
+})
+
+describe('parseJsonLoose', () => {
+  it('parses plain JSON', () => {
+    expect(parseJsonLoose('{"a":1}')).toEqual({ a: 1 })
+  })
+
+  it('parses JSON wrapped in markdown fences', () => {
+    expect(parseJsonLoose('```json\n{"a":1}\n```')).toEqual({ a: 1 })
+    expect(parseJsonLoose('```\n{"b":2}\n```')).toEqual({ b: 2 })
+  })
+
+  it('recovers the outermost object when the model adds prose', () => {
+    expect(parseJsonLoose('Sure! Here is your design:\n{"title":"X"}\nHope that helps.'))
+      .toEqual({ title: 'X' })
+  })
+
+  it('recovers a nested-brace object from surrounding prose', () => {
+    expect(parseJsonLoose('Prefix {"a":{"b":2}} suffix')).toEqual({ a: { b: 2 } })
+  })
+
+  it('throws when there is no JSON object at all', () => {
+    expect(() => parseJsonLoose('no json here')).toThrow()
+    expect(() => parseJsonLoose('')).toThrow()
   })
 })

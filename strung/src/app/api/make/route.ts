@@ -1,8 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
+import { parseJsonLoose } from '@/lib/colour'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// Per-user cap on design generations (calls Claude at up to 4500 tokens twice).
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60_000
 
 function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
@@ -34,18 +40,6 @@ const ALLOWED_TECHNIQUES = ['Wrapped Loop', 'Simple Loop', 'Crimping', 'Wire Coi
 // Loose terms that mark a component as a basic finding the maker is assumed to
 // own (the prompt tells the model to assume these), so they need not be in stash.
 const BASIC_FINDING_TERMS = ['jump ring', 'ear wire', 'earwire', 'head pin', 'headpin', 'eye pin', 'eyepin', 'clasp', 'crimp', 'beading wire', 'wire']
-
-function parseDesignText(text: string): unknown {
-  const clean = text.replace(/```json|```/g, '').trim()
-  try {
-    return JSON.parse(clean)
-  } catch {
-    const first = clean.indexOf('{')
-    const last = clean.lastIndexOf('}')
-    if (first === -1 || last === -1 || last <= first) throw new Error('No JSON object found in response')
-    return JSON.parse(clean.slice(first, last + 1))
-  }
-}
 
 // Validate a parsed design against the real stash. Returns a list of
 // human-readable violation strings (empty === valid).
@@ -103,6 +97,9 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const limit = rateLimit(`make:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
   const {
     pieceType,
@@ -281,7 +278,7 @@ Produce a revised version of the SAME design that applies this change while keep
       return NextResponse.json({ error: 'Design too long — try again' }, { status: 502 })
     }
     const text = response.content[0].type === 'text' ? response.content[0].text : ''
-    let design = parseDesignText(text)
+    let design = parseJsonLoose(text)
 
     let violations = validateDesign(design, beads, findings)
     if (violations.length > 0) {
@@ -299,7 +296,7 @@ Correct ONLY these issues while keeping everything else the same, and return the
         })
         if (retry.stop_reason !== 'max_tokens') {
           const retryText = retry.content[0].type === 'text' ? retry.content[0].text : ''
-          const retryDesign = parseDesignText(retryText)
+          const retryDesign = parseJsonLoose(retryText)
           const retryViolations = validateDesign(retryDesign, beads, findings)
           if (retryViolations.length === 0) {
             return NextResponse.json(retryDesign)

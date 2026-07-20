@@ -1,8 +1,13 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+// DALL-E 3 hd is the priciest upstream call in the app, so cap it tighter.
+const RATE_LIMIT = 10
+const RATE_WINDOW_MS = 60_000
 
 async function buildPrompt(design: Record<string, unknown>): Promise<string> {
   const summary = {
@@ -45,6 +50,9 @@ export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const limit = rateLimit(`make-image:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
+
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'Image generation not configured' }, { status: 501 })
@@ -84,8 +92,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image generation failed' }, { status: res.status })
     }
 
-    const data = await res.json() as { data: { url: string }[] }
-    return NextResponse.json({ imageUrl: data.data[0].url })
+    const data = await res.json() as { data?: { url?: string }[] }
+    const imageUrl = data.data?.[0]?.url
+    if (!imageUrl) {
+      console.error('DALL-E returned no image url:', JSON.stringify(data).slice(0, 300))
+      return NextResponse.json({ error: 'Image generation failed' }, { status: 502 })
+    }
+    return NextResponse.json({ imageUrl })
   } catch (e: unknown) {
     console.error('image route error:', e)
     return NextResponse.json({ error: 'Image generation failed' }, { status: 500 })

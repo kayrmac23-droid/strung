@@ -1,8 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const RATE_LIMIT = 30
+const RATE_WINDOW_MS = 60_000
 
 function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
@@ -33,6 +37,9 @@ type ChatMessage = Anthropic.MessageParam
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const limit = rateLimit(`codesign:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
   let messages: ChatMessage[]
   try {
