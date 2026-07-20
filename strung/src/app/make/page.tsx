@@ -344,7 +344,7 @@ export default function MakePage() {
                   </span>
                   <span className="tag">{design.estimatedTime}</span>
                   <span className="tag">{design.pieceType}</span>
-                  {!design.materialsCheck.allAvailable && (
+                  {design.materialsCheck?.allAvailable === false && (
                     <span className="tag" style={{ borderColor: 'var(--rose)', color: 'var(--rose)' }}>⚠ Check materials</span>
                   )}
                 </div>
@@ -398,7 +398,7 @@ export default function MakePage() {
                   </div>
                 )}
 
-                {design.materialsCheck.notes && (
+                {design.materialsCheck?.notes && (
                   <div style={{
                     background: 'rgba(200,112,112,0.05)', border: '1px solid rgba(200,112,112,0.2)',
                     padding: '12px 16px', marginBottom: 16
@@ -451,7 +451,7 @@ export default function MakePage() {
                     color: 'var(--cream)', marginBottom: 16
                   }}>◈ Materials</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {design.components.map((c, i) => (
+                    {(design.components || []).map((c, i) => (
                       <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                         <span style={{
                           fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--silver)',
@@ -472,7 +472,7 @@ export default function MakePage() {
                     color: 'var(--cream)', marginBottom: 16
                   }}>◉ Steps preview</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {design.steps.slice(0, 5).map((s) => (
+                    {(design.steps || []).slice(0, 5).map((s) => (
                       <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                         <span style={{
                           width: 22, height: 22, background: 'var(--surface2)',
@@ -491,9 +491,9 @@ export default function MakePage() {
                         </div>
                       </div>
                     ))}
-                    {design.steps.length > 5 && (
+                    {(design.steps || []).length > 5 && (
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
-                        + {design.steps.length - 5} more steps in build mode
+                        + {(design.steps || []).length - 5} more steps in build mode
                       </p>
                     )}
                   </div>
