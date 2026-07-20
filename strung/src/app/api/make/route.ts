@@ -150,7 +150,10 @@ export async function POST(req: NextRequest) {
   const truncStr = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
   const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50), size: truncStr(f.size, 50) }))
-  if (pieceType && (!VALID_PIECE_TYPES.includes(pieceType) || pieceType.length > 50)) {
+  // The client sends display-cased values ("Earrings", "Necklace"); normalise
+  // to lowercase so they match the allowlist (and the JSON schema's piece types).
+  const pieceTypeNorm = typeof pieceType === 'string' ? pieceType.trim().toLowerCase() : ''
+  if (pieceTypeNorm && (!VALID_PIECE_TYPES.includes(pieceTypeNorm) || pieceTypeNorm.length > 50)) {
     return NextResponse.json({ error: 'Invalid piece type' }, { status: 400 })
   }
   if (mood && mood.length > 200) {
@@ -182,7 +185,7 @@ THEIR STASH:
 ${stashSummary}
 
 THEIR REQUEST:
-- Piece type: ${pieceType || 'any — choose the best fit for the stash'}
+- Piece type: ${pieceTypeNorm || 'any — choose the best fit for the stash'}
 - Mood/vibe: ${mood || 'open'}
 - Time available: ${selectedTime}
 
