@@ -1,8 +1,11 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import Schematic from '@/components/Schematic'
+import type { BeadItem } from '@/lib/supabase'
+import { buildVisualPrompt, visualUrl } from '@/lib/visual'
 import { getAuthHeaders } from '@/lib/authClient'
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -75,6 +78,8 @@ export default function CoDesignPage() {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [signedOut, setSignedOut] = useState(false)
+  const [beads, setBeads] = useState<BeadItem[]>([])
+  const [view, setView] = useState<'visual' | 'schematic'>('visual')
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -86,6 +91,22 @@ export default function CoDesignPage() {
       setSignedOut(!(await getSession()))
     })().catch(() => {})
   }, [])
+
+  // Load the stash once so the schematic + visual prompt reflect the real palette.
+  useEffect(() => {
+    ;(async () => {
+      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+      if (res.status === 401) return
+      const d = await res.json()
+      setBeads(d.beads || [])
+    })().catch(() => {})
+  }, [])
+
+  // Stable across streaming re-renders so the <img> doesn't refetch each token.
+  const visualSrc = useMemo(
+    () => (blueprint ? visualUrl(buildVisualPrompt(blueprint, beads)) : ''),
+    [blueprint, beads],
+  )
 
   function pickImage() {
     fileInputRef.current?.click()
@@ -401,6 +422,35 @@ export default function CoDesignPage() {
                     {saveError && (
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em' }}>{saveError}</p>
                     )}
+                  </div>
+
+                  {/* Visual (AI render) + Schematic (buildable diagram) */}
+                  <div className="card" style={{ padding: 20 }}>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                      {([['visual', '◐ Visual'], ['schematic', '◈ Schematic']] as const).map(([v, label]) => (
+                        <button key={v} onClick={() => setView(v)} style={{
+                          padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 9,
+                          letterSpacing: '0.1em', textTransform: 'uppercase',
+                          background: view === v ? 'var(--surface2)' : 'var(--bg2)',
+                          border: `1px solid ${view === v ? 'var(--silver)' : 'var(--border)'}`,
+                          color: view === v ? 'var(--silver2)' : 'var(--muted)',
+                          cursor: 'pointer', transition: 'all 0.15s'
+                        }}>{label}</button>
+                      ))}
+                    </div>
+                    {view === 'schematic' ? (
+                      <Schematic blueprint={blueprint} beads={beads} />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={visualSrc}
+                        alt={blueprint.title}
+                        style={{ width: '100%', display: 'block', border: '1px solid var(--border)', aspectRatio: '1 / 1', objectFit: 'cover', background: 'var(--bg2)' }}
+                      />
+                    )}
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
+                      {view === 'schematic' ? 'BUILDABLE DIAGRAM · MATCHED TO YOUR STASH' : 'AI RENDER · FOR REFERENCE ONLY'}
+                    </p>
                   </div>
 
                   {/* Materials note */}

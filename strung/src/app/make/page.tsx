@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
+import Schematic from '@/components/Schematic'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
 
@@ -55,6 +56,7 @@ export default function MakePage() {
   const [adjustment, setAdjustment] = useState('')
   const [refining, setRefining] = useState(false)
   const [recentTitles, setRecentTitles] = useState<string[]>([])
+  const [view, setView] = useState<'visual' | 'schematic'>('visual')
 
   useEffect(() => {
     ;(async () => {
@@ -378,53 +380,75 @@ export default function MakePage() {
                   <p style={{ color: 'var(--text)', fontSize: 15, marginTop: 6, lineHeight: 1.6 }}>{design.colourStory}</p>
                 </div>
 
-                {/* Generated image */}
-                {(imageLoading || design.imageUrl || imageError) && (
-                  <div style={{ marginBottom: 16 }}>
-                    {imageLoading && !design.imageUrl ? (
-                      <div style={{
-                        height: 320, background: 'var(--bg2)', border: '1px solid var(--border)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
-                        animation: 'shimmer 2s ease-in-out infinite'
-                      }}>
-                        <span className="spinner-dark" />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>
-                          RENDERING DESIGN…
-                        </span>
-                      </div>
-                    ) : design.imageUrl ? (
-                      <div style={{ position: 'relative' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={design.imageUrl}
-                          alt={design.title}
-                          style={{ width: '100%', display: 'block', border: '1px solid var(--border)', maxHeight: 420, objectFit: 'cover' }}
-                        />
-                        <div style={{
-                          position: 'absolute', bottom: 0, left: 0, right: 0,
-                          padding: '24px 16px 10px',
-                          background: 'linear-gradient(to top, rgba(9,10,13,0.8) 0%, transparent 100%)'
-                        }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
-                            AI RENDER · FOR REFERENCE ONLY
-                          </span>
-                        </div>
-                      </div>
-                    ) : imageError ? (
-                      <div style={{
-                        padding: '14px 16px', background: 'var(--bg2)', border: '1px solid var(--border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
-                      }}>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text2)' }}>
-                          {imageError}
-                        </span>
-                        <button className="btn-ghost" onClick={retryImage} disabled={imageLoading} style={{ flexShrink: 0 }}>
-                          Retry preview
-                        </button>
-                      </div>
-                    ) : null}
+                {/* Visual (AI render) + Schematic (buildable diagram) */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    {([['visual', '◐ Visual'], ['schematic', '◈ Schematic']] as const).map(([v, label]) => (
+                      <button key={v} onClick={() => setView(v)} style={{
+                        padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                        background: view === v ? 'var(--surface2)' : 'var(--bg2)',
+                        border: `1px solid ${view === v ? 'var(--silver)' : 'var(--border)'}`,
+                        color: view === v ? 'var(--silver2)' : 'var(--muted)',
+                        cursor: 'pointer', transition: 'all 0.15s'
+                      }}>{label}</button>
+                    ))}
                   </div>
-                )}
+
+                  {view === 'schematic' ? (
+                    <>
+                      <Schematic blueprint={design} beads={beads} />
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
+                        BUILDABLE DIAGRAM · MATCHED TO YOUR STASH
+                      </p>
+                    </>
+                  ) : imageLoading && !design.imageUrl ? (
+                    <div style={{
+                      height: 320, background: 'var(--bg2)', border: '1px solid var(--border)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+                      animation: 'shimmer 2s ease-in-out infinite'
+                    }}>
+                      <span className="spinner-dark" />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                        RENDERING DESIGN…
+                      </span>
+                    </div>
+                  ) : design.imageUrl ? (
+                    <div style={{ position: 'relative' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={design.imageUrl}
+                        alt={design.title}
+                        style={{ width: '100%', display: 'block', border: '1px solid var(--border)', maxHeight: 420, objectFit: 'cover' }}
+                      />
+                      <div style={{
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        padding: '24px 16px 10px',
+                        background: 'linear-gradient(to top, rgba(9,10,13,0.8) 0%, transparent 100%)'
+                      }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
+                          AI RENDER · FOR REFERENCE ONLY
+                        </span>
+                      </div>
+                    </div>
+                  ) : imageError ? (
+                    <div style={{
+                      padding: '14px 16px', background: 'var(--bg2)', border: '1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
+                    }}>
+                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text2)' }}>
+                        {imageError}
+                      </span>
+                      <button className="btn-ghost" onClick={retryImage} disabled={imageLoading} style={{ flexShrink: 0 }}>
+                        Retry preview
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em' }}>
+                      Preview will appear here.
+                    </div>
+                  )}
+                </div>
 
                 {design.materialsCheck?.notes && (
                   <div style={{
