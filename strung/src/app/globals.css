@@ -1,47 +1,66 @@
 :root {
-  --bg: #090a0d;
-  --bg2: #0e1018;
-  --bg3: #141720;
-  --surface: #181c26;
-  --surface2: #1e2330;
-  --border: #252c3d;
-  --border2: #2e3750;
-  --silver: #a8b4c8;
-  --silver2: #c4cfde;
-  --silver3: #e2e8f0;
-  --moonstone: #7a9ab8;
-  --moonstone2: #9bb8d4;
-  --steel: #4a5c72;
-  --steel2: #5a6e88;
-  --muted: #8a99b5;
-  --muted2: #808ea6;
-  --rose: #c47070;
-  --sage: #6a9080;
-  --amethyst: #8a70aa;
-  --cream: #dde4ee;
-  --text: #c8d4e4;
-  --text2: #8a9ab8;
-  --font-display: var(--font-playfair), serif;
-  --font-body: var(--font-cormorant), serif;
+  /* ── the mocha ladder — every dark: R > G ≥ B (DESIGN Rule 1) ── */
+  --bean:   #0D0A09;  /* level 0 · canvas — the bench */
+  --roast:  #14100F;  /* recess  · wells, inputs, image placeholders */
+  --mocha:  #1A1413;  /* level 1 · cards — the tray */
+  --umber:  #2B2321;  /* level 2 · header bands, hover, modals, sticky panels */
+  --seam:   #3E3330;  /* hairline borders */
+  --saddle: #544740;  /* hairline hover, strong rules, strand thread */
+  --tan:    #9C8070;  /* suede accent — tag text/borders, secondary glyphs */
+
+  --cream:  #EDE6DB;  /* primary text, headings, primary button fill */
+  --text2:  #B9ACA2;  /* body/secondary text */
+  --meta:   #8D8078;  /* mono meta — caps sizes only */
+
+  --madder:      #C4564C;  /* the red thread — accents, active, focus, marked bead */
+  --madder-deep: #A8352C;  /* pressed states, filled accents, selection background */
+
+  --sage:  #8FA383;   /* success, in-stock, stash-matched */
+  --ochre: #C99B3F;   /* warning, low quantity (semantic only — not decoration) */
+
+  --nap: 0 10px 28px rgba(6,4,3,0.6);
+  --lamplight: inset 0 1px 0 rgba(237,230,219,0.05);
+
+  /* ── legacy names kept as aliases so existing references recolour app-wide.
+        Roles migrate per DESIGN's value-migration map; no metallic hex values
+        survive here (Rule 3), and every dark leads red (Rule 1). ── */
+  --bg: var(--bean);
+  --bg2: var(--roast);
+  --bg3: var(--roast);
+  --surface: var(--mocha);
+  --surface2: var(--umber);
+  --border: var(--seam);
+  --border2: var(--saddle);
+  --silver: var(--cream);
+  --silver2: var(--cream);
+  --silver3: var(--cream);
+  --moonstone: var(--tan);
+  --moonstone2: var(--tan);
+  --steel: var(--seam);
+  --steel2: var(--saddle);
+  --muted: var(--meta);
+  --muted2: #7E7268;
+  --rose: var(--madder);       /* errors join the madder family */
+  --amethyst: var(--tan);      /* bead-data role moves to stash constants */
+  --text: var(--text2);
+  /* --gold / --emerald deleted (Rule 3 — no metal in the interface) */
+
+  --font-display: var(--font-instrument), system-ui, sans-serif;
+  --font-body: var(--font-instrument), system-ui, sans-serif;
   --font-mono: var(--font-dm-mono), monospace;
-  --gold: #c8a860;
-  --gold2: #d4bc78;
-  --gold3: #e8d498;
-  --emerald: #5a9a78;
-  --emerald2: #7ab894;
+  --font-serif: var(--font-newsreader), Georgia, serif;  /* marginalia only (Rule 2) */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 
 body {
-  background: var(--bg);
-  background-image: radial-gradient(ellipse 80% 500px at 50% 0%, rgba(122,154,184,0.05) 0%, transparent 100%);
-  color: var(--text);
+  background: var(--bean);
+  color: var(--text2);
   font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 18px;
-  line-height: 1.7;
+  font-weight: 400;
+  font-size: 17px;
+  line-height: 1.65;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -58,7 +77,7 @@ body::before {
 
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font-family: inherit; }
-h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1.2; }
+h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; color: var(--cream); }
 .mono { font-family: var(--font-mono); }
 
 ::-webkit-scrollbar { width: 4px; }
@@ -69,7 +88,8 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1
 @keyframes shimmer { 0%,100% { opacity:0.5; } 50% { opacity:1; } }
 @keyframes spin { to { transform:rotate(360deg); } }
 @keyframes pulse { 0%,100% { transform:scale(1); opacity:0.3; } 50% { transform:scale(1.06); opacity:0.5; } }
-@keyframes glow { 0%,100% { box-shadow:0 0 8px rgba(168,180,200,0.1); } 50% { box-shadow:0 0 20px rgba(168,180,200,0.25); } }
+/* strand loader — beads slide along the thread (replaces spinners) */
+@keyframes strand-slide { to { transform: translateX(72px); } }
 
 .fade-up   { animation: fadeUp 0.5s ease forwards; }
 .fade-up-1 { animation: fadeUp 0.5s 0.08s ease both; }
@@ -77,48 +97,66 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1
 .fade-up-3 { animation: fadeUp 0.5s 0.24s ease both; }
 .fade-up-4 { animation: fadeUp 0.5s 0.32s ease both; }
 
-/* Buttons */
-.btn-silver {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 11px 26px;
-  background: linear-gradient(135deg, var(--silver), var(--silver3));
-  color: var(--bg); border: none;
+/* Buttons — de-chamfered, no gradients, no metal (DESIGN Rule 3, §Buttons).
+   Primary fills cream; the madder thread appears under the label on hover.
+   .btn-primary is canonical; .btn-silver is kept as an alias so existing
+   markup picks up the new treatment without a rename. */
+.btn-primary, .btn-silver {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 20px 10px;
+  background: var(--cream); color: var(--bean);
+  border: 1px solid var(--cream); border-radius: 2px;
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.14em; text-transform: uppercase;
-  transition: all 0.2s; clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+  position: relative; cursor: pointer; transition: background 0.2s, color 0.2s;
 }
-.btn-silver:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.btn-silver:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-primary::after, .btn-silver::after {
+  content: ""; position: absolute; left: 10%; right: 10%; bottom: 5px; height: 1px;
+  background: var(--madder-deep); transform: scaleX(0); transform-origin: left;
+  transition: transform 0.25s;
+}
+.btn-primary:hover::after, .btn-silver:hover::after { transform: scaleX(1); }
+.btn-primary:disabled, .btn-silver:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary:disabled::after, .btn-silver:disabled::after { display: none; }
 
 .btn-outline {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 25px;
-  background: transparent; color: var(--silver);
-  border: 1px solid var(--steel2);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px;
+  background: transparent; color: var(--cream);
+  border: 1px solid var(--saddle); border-radius: 2px;
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.14em; text-transform: uppercase;
-  transition: all 0.2s; clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+  transition: border-color 0.2s;
 }
-.btn-outline:hover { border-color: var(--silver); background: var(--surface); }
+.btn-outline:hover { border-color: var(--cream); }
 
 .btn-ghost {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px;
-  background: transparent; color: var(--muted);
-  border: 1px solid var(--border);
+  background: transparent; color: var(--meta);
+  border: 1px solid var(--seam); border-radius: 2px;
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.1em; text-transform: uppercase;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
-.btn-ghost:hover { color: var(--silver2); border-color: var(--border2); }
+.btn-ghost:hover { color: var(--cream); border-color: var(--saddle); }
 
-/* Cards */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  transition: border-color 0.2s, box-shadow 0.2s;
+/* mono-caps text link — the madder underline */
+.btn-text {
+  background: none; border: none; padding: 0;
+  color: var(--madder); border-bottom: 1px solid var(--madder-deep);
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
 }
-.card:hover { border-color: var(--border2); box-shadow: 0 4px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.02); }
+
+/* Cards — the tray. Nap shadow below, lamplight edge on top (DESIGN Rule 4). */
+.card {
+  background: var(--mocha);
+  border: 1px solid var(--seam);
+  box-shadow: var(--nap), var(--lamplight);
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+.card:hover { border-color: var(--saddle); }
 
 /* Card that is itself a link — CSS hover/focus instead of JS handlers */
 .card--link {
@@ -127,8 +165,8 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
 .card--link:hover, .card--link:focus-visible {
-  border-color: var(--border2);
-  background: var(--surface2);
+  border-color: var(--saddle);
+  background: var(--umber);
 }
 
 /* Homepage feature cards — neutral chrome only (no jewel-toned dividers/glyphs),
@@ -148,26 +186,26 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; line-height: 1
   padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
 }
 
-/* Inputs */
+/* Inputs — sunk into roast, madder focus (DESIGN §Buttons & inputs) */
 .input-base {
-  width: 100%; background: var(--bg2);
-  border: 1px solid var(--border); color: var(--text);
+  width: 100%; background: var(--roast);
+  border: 1px solid var(--seam); border-radius: 2px; color: var(--cream);
   font-family: var(--font-body); font-size: 16px;
   padding: 11px 14px; outline: none; transition: border-color 0.2s;
 }
-.input-base:focus { border-color: var(--silver); }
+.input-base:focus { border-color: var(--madder); }
 .input-base::placeholder { color: var(--muted2); }
 textarea.input-base { resize: vertical; min-height: 80px; }
 
 .select-base {
-  width: 100%; background: var(--bg2);
-  border: 1px solid var(--border); color: var(--text);
+  width: 100%; background: var(--roast);
+  border: 1px solid var(--seam); border-radius: 2px; color: var(--cream);
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.06em; padding: 10px 14px;
   outline: none; appearance: none; cursor: pointer;
   transition: border-color 0.2s;
 }
-.select-base:focus { border-color: var(--silver); }
+.select-base:focus { border-color: var(--madder); }
 /* iOS zooms any select with a sub-16px font on focus — bump it on small screens */
 @media (max-width: 640px) {
   .select-base { font-size: 16px; letter-spacing: 0.02em; }
@@ -180,37 +218,49 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   margin-bottom: 7px;
 }
 
-/* Tags */
+/* Tags — DM Mono caps in suede tan */
 .tag {
   display: inline-block; padding: 3px 10px;
-  background: var(--surface2); border: 1px solid var(--border);
+  background: var(--umber); border: 1px solid var(--seam);
   font-family: var(--font-mono); font-size: 10px;
-  letter-spacing: 0.1em; color: var(--muted);
+  letter-spacing: 0.1em; color: var(--tan);
 }
 
-/* Spinner */
-.spinner {
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.15);
-  border-top-color: var(--bg);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: inline-block;
+/* Spinner — legacy alias. The strand loader (below) is the canonical loader,
+   but any remaining .spinner markup renders as a small madder bead pulse
+   rather than a spinning ring (no metal, DESIGN Rule 3). */
+.spinner, .spinner-dark {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--madder); display: inline-block;
+  animation: pulse 1.1s ease-in-out infinite;
 }
-.spinner-dark {
-  width: 18px; height: 18px;
-  border: 2px solid var(--border2);
-  border-top-color: var(--silver);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: inline-block;
+.spinner-dark { width: 14px; height: 14px; }
+
+/* The strand loader — beads slide along a thread (DESIGN §Loading strand) */
+.strand-loader { position: relative; width: 160px; height: 18px; }
+.strand-loader::before {
+  content: ""; position: absolute; inset: 8.5px 0 auto; height: 1px; background: var(--saddle);
+}
+.strand-loader i {
+  position: absolute; top: 5px; width: 8px; height: 8px; border-radius: 50%;
+  animation: strand-slide 1.2s cubic-bezier(.45,0,.55,1) infinite alternate;
+}
+.strand-loader i:nth-child(1) { left: 8px; top: 4px; width: 10px; height: 10px; background: var(--madder); }
+.strand-loader i:nth-child(2) { left: 32px; background: var(--tan); animation-delay: .12s; }
+.strand-loader i:nth-child(3) { left: 54px; background: var(--saddle); animation-delay: .24s; }
+@media (prefers-reduced-motion: reduce) { .strand-loader i { animation: none; } }
+
+/* Marginalia — the hand in the margin (Newsreader italic, DESIGN Rule 2) */
+.empty-line {
+  font-family: var(--font-serif); font-style: italic;
+  font-size: 17px; color: var(--tan); line-height: 1.5;
 }
 
 /* Prose */
-.prose { color: var(--text); font-family: var(--font-body); font-size: 17px; line-height: 1.8; }
-.prose h3 { font-family: var(--font-display); font-size: 20px; color: var(--silver2); margin: 22px 0 8px; }
+.prose { color: var(--text2); font-family: var(--font-body); font-size: 17px; line-height: 1.8; }
+.prose h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; font-size: 20px; color: var(--cream); margin: 22px 0 8px; }
 .prose p { margin-bottom: 12px; }
-.prose strong { color: var(--silver3); }
+.prose strong { color: var(--cream); }
 .prose ul { margin: 10px 0 12px 18px; }
 .prose li { margin-bottom: 5px; }
 
@@ -234,7 +284,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .section-eyebrow {
   font-family: var(--font-mono); font-size: 10px;
   letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--moonstone); margin-bottom: 8px;
+  color: var(--madder); margin-bottom: 8px;
 }
 
 /* Responsive grid — 3 → 2 → 1 columns */
@@ -307,9 +357,9 @@ textarea.input-base { resize: vertical; min-height: 80px; }
     gap: 0;
     position: fixed;
     top: 60px; left: 0; right: 0;
-    background: rgba(9,10,13,0.98);
+    background: color-mix(in srgb, var(--bean) 97%, transparent);
     backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--seam);
     padding: 4px 0 12px;
     z-index: 99;
   }
@@ -333,23 +383,11 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 }
 
 /* Text selection */
-::selection { background: rgba(168,180,200,0.18); color: var(--cream); }
+::selection { background: color-mix(in srgb, var(--madder-deep) 55%, transparent); color: var(--cream); }
 
-/* Focus */
-.input-base:focus-visible, .select-base:focus-visible { outline: 1px solid var(--silver); outline-offset: 0; }
-
-/* Gold button */
-.btn-gold {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 11px 26px;
-  background: linear-gradient(135deg, var(--gold), var(--gold3));
-  color: #1a1408; border: none;
-  font-family: var(--font-mono); font-size: 11px;
-  letter-spacing: 0.14em; text-transform: uppercase;
-  transition: all 0.2s; clip-path: polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
-}
-.btn-gold:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+/* Focus — the madder ring (DESIGN §Buttons & inputs) */
+:focus-visible { outline: 1px solid var(--madder); outline-offset: 2px; }
+.input-base:focus-visible, .select-base:focus-visible { outline: 1px solid var(--madder); outline-offset: 0; }
 
 /* Marquee */
 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }

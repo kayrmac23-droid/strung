@@ -29,21 +29,22 @@ export default function Nav() {
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 clamp(16px, 4vw, 40px)', height: '60px',
-      background: 'rgba(9,10,13,0.95)', backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid var(--border)'
+      background: 'color-mix(in srgb, var(--bean) 92%, transparent)', backdropFilter: 'blur(16px)',
+      borderBottom: '1px solid var(--seam)'
     }}>
-      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Wordmark — "strung" on its thread (DESIGN §Wordmark). The strand
+          replaces the retired glowing orb. */}
+      <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <span style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: 'var(--silver)',
-          boxShadow: '0 0 10px rgba(168,180,200,0.6)',
-          animation: 'glow 3s ease-in-out infinite',
-          display: 'inline-block'
-        }} />
-        <span style={{
-          fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600,
-          letterSpacing: '0.1em', color: 'var(--cream)'
-        }}>Strung</span>
+          fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600,
+          letterSpacing: '-0.01em', color: 'var(--cream)'
+        }}>strung</span>
+        <svg width="42" height="10" viewBox="0 0 84 10" aria-hidden="true" style={{ display: 'block' }}>
+          <line x1="0" y1="5" x2="84" y2="5" stroke="var(--saddle)" strokeWidth="1" />
+          <circle cx="14" cy="5" r="3.2" fill="var(--madder)" />
+          <circle cx="30" cy="5" r="2.4" fill="none" stroke="var(--tan)" strokeWidth="1" />
+          <circle cx="44" cy="5" r="2.4" fill="none" stroke="var(--tan)" strokeWidth="1" />
+        </svg>
       </Link>
 
       <button
@@ -60,8 +61,8 @@ export default function Nav() {
             <Link href={l.href} onClick={() => setMenuOpen(false)} style={{
               fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em',
               textTransform: 'uppercase',
-              color: isActive(l.href) ? 'var(--silver2)' : 'var(--muted)',
-              borderBottom: isActive(l.href) ? '1px solid var(--silver)' : 'none',
+              color: isActive(l.href) ? 'var(--cream)' : 'var(--meta)',
+              borderBottom: isActive(l.href) ? '1px solid var(--madder)' : 'none',
               paddingBottom: isActive(l.href) ? '2px' : '0',
               transition: 'color 0.2s'
             }}>{l.label}</Link>

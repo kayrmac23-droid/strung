@@ -515,7 +515,7 @@ export default function CalculatorPage() {
                     <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text)' }}>
                       {row.size}
                     </span>
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--gold)', letterSpacing: '0.06em' }}>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--tan)', letterSpacing: '0.06em' }}>
                       {row.range}
                     </span>
                   </div>

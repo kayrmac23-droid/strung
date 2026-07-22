@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Cormorant_Garamond, DM_Mono } from 'next/font/google'
+import { Instrument_Sans, Newsreader, DM_Mono } from 'next/font/google'
 import './globals.css'
 
-const playfair = Playfair_Display({
+// Display + interface grotesk (DESIGN §Type). No serif in the chrome (Rule 2).
+const instrument = Instrument_Sans({
   subsets: ['latin'],
-  weight: ['400', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-playfair',
+  weight: ['400', '500', '600'],
+  variable: '--font-instrument',
   display: 'swap',
 })
 
-const cormorant = Cormorant_Garamond({
+// The hand in the margin — journal lines, AI asides, empty states only.
+const newsreader = Newsreader({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-cormorant',
+  weight: ['400', '500'],
+  style: ['italic'],
+  variable: '--font-newsreader',
   display: 'swap',
 })
 
@@ -38,7 +39,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${cormorant.variable} ${dmMono.variable}`}>{children}</body>
+      <body className={`${instrument.variable} ${newsreader.variable} ${dmMono.variable}`}>{children}</body>
     </html>
   )
 }

@@ -3,8 +3,10 @@ import type { BeadItem } from '@/lib/supabase'
 // Shared image-prompt builder for the AI "Visual" render. Kept out of the pages
 // so design/ and codesign/ produce identical, palette-aware prompts.
 
+// Background matches the app's field so AI renders sit naturally on the new
+// surfaces (DESIGN step 7) — deep warm mocha velvet, never blue-black or white.
 const QUALITY_SUFFIX =
-  'professional jewellery photography, studio lighting, white background, elegant, detailed macro'
+  'professional jewellery photography, soft warm lamplight, resting on deep warm mocha-brown velvet, elegant, detailed macro'
 
 // A rough plain-English reading of a hex colour, to nudge the render toward the
 // real palette even when the colour name alone is vague.

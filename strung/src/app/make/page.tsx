@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
 import Schematic from '@/components/Schematic'
+import StrandLoader from '@/components/StrandLoader'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
 
@@ -336,7 +337,7 @@ export default function MakePage() {
                 ? <><span className="spinner" />Reading stash &amp; designing…</>
                 : signedOut
                   ? 'Sign in to design'
-                  : '◉ Design Something'}
+                  : 'Design Something'}
             </button>
           </div>
 
@@ -383,7 +384,7 @@ export default function MakePage() {
                 {/* Visual (AI render) + Schematic (buildable diagram) */}
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                    {([['visual', '◐ Visual'], ['schematic', '◈ Schematic']] as const).map(([v, label]) => (
+                    {([['visual', 'Visual'], ['schematic', 'Schematic']] as const).map(([v, label]) => (
                       <button key={v} onClick={() => setView(v)} style={{
                         padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
                         letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -404,12 +405,11 @@ export default function MakePage() {
                     </>
                   ) : imageLoading && !design.imageUrl ? (
                     <div style={{
-                      height: 320, background: 'var(--bg2)', border: '1px solid var(--border)',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
-                      animation: 'shimmer 2s ease-in-out infinite'
+                      height: 320, background: 'var(--roast)', border: '1px solid var(--seam)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
                     }}>
-                      <span className="spinner-dark" />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.1em' }}>
+                      <StrandLoader />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.1em' }}>
                         RENDERING DESIGN…
                       </span>
                     </div>
@@ -424,9 +424,9 @@ export default function MakePage() {
                       <div style={{
                         position: 'absolute', bottom: 0, left: 0, right: 0,
                         padding: '24px 16px 10px',
-                        background: 'linear-gradient(to top, rgba(9,10,13,0.8) 0%, transparent 100%)'
+                        background: 'linear-gradient(to top, rgba(13,10,9,0.85) 0%, transparent 100%)'
                       }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(168,180,200,0.6)', letterSpacing: '0.12em' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--tan)', letterSpacing: '0.12em' }}>
                           AI RENDER · FOR REFERENCE ONLY
                         </span>
                       </div>
@@ -501,7 +501,7 @@ export default function MakePage() {
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
                     color: 'var(--cream)', marginBottom: 16
-                  }}>◈ Materials</h3>
+                  }}>Materials</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {(design.components || []).map((c, i) => (
                       <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -522,7 +522,7 @@ export default function MakePage() {
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
                     color: 'var(--cream)', marginBottom: 16
-                  }}>◉ Steps preview</h3>
+                  }}>Steps preview</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {(design.steps || []).slice(0, 5).map((s) => (
                       <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

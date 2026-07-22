@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import Schematic from '@/components/Schematic'
+import BeadIcon from '@/components/BeadIcon'
+import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem } from '@/lib/supabase'
 import { buildVisualPrompt, visualUrl } from '@/lib/visual'
 import { getAuthHeaders } from '@/lib/authClient'
@@ -299,8 +301,8 @@ export default function CoDesignPage() {
                             width: 28, height: 28, borderRadius: '50%',
                             background: 'var(--surface2)', border: '1px solid var(--border2)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, color: 'var(--silver)', flexShrink: 0, marginTop: 4,
-                          }}>◈</div>
+                            flexShrink: 0, marginTop: 4,
+                          }}><BeadIcon shape="round" size={13} stroke="var(--tan)" /></div>
                         )}
                         <div style={{
                           maxWidth: '82%', padding: '12px 16px',
@@ -352,15 +354,15 @@ export default function CoDesignPage() {
                     title="Attach a photo"
                     style={{
                       background: 'none', border: '1px solid var(--border)',
-                      color: pendingImage ? 'var(--moonstone)' : 'var(--muted)',
+                      color: pendingImage ? 'var(--madder)' : 'var(--muted)',
                       width: 44, height: 44, flexShrink: 0,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', fontSize: 18, transition: 'all 0.15s',
+                      cursor: 'pointer', fontSize: 22, transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--silver)'; e.currentTarget.style.color = 'var(--silver)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = pendingImage ? 'var(--moonstone)' : 'var(--muted)' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--madder)'; e.currentTarget.style.color = 'var(--madder)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = pendingImage ? 'var(--madder)' : 'var(--muted)' }}
                   >
-                    ◉
+                    +
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
 
@@ -378,19 +380,14 @@ export default function CoDesignPage() {
                     {loading ? <span className="spinner" /> : '↑'}
                   </button>
                 </div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘ + Enter to send · ◉ to attach a photo</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘ + Enter to send · + to attach a photo</p>
               </div>
             </div>
 
             {/* Blueprint panel */}
             <div style={{ position: 'sticky', top: 80 }}>
               {!blueprint ? (
-                <div style={{ border: '1px dashed var(--border)', padding: '48px 24px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 40, color: 'var(--border2)', marginBottom: 16, animation: 'shimmer 3s ease-in-out infinite' }}>◈</div>
-                  <p style={{ color: 'var(--muted)', fontSize: 14, fontFamily: 'var(--font-body)', lineHeight: 1.7 }}>
-                    Your blueprint will build up here as you chat. The AI will generate it once the design has enough shape.
-                  </p>
-                </div>
+                <StrandEmpty line="Your blueprint will build up here as you chat. The AI will generate it once the design has enough shape." />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
                   {/* Header */}
@@ -417,7 +414,7 @@ export default function CoDesignPage() {
                       disabled={saved}
                       style={{ width: '100%', justifyContent: 'center', marginTop: 14, fontSize: 11 }}
                     >
-                      {saved ? '✓ Saved to Journal' : '⊡ Save to Journal'}
+                      {saved ? '✓ Saved to Journal' : 'Save to Journal'}
                     </button>
                     {saveError && (
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em' }}>{saveError}</p>
@@ -427,7 +424,7 @@ export default function CoDesignPage() {
                   {/* Visual (AI render) + Schematic (buildable diagram) */}
                   <div className="card" style={{ padding: 20 }}>
                     <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                      {([['visual', '◐ Visual'], ['schematic', '◈ Schematic']] as const).map(([v, label]) => (
+                      {([['visual', 'Visual'], ['schematic', 'Schematic']] as const).map(([v, label]) => (
                         <button key={v} onClick={() => setView(v)} style={{
                           padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 9,
                           letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -463,7 +460,7 @@ export default function CoDesignPage() {
 
                   {/* Components */}
                   <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>◈ Components</h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>Components</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                       {(blueprint.components ?? []).map((c, i) => (
                         <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -479,7 +476,7 @@ export default function CoDesignPage() {
 
                   {/* Steps */}
                   <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>◇ Build Steps</h3>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>Build Steps</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       {(blueprint.steps ?? []).map((s, i) => (
                         <div key={s.id ?? i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
