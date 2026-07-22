@@ -90,6 +90,7 @@ export default function InventoryPage() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string|null>(null)
+  const [confirmingId, setConfirmingId] = useState<string|null>(null)
   const [editingId, setEditingId] = useState<string|null>(null)
   const [editForm, setEditForm] = useState<Partial<BeadItem|FindingItem>>({})
   const [search, setSearch] = useState('')
@@ -156,6 +157,7 @@ export default function InventoryPage() {
   }
 
   async function deleteItem(id: string) {
+    setConfirmingId(null)
     setDeletingId(id)
     try {
       const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
@@ -700,15 +702,29 @@ export default function InventoryPage() {
                           onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
                             ✎ edit
                           </button>
-                          <button onClick={()=>deleteItem(b.id!)} disabled={deletingId===b.id} style={{
-                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                            transition:'color 0.15s',padding:0
-                          }}
-                          onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                            {deletingId===b.id?'removing…':'× remove'}
-                          </button>
+                          {confirmingId===b.id ? (
+                            <span style={{display:'inline-flex',alignItems:'center',gap:10}}>
+                              <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
+                              <button onClick={()=>deleteItem(b.id!)} disabled={deletingId===b.id} style={{
+                                background:'none',border:'none',color:'var(--rose)',fontSize:12,
+                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
+                              }}>{deletingId===b.id?'removing…':'yes'}</button>
+                              <button onClick={()=>setConfirmingId(null)} disabled={deletingId===b.id} style={{
+                                background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
+                              }}>cancel</button>
+                            </span>
+                          ) : (
+                            <button onClick={()=>setConfirmingId(b.id!)} style={{
+                              background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                              fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                              transition:'color 0.15s',padding:0
+                            }}
+                            onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
+                            onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                              × remove
+                            </button>
+                          )}
                         </div>
                       </>
                     )}
@@ -790,15 +806,29 @@ export default function InventoryPage() {
                           onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
                             ✎ edit
                           </button>
-                          <button onClick={()=>deleteItem(f.id!)} disabled={deletingId===f.id} style={{
-                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                            transition:'color 0.15s',padding:0
-                          }}
-                          onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                            {deletingId===f.id?'removing…':'× remove'}
-                          </button>
+                          {confirmingId===f.id ? (
+                            <span style={{display:'inline-flex',alignItems:'center',gap:10}}>
+                              <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
+                              <button onClick={()=>deleteItem(f.id!)} disabled={deletingId===f.id} style={{
+                                background:'none',border:'none',color:'var(--rose)',fontSize:12,
+                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
+                              }}>{deletingId===f.id?'removing…':'yes'}</button>
+                              <button onClick={()=>setConfirmingId(null)} disabled={deletingId===f.id} style={{
+                                background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
+                              }}>cancel</button>
+                            </span>
+                          ) : (
+                            <button onClick={()=>setConfirmingId(f.id!)} style={{
+                              background:'none',border:'none',color:'var(--muted2)',fontSize:12,
+                              fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
+                              transition:'color 0.15s',padding:0
+                            }}
+                            onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
+                            onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
+                              × remove
+                            </button>
+                          )}
                         </div>
                       </>
                     )}

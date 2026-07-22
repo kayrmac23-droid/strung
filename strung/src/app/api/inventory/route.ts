@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+
+// Set well above the AI-route limits: decrementStash() fires a parallel PATCH
+// per matched row and "Save all" batches inserts, so the UI legitimately bursts
+// this route. This only guards against runaway loops, not normal use.
+const RATE_LIMIT = 120
+const RATE_WINDOW_MS = 60_000
+
+function rateLimited(userId: string): Response | null {
+  const limit = rateLimit(`inventory:${userId}`, RATE_LIMIT, RATE_WINDOW_MS)
+  return limit.allowed ? null : tooManyRequests(limit.retryAfter)
+}
 
 function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+}
+
+async function parseBody(req: NextRequest): Promise<Record<string, unknown> | null> {
+  try {
+    const body = await req.json()
+    return body && typeof body === 'object' ? body as Record<string, unknown> : {}
+  } catch {
+    return null
+  }
 }
 
 const BEAD_FIELDS = ['name', 'type', 'colour', 'hex', 'size', 'quantity', 'shape', 'notes'] as const
@@ -15,6 +36,8 @@ function pickFields(data: Record<string, unknown>, fields: readonly string[]) {
 export async function GET(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = rateLimited(user.id)
+  if (limited) return limited
   const supabase = getAuthenticatedClient(getToken(req))
   const [beads, findings] = await Promise.all([
     supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
@@ -31,10 +54,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = rateLimited(user.id)
+  if (limited) return limited
   const supabase = getAuthenticatedClient(getToken(req))
-  const body = await req.json()
+  const body = await parseBody(req)
+  if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { table, data } = body
-  if (!['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
+  if (typeof table !== 'string' || !['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
   const allowed = table === 'beads' ? BEAD_FIELDS : FINDING_FIELDS
 
   // Bulk insert: a single request with an array of rows (used by "Save all").
@@ -64,6 +90,8 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = rateLimited(user.id)
+  if (limited) return limited
   const supabase = getAuthenticatedClient(getToken(req))
   const { searchParams } = new URL(req.url)
   const table = searchParams.get('table')
@@ -80,10 +108,13 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const limited = rateLimited(user.id)
+  if (limited) return limited
   const supabase = getAuthenticatedClient(getToken(req))
-  const body = await req.json()
+  const body = await parseBody(req)
+  if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { table, id, data } = body
-  if (!['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
+  if (typeof table !== 'string' || !['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
   if (!id || !data || typeof data !== 'object') return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
   const allowed = table === 'beads' ? BEAD_FIELDS : FINDING_FIELDS
   const sanitized = pickFields(data as Record<string, unknown>, allowed)
