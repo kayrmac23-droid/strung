@@ -3,10 +3,13 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import StrandLoader from '@/components/StrandLoader'
+import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 import { prepareImageForIdentify } from '@/lib/imagePrep'
 import type { Confidence } from '@/lib/stashItems'
+import { beadColours, typeColours } from '@/lib/stash-colours'
 
 type ReviewBead = BeadItem & { confidence?: Confidence }
 type ReviewFinding = FindingItem & { confidence?: Confidence }
@@ -45,42 +48,10 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`
 }
 
-const beadColours = [
-  { name:'Amethyst purple',  hex:'#8a70aa' },
-  { name:'Lavender',         hex:'#b8a0d4' },
-  { name:'Rose quartz pink', hex:'#d4a0b0' },
-  { name:'Deep magenta',     hex:'#9b2355' },
-  { name:'Coral pink',       hex:'#e8806a' },
-  { name:'Garnet red',       hex:'#6b1a2a' },
-  { name:'Ruby red',         hex:'#9b1a2a' },
-  { name:'Carnelian orange', hex:'#c8502a' },
-  { name:'Citrine yellow',   hex:'#c8a860' },
-  { name:'Lemon quartz',     hex:'#d4c840' },
-  { name:'Peridot green',    hex:'#8aaa40' },
-  { name:'Sage green',       hex:'#6a9080' },
-  { name:'Emerald green',    hex:'#2a7a50' },
-  { name:'Malachite',        hex:'#1a6a40' },
-  { name:'Aquamarine teal',  hex:'#6aafb8' },
-  { name:'Turquoise',        hex:'#3aa8a0' },
-  { name:'Labradorite blue', hex:'#7a9ab8' },
-  { name:'Moonstone silver', hex:'#a8b4c8' },
-  { name:'Iolite violet',    hex:'#5a5a9a' },
-  { name:'Lapis lazuli',     hex:'#1a3a8a' },
-  { name:'Tiger eye amber',  hex:'#b07840' },
-  { name:'Smoky quartz',     hex:'#6a5a4a' },
-  { name:'Pearl cream',      hex:'#e8e0d0' },
-  { name:'Onyx black',       hex:'#1a1a2e' },
-]
-
 const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
 const findingTypes: FindingItem['type'][] = ['statement_component','ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
 const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
 const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube','oval','square','other']
-
-const typeColours: Record<string, string> = {
-  gemstone:'var(--moonstone)',crystal:'var(--amethyst)',glass:'var(--sage)',
-  seed:'var(--silver)',metal:'var(--steel2)',pearl:'#c8b8a8',resin:'#c87040',other:'var(--muted)'
-}
 
 export default function InventoryPage() {
   const [tab, setTab] = useState<'beads'|'findings'>('beads')
@@ -311,14 +282,14 @@ export default function InventoryPage() {
           {/* Stats */}
           <div className="fade-up-2 stats-grid-4" style={{marginBottom:32}}>
             {[
-              ['Total Beads',beads.length,'◈'],
-              ['Total Findings',findings.length,'◉'],
-              ['Bead Types',[...new Set(beads.map(b=>b.type))].length,'◇'],
-              ['Total Pieces',beads.reduce((a,b)=>a+b.quantity,0)+findings.reduce((a,f)=>a+f.quantity,0),'◎'],
-            ].map(([label,val,icon]) => (
+              ['Total Beads',beads.length],
+              ['Total Findings',findings.length],
+              ['Bead Types',[...new Set(beads.map(b=>b.type))].length],
+              ['Total Pieces',beads.reduce((a,b)=>a+b.quantity,0)+findings.reduce((a,f)=>a+f.quantity,0)],
+            ].map(([label,val]) => (
               <div key={String(label)} className="card" style={{padding:'20px 24px'}}>
-                <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>{String(icon)} {String(label)}</div>
-                <div style={{fontFamily:'var(--font-display)',fontSize:32,color:'var(--silver2)'}}>{String(val)}</div>
+                <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--meta)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>{String(label)}</div>
+                <div style={{fontFamily:'var(--font-display)',fontSize:32,color:'var(--cream)'}}>{String(val)}</div>
               </div>
             ))}
           </div>
@@ -348,7 +319,7 @@ export default function InventoryPage() {
             <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
             <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
             <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti} style={{gap:6}}>
-              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : '◈ Add from photo'}
+              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : 'Add from photo'}
             </button>
             <input
               ref={multiFileInputRef}
@@ -368,7 +339,7 @@ export default function InventoryPage() {
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
                 {aiPrefilled && (
-                  <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)'}}>◉ AI pre-filled — review &amp; adjust</span>
+                  <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--madder)'}}>AI pre-filled — review &amp; adjust</span>
                 )}
               </div>
               {tab==='beads' ? (
@@ -491,8 +462,8 @@ export default function InventoryPage() {
                       {findingTypes.map(t=><option key={t} value={t}>{t === 'statement_component' ? '★ Statement / Chandelier piece' : t.replace(/_/g,' ')}</option>)}
                     </select>{arrow}</div>
                     {findingForm.type === 'statement_component' && (
-                      <div style={{marginTop:8,padding:'10px 14px',background:'rgba(122,154,184,0.08)',border:'1px solid rgba(122,154,184,0.2)'}}>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--moonstone)',letterSpacing:'0.1em',marginBottom:4}}>◉ FOCAL PIECE</p>
+                      <div style={{marginTop:8,padding:'10px 14px',background:'var(--roast)',border:'1px solid var(--seam)'}}>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--madder)',letterSpacing:'0.1em',marginBottom:4}}>FOCAL PIECE</p>
                         <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.5}}>Chandelier frames, earring hoops, pendant bails, large connectors — the AI will build designs around these.</p>
                       </div>
                     )}
@@ -560,8 +531,8 @@ export default function InventoryPage() {
 
               {(reviewBeads.length>0 || reviewFindings.length>0) && (
                 <div style={{marginTop:24,borderTop:'1px solid var(--border)',paddingTop:20}}>
-                  <p className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--moonstone)',textTransform:'uppercase',marginBottom:16}}>
-                    ◉ Review — {reviewBeads.length} bead{reviewBeads.length===1?'':'s'}, {reviewFindings.length} finding{reviewFindings.length===1?'':'s'}
+                  <p className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--madder)',textTransform:'uppercase',marginBottom:16}}>
+                    Review — {reviewBeads.length} bead{reviewBeads.length===1?'':'s'}, {reviewFindings.length} finding{reviewFindings.length===1?'':'s'}
                   </p>
                   {reviewBeads.length>0 && (
                     <div style={{marginBottom:18}}>
@@ -621,14 +592,11 @@ export default function InventoryPage() {
           {/* Items list */}
           {loading ? (
             <div style={{display:'flex',justifyContent:'center',padding:60}}>
-              <span className="spinner-dark"/>
+              <StrandLoader/>
             </div>
           ) : tab==='beads' ? (
             filteredBeads.length === 0 ? (
-              <div style={{textAlign:'center',padding:'60px 20px',border:'1px dashed var(--border)',color:'var(--muted)'}}>
-                <div style={{fontSize:40,marginBottom:12,animation:'shimmer 3s ease-in-out infinite'}}>◈</div>
-                <p style={{fontFamily:'var(--font-body)',fontSize:16}}>{search||filterType?'No beads match your filter.':'No beads yet. Add your first bead to get started.'}</p>
-              </div>
+              <StrandEmpty line={search||filterType?'No beads match your filter.':'No beads yet. Add your first bead to get started.'} />
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredBeads.map(b => (
@@ -734,10 +702,7 @@ export default function InventoryPage() {
             )
           ) : (
             filteredFindings.length === 0 ? (
-              <div style={{textAlign:'center',padding:'60px 20px',border:'1px dashed var(--border)',color:'var(--muted)'}}>
-                <div style={{fontSize:40,marginBottom:12,animation:'shimmer 3s ease-in-out infinite'}}>◉</div>
-                <p style={{fontFamily:'var(--font-body)',fontSize:16}}>{search||filterType?'No findings match your filter.':'No findings yet. Add your clasps, ear wires, and pins.'}</p>
-              </div>
+              <StrandEmpty line={search||filterType?'No findings match your filter.':'No findings yet. Add your clasps, ear wires, and pins.'} />
             ) : (
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
                 {filteredFindings.map(f => (

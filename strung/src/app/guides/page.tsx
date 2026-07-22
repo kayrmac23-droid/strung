@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import BeadIcon, { type BeadShape } from '@/components/BeadIcon'
 import { getAuthHeaders } from '@/lib/authClient'
 
 const guides = [
-  { id:'wrapped-loop', icon:'○', category:'Wire Work', title:'The Wrapped Loop', difficulty:'Beginner', time:'20 min',
+  { id:'wrapped-loop', icon:'ring', category:'Wire Work', title:'The Wrapped Loop', difficulty:'Beginner', time:'20 min',
     summary:'The single most important technique in beaded jewellery. Master this and you can make almost anything.',
     sections:[
       { heading:'What It Is & Why It Matters', body:`A wrapped loop is a secure, professional way to attach a bead to a wire and create a link. Unlike a simple loop (which can pop open), a wrapped loop is permanent — the wire coils around itself to lock it closed.\n\nOnce you can make a consistent wrapped loop, you can make: earrings with dangles, briolette drops, necklace stations, chandelier components, and wire-wrapped pendants. It's the foundation of almost every wire-based beaded jewellery style.` },
@@ -15,7 +16,7 @@ const guides = [
       { heading:'Wrapping Briolettes & Teardrops', body:`Briolettes have a hole drilled through the top point, not through the bead. Thread a thin wire through the hole, cross the two ends at the top, then wrap one wire around the other to form a stem — then make a wrapped loop from the stem.\n\nUse 26 or 28 gauge wire for briolettes. Thicker wire won't fit through the hole and will be harder to wrap neatly at the top.` },
     ]
   },
-  { id:'head-pins', icon:'|', category:'Findings', title:'Head Pins & Eye Pins', difficulty:'Beginner', time:'15 min',
+  { id:'head-pins', icon:'tube', category:'Findings', title:'Head Pins & Eye Pins', difficulty:'Beginner', time:'15 min',
     summary:'The quickest way to turn a single bead into a dangle or a link.',
     sections:[
       { heading:'Head Pins vs Eye Pins', body:`**Head pin:** A straight wire with a flat pad or decorative end at the bottom. You thread a bead on, then make a loop at the top. Used for dangles and earring drops.\n\n**Eye pin:** A straight wire with a pre-made loop at one end. Thread a bead on, make a loop at the other end. Used for chain links and connecting multiple beads in a sequence.\n\nBoth come in different gauges (21g is standard) and lengths (30mm, 40mm, 50mm). Match the length to your bead plus enough wire to make a loop — you need at least 10-12mm of wire above the bead.` },
@@ -24,7 +25,7 @@ const guides = [
       { heading:'Decorative Head Pins', body:`Beyond plain flat-head pins, you'll find: ball-end pins (a small ball instead of flat pad — elegant), eye pins (loop end), paddle pins (flat disc top), flower or leaf end pins. These add detail to the bottom of a dangle without needing to add an extra bead.\n\nFor your style of jewellery — wire-wrapped drops and chandelier earrings — ball-end head pins in silver are the most versatile option. They look intentional at the base of a dangle even when visible.` },
     ]
   },
-  { id:'jump-rings', icon:'◯', category:'Findings', title:'Jump Rings', difficulty:'Beginner', time:'10 min',
+  { id:'jump-rings', icon:'ring', category:'Findings', title:'Jump Rings', difficulty:'Beginner', time:'10 min',
     summary:'How to open, close, and use jump rings without ruining them.',
     sections:[
       { heading:'The Golden Rule', body:`Never pull a jump ring open by pulling the two ends apart (outward). This distorts the round shape and you can never get it perfectly round again.\n\nInstead: hold the ring with two pairs of flat nose pliers, one on each side of the cut. Twist one side toward you and one side away — opening it sideways. Close it the same way, pressing back until you feel and hear a slight click as the ends meet.` },
@@ -33,7 +34,7 @@ const guides = [
       { heading:'Common Issues', body:`**Ring keeps springing open:** You're not closing it fully. Press both flat nose pliers together firmly until the ends are flush and you feel resistance. Over-close slightly, then ease back.\n\n**Ring is now oval, not round:** You opened it the wrong way (pulled apart instead of twisting). Use a ring mandrel or the tapered end of your round nose pliers to reshape it.\n\n**Chain keeps coming apart:** Your jump rings are either not fully closed or are too thin a gauge for the weight of the pendant. Use a heavier gauge or two jump rings together for heavier pieces.` },
     ]
   },
-  { id:'stringing', icon:'∼', category:'Stringing', title:'Stringing & Crimping', difficulty:'Beginner', time:'25 min',
+  { id:'stringing', icon:'rondelle', category:'Stringing', title:'Stringing & Crimping', difficulty:'Beginner', time:'25 min',
     summary:'How to string beads on wire and finish them properly with crimps and clasps.',
     sections:[
       { heading:'Beading Wire vs Thread', body:`**Beading wire (Soft Flex, Beadalon):** Twisted steel cable coated in nylon. Comes in different strand counts — 19 or 49 strand is most flexible and drapes well. Use for most necklaces and bracelets. Doesn't stretch, is strong, and doesn't fray.\n\n**Elastic (Stretch Magic):** For stretch bracelets. Simple to make — just string beads, tie a surgeon's knot, put a small dab of G-S Hypo Cement on the knot, and trim. Quick and beginner-friendly.\n\n**Silk thread:** Traditional for pearls and knotted necklaces. Each bead is separated by a knot so if the thread breaks you don't lose all beads at once.` },
@@ -42,7 +43,7 @@ const guides = [
       { heading:'Clasp Types', body:`**Lobster clasp:** Most common, secure, easy to use. Pairs with a jump ring or chain end.\n\n**Toggle clasp:** A bar that slides through a ring. Elegant and visible — part of the design. Good for bracelets but needs the bar to be slightly longer than the ring's diameter to stay closed reliably.\n\n**Magnetic clasp:** Easy to put on and take off — good for people with limited dexterity. Not secure enough for heavier necklaces or pieces you wear actively.\n\n**Spring ring:** Similar to lobster but smaller. Fine for lightweight necklaces.` },
     ]
   },
-  { id:'wire-wrapping', icon:'~', category:'Wire Work', title:'Wire Wrapping Basics', difficulty:'Beginner', time:'30 min',
+  { id:'wire-wrapping', icon:'rondelle', category:'Wire Work', title:'Wire Wrapping Basics', difficulty:'Beginner', time:'30 min',
     summary:'How to wrap wire around a stone or bead to create a pendant or frame without glue.',
     sections:[
       { heading:'Wire Types & Gauges for Wrapping', body:`**20-22 gauge:** Frame wire — this forms the skeleton of your pendant. Thick enough to hold shape but workable with pliers.\n\n**26-28 gauge:** Binding wire — this wraps around the frame to hold everything together. Thin, flexible, and easy to coil neatly.\n\n**Dead soft vs half hard:** Dead soft is most malleable but loses shape. Half hard holds shape better but is harder to coil. For beginners, dead soft wire is easier to work with.` },
@@ -51,7 +52,7 @@ const guides = [
       { heading:'Tools to Make It Easier', body:`**Wire jig:** Pegs arranged in a pattern that you wrap wire around to create consistent shapes. Great for making matching earring components.\n\n**Bail-making pliers:** Stepped pliers with different diameter barrels for making uniform loops and bails.\n\n**Nylon jaw pliers:** Straighten kinked wire without leaving marks.\n\n**Bead mat or bead board:** Velvet surface to work on — stops beads rolling, keeps components organised.` },
     ]
   },
-  { id:'earring-anatomy', icon:'◇', category:'Construction', title:'Earring Construction', difficulty:'Beginner', time:'20 min',
+  { id:'earring-anatomy', icon:'bicone', category:'Construction', title:'Earring Construction', difficulty:'Beginner', time:'20 min',
     summary:'How most beaded earrings are actually built — from simple drops to chandeliers.',
     sections:[
       { heading:'Simple Drop Earring', body:`The simplest beaded earring: one bead on a head pin, finished with a wrapped loop, attached to an ear wire via a jump ring.\n\nComponents: 1x ear wire, 1x jump ring (4mm), 1x head pin, 1x bead.\n\nAssembly: thread bead onto head pin → make wrapped loop above bead → open jump ring → thread through the wrapped loop AND the ear wire loop → close jump ring.\n\nVariations: multiple beads on the head pin (stack them), different shaped beads, decorative head pins.` },
@@ -129,10 +130,10 @@ export default function GuidesPage() {
               {guides.map(g => (
                 <button key={g.id} onClick={()=>{setActive(g);setSection(0);setAiA('')}} style={{
                   display:'flex',alignItems:'flex-start',gap:12,padding:'14px 16px',
-                  background:'var(--surface)',border:`1px solid ${active.id===g.id?'var(--silver)':'var(--border)'}`,
+                  background:'var(--surface)',border:`1px solid ${active.id===g.id?'var(--madder)':'var(--border)'}`,
                   textAlign:'left',cursor:'pointer',transition:'all 0.15s',width:'100%'
                 }}>
-                  <span style={{fontSize:16,color:'var(--silver)',marginTop:2,flexShrink:0}}>{g.icon}</span>
+                  <span style={{marginTop:2,flexShrink:0}}><BeadIcon shape={g.icon as BeadShape} size={16} stroke="var(--tan)" /></span>
                   <div>
                     <p style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--muted2)'}}>{g.category}</p>
                     <p style={{fontFamily:'var(--font-display)',fontSize:14,color:'var(--cream)',marginTop:2}}>{g.title}</p>
@@ -178,7 +179,7 @@ export default function GuidesPage() {
 
               <div className="card" style={{padding:26}}>
                 <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:14}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--silver)',marginTop:6,animation:'glow 3s ease-in-out infinite',flexShrink:0}}/>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--madder)',marginTop:6,flexShrink:0}}/>
                   <div>
                     <p className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted)'}}>ASK ABOUT THIS</p>
                     <p style={{fontSize:14,color:'var(--text2)',marginTop:2}}>Questions about <em>{active.sections[section].heading}</em>?</p>

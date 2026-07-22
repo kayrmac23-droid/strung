@@ -37,7 +37,7 @@ Write a single dense paragraph (under 850 characters) that describes EXACTLY wha
 - How elements connect (wrapped loops, jump rings, crimp beads, stringing pattern, etc.)
 - The overall silhouette and feel of the finished piece
 
-Then append exactly this sentence: "Macro product photography, flat lay on dark weathered slate, soft studio rim lighting, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks."
+Then append exactly this sentence: "Macro product photography, flat lay on deep warm mocha-brown velvet, soft warm lamplight, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks."
 
 Output ONLY the prompt text, nothing else.`,
       },

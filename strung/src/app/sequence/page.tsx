@@ -295,7 +295,7 @@ export default function SequencePage() {
             >
               {loading
                 ? <><span className="spinner" />Designing your sequence…</>
-                : '◈ Generate Colour Sequence'}
+                : 'Generate Colour Sequence'}
             </button>
           </div>
 
@@ -336,7 +336,7 @@ export default function SequencePage() {
                 <h3 style={{
                   fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 400,
                   color: 'var(--cream)', marginBottom: 20
-                }}>◈ Colour Palette</h3>
+                }}>Colour Palette</h3>
                 <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                   {result.palette.map((entry, i) => (
                     <PaletteSwatch key={i} entry={entry} />
@@ -349,7 +349,7 @@ export default function SequencePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 400, color: 'var(--cream)'
-                  }}>◉ Bead Sequence</h3>
+                  }}>Bead Sequence</h3>
                   <span className="mono" style={{ fontSize: 11, color: 'var(--text2)', letterSpacing: '0.06em' }}>
                     {result.sequencePattern} · ×{result.repeats}
                   </span>
@@ -393,7 +393,7 @@ export default function SequencePage() {
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400,
                     color: 'var(--cream)', marginBottom: 14
-                  }}>◎ Metal Pairing</h3>
+                  }}>Metal Pairing</h3>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{
                       width: 36, height: 36, borderRadius: '50%',
@@ -415,10 +415,10 @@ export default function SequencePage() {
 
                 {/* Colour theory tip */}
                 <div style={{
-                  background: 'rgba(122,154,184,0.06)', border: '1px solid rgba(122,154,184,0.2)',
+                  background: 'var(--roast)', border: '1px solid var(--seam)',
                   padding: 24
                 }}>
-                  <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>
+                  <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--madder)' }}>
                     COLOUR THEORY
                   </span>
                   <p style={{ color: 'var(--text)', fontSize: 14, marginTop: 10, lineHeight: 1.7, fontFamily: 'var(--font-body)' }}>
@@ -433,7 +433,7 @@ export default function SequencePage() {
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400,
                     color: 'var(--cream)', marginBottom: 14
-                  }}>◇ Your Stash Matches</h3>
+                  }}>Your Stash Matches</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {result.stashMatches.map((m, i) => (
                       <div key={i} style={{

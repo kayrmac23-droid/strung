@@ -44,16 +44,15 @@
 }
 
 .guideBtnActive {
-  border-color: var(--gold) !important;
-  background: var(--surface2) !important;
+  border-color: var(--madder) !important;
+  background: var(--umber) !important;
 }
 
 .guideBtnIcon {
   font-size: 20px;
-  color: var(--gold);
+  color: var(--tan);
   margin-top: 2px;
   flex-shrink: 0;
-  animation: shimmer 4s ease-in-out infinite;
 }
 
 .guideBtnInfo {
@@ -135,9 +134,9 @@
 }
 
 .sectionTabActive {
-  background: var(--surface2);
-  border-color: var(--gold);
-  color: var(--gold);
+  background: var(--umber);
+  border-color: var(--madder);
+  color: var(--madder);
 }
 
 .sectionContent { padding: 32px; }
@@ -145,8 +144,9 @@
 .sectionTitle {
   font-family: var(--font-display);
   font-size: 26px;
-  font-weight: 400;
-  color: var(--gold2);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--cream);
   margin-bottom: 20px;
 }
 
@@ -160,7 +160,7 @@
   line-height: 1.8;
 }
 
-.sectionBody strong { color: var(--gold3); }
+.sectionBody strong { color: var(--cream); }
 
 .sectionNav {
   display: flex;

@@ -303,7 +303,7 @@ export default function BuildPage() {
                 Next step →
               </button>
               {build.status !== 'completed' && (
-                <button className="btn-gold" disabled={saving} onClick={completeBuild}>
+                <button className="btn-silver" disabled={saving} onClick={completeBuild}>
                   {saving ? 'Saving…' : 'Mark complete'}
                 </button>
               )}

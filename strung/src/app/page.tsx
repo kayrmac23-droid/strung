@@ -1,18 +1,19 @@
 'use client'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import BeadIcon, { type BeadShape } from '@/components/BeadIcon'
 
 const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite','Larimar']
 
 // One card per destination route. Chrome (border, top-divider, glyph) is
 // neutral by design — saturated colour is reserved for bead/gem elements only.
-const features = [
-  { href:'/inventory', icon:'◈', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.' },
-  { href:'/make', icon:'◉', label:'Blueprint Generator', title:'Make Something', desc:'Generate one complete design from your real stash, mood, and time — then build it step-by-step from draft to finished piece.' },
-  { href:'/codesign', icon:'◎', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints and answers questions as you plan.' },
-  { href:'/calculator', icon:'◆', label:'Build Planner', title:'Bead Math Calculator', desc:'Estimate bead counts and prep your materials so you never run out mid-project.' },
-  { href:'/journal', icon:'⊡', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.' },
-  { href:'/guides', icon:'○', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.' },
+const features: { href: string; icon: BeadShape; label: string; title: string; desc: string }[] = [
+  { href:'/inventory', icon:'bicone', label:'My Stash', title:'Inventory Tracker', desc:'Log every bead, finding, and spool of wire. Your materials, beautifully organised.' },
+  { href:'/make', icon:'disc', label:'Blueprint Generator', title:'Make Something', desc:'Generate one complete design from your real stash, mood, and time — then build it step-by-step from draft to finished piece.' },
+  { href:'/codesign', icon:'ring', label:'AI Co-Designer', title:'Design Studio', desc:'Chat your idea into existence. Your AI collaborator turns conversations into full blueprints and answers questions as you plan.' },
+  { href:'/calculator', icon:'rondelle', label:'Build Planner', title:'Bead Math Calculator', desc:'Estimate bead counts and prep your materials so you never run out mid-project.' },
+  { href:'/journal', icon:'chip', label:'Your Designs', title:'Design Journal', desc:'Every blueprint you save lives here. Plan, progress, and complete your pieces.' },
+  { href:'/guides', icon:'round', label:'Techniques', title:'Technique Guides', desc:'Wire wrapping, crimping, head pins — every technique you need, clearly explained.' },
 ]
 
 export default function Home() {
@@ -25,15 +26,6 @@ export default function Home() {
           minHeight:'90vh',display:'flex',alignItems:'center',justifyContent:'center',
           position:'relative',overflow:'hidden',padding:'80px clamp(20px,5vw,80px)'
         }}>
-          {/* Background orb */}
-          <div style={{
-            position:'absolute',top:'40%',left:'50%',
-            transform:'translate(-50%,-50%)',
-            width:600,height:600,borderRadius:'50%',
-            background:'radial-gradient(circle,rgba(122,154,184,0.06) 0%,transparent 70%)',
-            animation:'pulse 8s ease-in-out infinite',
-            pointerEvents:'none'
-          }}/>
           {/* Grid lines */}
           <div style={{
             position:'absolute',inset:0,
@@ -84,13 +76,13 @@ export default function Home() {
             </h2>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:2}}>
               {[
-                { step:'01', icon:'◈', title:'Log your stash', body:'Add every bead and finding you own. The AI needs to know what you have to design around it.' },
-                { step:'02', icon:'◉', title:'Describe the vibe', body:'Tell the AI your mood, piece type, and time available. It generates a complete buildable design from your materials.' },
-                { step:'03', icon:'◇', title:'Build from the blueprint', body:'Follow step-by-step build mode, save reflections, and track progress in your journal.' },
+                { step:'01', icon:'bicone' as BeadShape, title:'Log your stash', body:'Add every bead and finding you own. The AI needs to know what you have to design around it.' },
+                { step:'02', icon:'disc' as BeadShape, title:'Describe the vibe', body:'Tell the AI your mood, piece type, and time available. It generates a complete buildable design from your materials.' },
+                { step:'03', icon:'round' as BeadShape, title:'Build from the blueprint', body:'Follow step-by-step build mode, save reflections, and track progress in your journal.' },
               ].map(s => (
                 <div key={s.step} style={{padding:'36px 32px',background:'var(--surface)',border:'1px solid var(--border)'}}>
                   <div style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.2em',color:'var(--muted2)',marginBottom:20}}>{s.step}</div>
-                  <div style={{fontSize:22,color:'var(--silver)',marginBottom:12,animation:'shimmer 4s ease-in-out infinite'}}>{s.icon}</div>
+                  <div style={{marginBottom:12}}><BeadIcon shape={s.icon} size={22} stroke="var(--tan)" /></div>
                   <h3 style={{fontFamily:'var(--font-display)',fontSize:19,color:'var(--cream)',fontWeight:400,marginBottom:10}}>{s.title}</h3>
                   <p style={{fontSize:15,color:'var(--text2)',lineHeight:1.6}}>{s.body}</p>
                 </div>
@@ -110,7 +102,7 @@ export default function Home() {
           <div className="grid-3">
             {features.map((f,i) => (
               <Link href={f.href} key={f.href} className={`card card--link feature-card fade-up-${Math.min(i+1,4)}`}>
-                <div style={{fontSize:22,color:'var(--silver)',animation:'shimmer 4s ease-in-out infinite'}}>{f.icon}</div>
+                <div><BeadIcon shape={f.icon} size={22} stroke="var(--tan)" /></div>
                 <div style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.18em',textTransform:'uppercase',color:'var(--muted2)'}}>{f.label}</div>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,fontWeight:400,color:'var(--cream)'}}>{f.title}</h3>
                 <p style={{fontSize:14,color:'var(--text2)',lineHeight:1.6,flex:1}}>{f.desc}</p>
@@ -139,8 +131,8 @@ export default function Home() {
         <footer className="page-pad" style={{paddingTop:48,paddingBottom:48,borderTop:'1px solid var(--border)'}}>
           <div style={{maxWidth:1200,margin:'0 auto',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:20}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
-              <span style={{width:7,height:7,borderRadius:'50%',background:'var(--silver)',boxShadow:'0 0 8px rgba(168,180,200,0.5)',display:'inline-block'}}/>
-              <span style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:600,color:'var(--cream)',letterSpacing:'0.08em'}}>Strung</span>
+              <span style={{width:7,height:7,borderRadius:'50%',background:'var(--madder)',display:'inline-block'}}/>
+              <span style={{fontFamily:'var(--font-display)',fontSize:18,fontWeight:600,color:'var(--cream)',letterSpacing:'-0.01em'}}>strung</span>
             </div>
             <span className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted2)'}}>AI BEADED JEWELLERY DESIGN STUDIO</span>
             <div style={{display:'flex',gap:20}}>

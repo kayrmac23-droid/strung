@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import StrandLoader from '@/components/StrandLoader'
+import StrandProgress from '@/components/StrandProgress'
+import StrandEmpty from '@/components/StrandEmpty'
 import { getAuthHeaders } from '@/lib/authClient'
 
 interface Design {
@@ -28,10 +31,10 @@ interface Build {
   created_at: string
 }
 
-const ratingLabels: Record<string, { label: string; icon: string; color: string }> = {
-  loved_it: { label: 'Loved it', icon: '◈', color: 'var(--silver)' },
-  good: { label: 'Good', icon: '◉', color: 'var(--sage)' },
-  could_be_better: { label: 'Could be better', icon: '◎', color: 'var(--moonstone)' },
+const ratingLabels: Record<string, { label: string; color: string }> = {
+  loved_it: { label: 'Loved it', color: 'var(--madder)' },
+  good: { label: 'Good', color: 'var(--sage)' },
+  could_be_better: { label: 'Could be better', color: 'var(--tan)' },
 }
 
 const diffColor = (d: string) =>
@@ -116,16 +119,16 @@ export default function JournalPage() {
               display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 32
             }}>
               {[
-                ['Saved ideas', inProgress.length, '◎'],
-                ['Completed', completed.length, '◈'],
-                ['Loved it', completed.filter(b => b.rating === 'loved_it').length, '◉'],
-              ].map(([label, val, icon]) => (
+                ['Saved ideas', inProgress.length],
+                ['Completed', completed.length],
+                ['Loved it', completed.filter(b => b.rating === 'loved_it').length],
+              ].map(([label, val]) => (
                 <div key={String(label)} className="card" style={{ padding: '18px 22px' }}>
                   <div style={{
-                    fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)',
+                    fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)',
                     letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6
-                  }}>{String(icon)} {String(label)}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: 'var(--silver2)' }}>{String(val)}</div>
+                  }}>{String(label)}</div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: 'var(--cream)' }}>{String(val)}</div>
                 </div>
               ))}
             </div>
@@ -148,7 +151,7 @@ export default function JournalPage() {
           {/* Content */}
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-              <span className="spinner-dark" />
+              <StrandLoader />
             </div>
           ) : error ? (
             <div style={{
@@ -162,20 +165,11 @@ export default function JournalPage() {
               <button onClick={load} className="btn-outline">Retry</button>
             </div>
           ) : active.length === 0 ? (
-            <div style={{
-              textAlign: 'center', padding: '60px 20px',
-              border: '1px dashed var(--border)', color: 'var(--muted)'
-            }}>
-              <div style={{ fontSize: 40, marginBottom: 12, color: 'var(--border2)', animation: 'shimmer 3s ease-in-out infinite' }}>
-                {tab === 'in_progress' ? '◎' : '◈'}
-              </div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, marginBottom: 16 }}>
-                {tab === 'in_progress'
-                  ? 'No saved ideas yet. Generate a design and save it for later.'
-                  : 'No completed pieces yet. Start a build to make something.'}
-              </p>
+            <StrandEmpty line={tab === 'in_progress'
+              ? 'No saved ideas yet. Generate a design and save it for later.'
+              : 'No completed pieces yet. Start a build to make something.'}>
               <Link href="/make" className="btn-outline">Go to Make →</Link>
-            </div>
+            </StrandEmpty>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {active.map(build => {
@@ -201,7 +195,7 @@ export default function JournalPage() {
                           )}
                           {r && (
                             <span className="tag" style={{ borderColor: r.color, color: r.color }}>
-                              {r.icon} {r.label}
+                              {r.label}
                             </span>
                           )}
                           {build.status === 'in_progress' && (
@@ -246,22 +240,13 @@ export default function JournalPage() {
                         </div>
                       </div>
 
-                      {/* Progress ring for in-progress */}
+                      {/* Progress strand for in-progress */}
                       {build.status === 'in_progress' && (
-                        <div style={{ flexShrink: 0 }}>
-                          <svg width="48" height="48" viewBox="0 0 48 48">
-                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--border)" strokeWidth="2" />
-                            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--silver)"
-                              strokeWidth="2" strokeLinecap="round"
-                              strokeDasharray={`${2 * Math.PI * 20}`}
-                              strokeDashoffset={`${2 * Math.PI * 20 * (1 - progressRatio)}`}
-                              transform="rotate(-90 24 24)"
-                              style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
-                            <text x="24" y="28" textAnchor="middle"
-                              style={{ fontFamily: 'var(--font-mono)', fontSize: 10, fill: 'var(--silver2)' }}>
-                              {Math.round(progressRatio * 100)}%
-                            </text>
-                          </svg>
+                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                          <StrandProgress total={safeStepsTotal} done={stepsDone} />
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.08em' }}>
+                            {Math.round(progressRatio * 100)}%
+                          </span>
                         </div>
                       )}
                     </div>

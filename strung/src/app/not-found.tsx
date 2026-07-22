@@ -10,15 +10,6 @@ export default function NotFound() {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', overflow: 'hidden'
       }}>
-        {/* Background orb */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%,-50%)',
-          width: 500, height: 500, borderRadius: '50%',
-          background: 'radial-gradient(circle,rgba(122,154,184,0.05) 0%,transparent 70%)',
-          pointerEvents: 'none'
-        }} />
-
         <div className="fade-up" style={{ textAlign: 'center', position: 'relative', zIndex: 1, padding: '40px 24px' }}>
           <div style={{
             display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 32
