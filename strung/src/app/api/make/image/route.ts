@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { buildFallbackImagePrompt } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -43,7 +44,15 @@ Output ONLY the prompt text, nothing else.`,
     ],
   })
 
-  return res.content[0].type === 'text' ? res.content[0].text.trim() : ''
+  const text = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
+  // The prompt-writer is non-critical: if it truncates at max_tokens or comes
+  // back empty, fall back to a deterministic prompt so the preview still renders
+  // rather than failing the whole request.
+  if (res.stop_reason === 'max_tokens' || !text) {
+    console.error('make/image: prompt-writer truncated or empty, using fallback prompt')
+    return buildFallbackImagePrompt(design)
+  }
+  return text
 }
 
 export async function POST(req: NextRequest) {

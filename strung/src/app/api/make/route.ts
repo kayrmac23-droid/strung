@@ -10,6 +10,11 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const RATE_LIMIT = 20
 const RATE_WINDOW_MS = 60_000
 
+// previousDesign is JSON.stringify'd whole into the refine prompt, so cap it
+// like every other free-text field. A real design is a few KB; this leaves
+// generous headroom while rejecting anything pathological.
+const MAX_PREVIOUS_DESIGN_CHARS = 20_000
+
 function getToken(req: NextRequest) {
   return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
 }
@@ -101,21 +106,21 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`make:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
   if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-  const {
-    pieceType,
-    mood,
-    timeAvailable,
-    previousDesign,
-    adjustment,
-    recentTitles,
-  }: {
+  let body: {
     pieceType?: string
     mood?: string
     timeAvailable?: TimeAvailable
     previousDesign?: unknown
     adjustment?: unknown
     recentTitles?: unknown
-  } = await req.json()
+  }
+  try {
+    const raw = await req.json()
+    body = raw && typeof raw === 'object' ? raw : {}
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+  const { pieceType, mood, timeAvailable, previousDesign, adjustment, recentTitles } = body
 
   const recentTitlesClean =
     Array.isArray(recentTitles) &&
@@ -129,6 +134,9 @@ export async function POST(req: NextRequest) {
   }
   if (previousDesign !== undefined && (typeof previousDesign !== 'object' || previousDesign === null || Array.isArray(previousDesign))) {
     return NextResponse.json({ error: 'Invalid previous design' }, { status: 400 })
+  }
+  if (previousDesign !== undefined && JSON.stringify(previousDesign).length > MAX_PREVIOUS_DESIGN_CHARS) {
+    return NextResponse.json({ error: 'Previous design too large' }, { status: 400 })
   }
   const isRefine = typeof adjustment === 'string' && adjustment.trim().length > 0
     && typeof previousDesign === 'object' && previousDesign !== null && !Array.isArray(previousDesign)

@@ -40,24 +40,46 @@ const diffColor = (d: string) =>
 export default function JournalPage() {
   const [builds, setBuilds] = useState<Build[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [tab, setTab] = useState<'in_progress' | 'completed'>('in_progress')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  useEffect(() => {
-    ;(async () => {
+  // The fetch itself. Its first action is an await, so the mount effect never
+  // calls setState synchronously (react-hooks/set-state-in-effect).
+  async function refresh() {
+    try {
       const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
+      if (!res.ok) throw new Error('Failed to load')
       const data = await res.json()
       setBuilds(Array.isArray(data) ? data : [])
+    } catch {
+      setError(true)
+    } finally {
       setLoading(false)
-    })().catch(() => setLoading(false))
-  }, [])
+    }
+  }
+
+  // Manual retry: show the spinner and clear any prior error, then refetch.
+  async function load() {
+    setLoading(true)
+    setError(false)
+    await refresh()
+  }
+
+  useEffect(() => { ;(async () => { await refresh() })() }, [])
 
   async function deleteBuild(id: string) {
+    setConfirmingId(null)
     setDeletingId(id)
     try {
-      await fetch(`/api/builds?id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
+      const res = await fetch(`/api/builds?id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
+      if (!res.ok) throw new Error('Failed to delete')
       setBuilds(b => b.filter(x => x.id !== id))
-    } catch { alert('Failed to delete') }
+    } catch {
+      setDeleteError(id)
+    }
     finally { setDeletingId(null) }
   }
 
@@ -127,6 +149,17 @@ export default function JournalPage() {
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
               <span className="spinner-dark" />
+            </div>
+          ) : error ? (
+            <div style={{
+              textAlign: 'center', padding: '60px 20px',
+              border: '1px dashed var(--rose)', color: 'var(--text2)'
+            }}>
+              <div style={{ fontSize: 40, marginBottom: 12, color: 'var(--rose)' }}>⚠</div>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, marginBottom: 16 }}>
+                Couldn&apos;t load your journal. Check your connection and try again.
+              </p>
+              <button onClick={load} className="btn-outline">Retry</button>
             </div>
           ) : active.length === 0 ? (
             <div style={{
@@ -235,29 +268,65 @@ export default function JournalPage() {
 
                     {/* Actions */}
                     <div style={{
-                      display: 'flex', gap: 10, marginTop: 20,
+                      display: 'flex', gap: 10, marginTop: 20, alignItems: 'center', flexWrap: 'wrap',
                       paddingTop: 16, borderTop: '1px solid var(--border)'
                     }}>
-                      {build.status !== 'completed' && (
-                        <Link href={`/make/build/${build.id}`} className="btn-silver" style={{ padding: '8px 20px' }}>
-                          {build.status === 'in_progress' ? 'Continue →' : 'Start building →'}
-                        </Link>
-                      )}
-                      <button
-                        onClick={() => deleteBuild(build.id)}
-                        disabled={deletingId === build.id}
-                        style={{
-                          background: 'none', border: 'none', color: 'var(--muted2)',
-                          fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer',
-                          letterSpacing: '0.08em', transition: 'color 0.15s',
-                          marginLeft: build.status !== 'completed' ? 'auto' : 0
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--rose)'}
-                        onMouseLeave={e => e.currentTarget.style.color = 'var(--muted2)'}
+                      <Link
+                        href={`/make/build/${build.id}`}
+                        className={build.status === 'completed' ? 'btn-outline' : 'btn-silver'}
+                        style={{ padding: '8px 20px' }}
                       >
-                        {deletingId === build.id ? 'removing…' : '× remove'}
-                      </button>
+                        {build.status === 'completed'
+                          ? 'View steps →'
+                          : build.status === 'in_progress' ? 'Continue →' : 'Start building →'}
+                      </Link>
+
+                      {confirmingId === build.id ? (
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)', letterSpacing: '0.06em' }}>
+                            Delete this piece?
+                          </span>
+                          <button
+                            onClick={() => deleteBuild(build.id)}
+                            disabled={deletingId === build.id}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--rose)',
+                              fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer', letterSpacing: '0.08em'
+                            }}
+                          >
+                            {deletingId === build.id ? 'removing…' : 'yes, delete'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingId(null)}
+                            disabled={deletingId === build.id}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--muted2)',
+                              fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer', letterSpacing: '0.08em'
+                            }}
+                          >
+                            cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setDeleteError(null); setConfirmingId(build.id) }}
+                          style={{
+                            background: 'none', border: 'none', color: 'var(--muted2)',
+                            fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer',
+                            letterSpacing: '0.08em', transition: 'color 0.15s', marginLeft: 'auto'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--rose)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--muted2)'}
+                        >
+                          × remove
+                        </button>
+                      )}
                     </div>
+                    {deleteError === build.id && (
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em', textAlign: 'right' }}>
+                        Failed to delete. Try again.
+                      </p>
+                    )}
                   </div>
                 )
               })}

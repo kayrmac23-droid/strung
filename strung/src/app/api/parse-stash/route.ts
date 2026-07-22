@@ -62,6 +62,10 @@ Omit "shape" and "notes" when empty. Use an empty string for unknown "size". If 
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })
+    if (response.stop_reason === 'max_tokens') {
+      console.error('parse-stash error: response truncated at max_tokens')
+      return NextResponse.json({ error: 'That description was too long to parse — try splitting it up' }, { status: 502 })
+    }
     const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
     const parsed = parseJsonLoose(rawText) as { beads?: unknown; findings?: unknown }
     const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
