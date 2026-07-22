@@ -1,6 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import Nav from '@/components/Nav'
+import { getAuthHeaders } from '@/lib/authClient'
 
 const guides = [
   { id:'wrapped-loop', icon:'○', category:'Wire Work', title:'The Wrapped Loop', difficulty:'Beginner', time:'20 min',
@@ -66,6 +68,14 @@ export default function GuidesPage() {
   const [aiQ, setAiQ] = useState('')
   const [aiA, setAiA] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
+  const [signedOut, setSignedOut] = useState(false)
+
+  useEffect(() => {
+    ;(async () => {
+      const { getSession } = await import('@/lib/authClient')
+      setSignedOut(!(await getSession()))
+    })().catch(() => {})
+  }, [])
 
   async function ask() {
     if (!aiQ.trim()||aiLoading) return
@@ -73,7 +83,7 @@ export default function GuidesPage() {
     const context = `Guide: "${active.title}", section: "${active.sections[section].heading}"`
     try {
       const res = await fetch('/api/advice', {
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST', headers: await getAuthHeaders({ 'Content-Type':'application/json' }),
         body: JSON.stringify({ question: aiQ, context }),
       })
       if (!res.ok) {
@@ -174,14 +184,22 @@ export default function GuidesPage() {
                     <p style={{fontSize:14,color:'var(--text2)',marginTop:2}}>Questions about <em>{active.sections[section].heading}</em>?</p>
                   </div>
                 </div>
-                {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:15,color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
-                  dangerouslySetInnerHTML={{__html:esc(aiA).replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>').split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('')}}/>}
-                <div style={{display:'flex',gap:10}}>
-                  <input type="text" className="input-base" style={{flex:1}}
-                    placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"
-                    value={aiQ} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()}/>
-                  <button className="btn-silver" onClick={ask} disabled={aiLoading}>{aiLoading?<span className="spinner"/>:'Ask'}</button>
-                </div>
+                {signedOut ? (
+                  <div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:'14px 18px',fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>
+                    <Link href="/account" style={{color:'var(--moonstone)',textDecoration:'underline'}}>Sign in</Link> to ask the advisor.
+                  </div>
+                ) : (
+                  <>
+                    {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:15,color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
+                      dangerouslySetInnerHTML={{__html:esc(aiA).replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>').split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('')}}/>}
+                    <div style={{display:'flex',gap:10}}>
+                      <input type="text" className="input-base" style={{flex:1}}
+                        placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"
+                        value={aiQ} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()}/>
+                      <button className="btn-silver" onClick={ask} disabled={aiLoading}>{aiLoading?<span className="spinner"/>:'Ask'}</button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
