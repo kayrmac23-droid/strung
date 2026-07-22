@@ -20,10 +20,10 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 | Page | Nav | What it does |
 |---|---|---|
 | **Stash** (`/inventory`) | Stash | Log every bead and finding you own — name, type, colour, size, quantity. Photograph an item and Claude identifies it, or paste a plain-text description of your whole stash and review the parsed result before saving. Full inline edit and delete. |
-| **Make** (`/make`) | Make | Pick a piece type, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps. Refine it in plain language, generate a DALL·E preview image, then save it or start building. |
+| **Make** (`/make`) | Make | Pick a piece type, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps. Refine it in plain language, then view it two ways: a **Visual** DALL·E render, or a **Schematic** — a deterministic SVG diagram that lays the design out as a strand using your stash's real colours and shapes. Save it or start building. |
 | **Build** (`/make/build/[id]`) | — | Step-by-step build mode. Tracks your current step, time taken, notes, and a rating. On completion it offers to subtract the materials you used from your stash automatically. |
 | **Palette** (`/sequence`) | Palette | Choose a colour harmony, an anchor colour family, and a piece type. Claude returns a 3–5 colour palette, a repeating bead sequence with a pattern unit, a metal recommendation, and any close matches from your stash. |
-| **Co-design** (`/codesign`) | — | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design, then save it straight to your builds. |
+| **Co-design** (`/codesign`) | — | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design — with the same Visual render and Schematic diagram as Make — then save it straight to your builds. |
 | **Journal** (`/journal`) | Journal | Every saved build lives here. Track status: Draft → In Progress → Complete. |
 | **Learn** (`/guides`) | Learn | Wire wrapping, crimping, head pins, earring construction, and more — with a streaming AI advisor that answers questions in the context of the guide you're reading. |
 | **Glossary** (`/glossary`) | — | Quick-reference definitions for jewellery-making terms. Reachable under the Learn nav item. |
@@ -62,6 +62,8 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 | `/api/parse-stash` | POST | yes | Parses a plain-text stash description into beads and findings |
 
 All AI routes use `claude-sonnet-4-6`. Images are downscaled client-side to 1568px JPEG before upload (Vercel caps request bodies at 4.5MB).
+
+Every route that hits a paid upstream (Anthropic / OpenAI) is rate limited with an in-memory sliding window — keyed per user, or per IP for the public `/api/sequence` route — and returns `429` with a `Retry-After` header when the window is full. The image route is capped tighter, since DALL·E 3 `hd` is the most expensive call in the app. The limit is per serverless instance, so it's a first line of defence against runaway loops rather than a strict global billing cap.
 
 ---
 
@@ -198,14 +200,18 @@ strung/
         │   ├── auth/callback/    # Supabase auth callback
         │   └── api/              # Route handlers
         ├── components/
-        │   └── Nav.tsx
+        │   ├── Nav.tsx
+        │   └── Schematic.tsx     # Deterministic SVG design diagram
         ├── lib/
         │   ├── supabase.ts       # Client + shared types
         │   ├── auth.ts           # Server-side auth helpers
         │   ├── authClient.ts     # Client-side auth helpers
         │   ├── colour.ts         # Colour + JSON parsing utilities
         │   ├── imagePrep.ts      # Client-side image downscaling
-        │   └── stashItems.ts     # Normalises AI-identified items
+        │   ├── stashItems.ts     # Normalises AI-identified items
+        │   ├── stashDecrement.ts # Plans per-row stash subtractions on build completion
+        │   ├── visual.ts         # Shared AI image-prompt builder
+        │   └── rateLimit.ts      # In-memory sliding-window rate limiter
         └── __tests__/
 ```
 
