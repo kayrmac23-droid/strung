@@ -44,3 +44,15 @@ export const typeColours: Record<string, string> = {
   resin:    '#c87040',
   other:    '#9C8070',
 }
+
+// Findings render by metal, not by colour — these are the metal tones the
+// schematic fills each finding glyph with.
+export const metalColours: Record<string, string> = {
+  silver:      '#C0C4C8',
+  gold_filled: '#D4AF6A',
+  gold:        '#D9A441',
+  copper:      '#B06A3B',
+  brass:       '#AE8B4F',
+  oxidised:    '#4A4A4E',
+  other:       '#8A8A8A',
+}

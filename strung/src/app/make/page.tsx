@@ -8,6 +8,7 @@ import Schematic from '@/components/Schematic'
 import StrandLoader from '@/components/StrandLoader'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
+import { VALID_STYLES, STYLE_LABELS, STYLE_DESCRIPTIONS, type Style } from '@/lib/designVocab'
 
 const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
 const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
@@ -45,6 +46,7 @@ export default function MakePage() {
   const [signedOut, setSignedOut] = useState(false)
 
   const [pieceType, setPieceType] = useState('Any')
+  const [style, setStyle] = useState<Style | ''>('')
   const [mood, setMood] = useState('')
   const [timeAvailable, setTimeAvailable] = useState('1hour')
 
@@ -84,6 +86,7 @@ export default function MakePage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           pieceType: pieceType === 'Any' ? '' : pieceType,
+          style,
           mood,
           timeAvailable,
           recentTitles,
@@ -114,6 +117,7 @@ export default function MakePage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           pieceType: pieceType === 'Any' ? '' : pieceType,
+          style,
           mood,
           timeAvailable,
           previousDesign,
@@ -309,6 +313,34 @@ export default function MakePage() {
               </div>
             </div>
             <div style={{ marginBottom: 24 }}>
+              <label className="label">Style</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                <button onClick={() => setStyle('')} title="No style constraint" style={{
+                  padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  background: style === '' ? 'var(--surface2)' : 'var(--bg2)',
+                  border: `1px solid ${style === '' ? 'var(--silver)' : 'var(--border)'}`,
+                  color: style === '' ? 'var(--silver2)' : 'var(--muted)',
+                  cursor: 'pointer', transition: 'all 0.15s'
+                }}>Open</button>
+                {VALID_STYLES.map(s => (
+                  <button key={s} onClick={() => setStyle(s)} title={STYLE_DESCRIPTIONS[s]} style={{
+                    padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    background: style === s ? 'var(--surface2)' : 'var(--bg2)',
+                    border: `1px solid ${style === s ? 'var(--silver)' : 'var(--border)'}`,
+                    color: style === s ? 'var(--silver2)' : 'var(--muted)',
+                    cursor: 'pointer', transition: 'all 0.15s'
+                  }}>{STYLE_LABELS[s]}</button>
+                ))}
+              </div>
+              {style && (
+                <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8, fontFamily: 'var(--font-body)' }}>
+                  {STYLE_DESCRIPTIONS[style]}
+                </p>
+              )}
+            </div>
+            <div style={{ marginBottom: 24 }}>
               <label className="label">Mood / vibe</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                 <button onClick={() => setMood('')} style={{
@@ -398,7 +430,7 @@ export default function MakePage() {
 
                   {view === 'schematic' ? (
                     <>
-                      <Schematic blueprint={design} beads={beads} />
+                      <Schematic blueprint={design} beads={beads} findings={findings} />
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
                         BUILDABLE DIAGRAM · MATCHED TO YOUR STASH
                       </p>

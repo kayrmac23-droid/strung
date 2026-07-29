@@ -6,7 +6,7 @@ import Nav from '@/components/Nav'
 import Schematic from '@/components/Schematic'
 import BeadIcon from '@/components/BeadIcon'
 import StrandEmpty from '@/components/StrandEmpty'
-import type { BeadItem } from '@/lib/supabase'
+import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { buildVisualPrompt, visualUrl } from '@/lib/visual'
 import { getAuthHeaders } from '@/lib/authClient'
 
@@ -81,6 +81,7 @@ export default function CoDesignPage() {
   const [saveError, setSaveError] = useState('')
   const [signedOut, setSignedOut] = useState(false)
   const [beads, setBeads] = useState<BeadItem[]>([])
+  const [findings, setFindings] = useState<FindingItem[]>([])
   const [view, setView] = useState<'visual' | 'schematic'>('visual')
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -101,6 +102,7 @@ export default function CoDesignPage() {
       if (res.status === 401) return
       const d = await res.json()
       setBeads(d.beads || [])
+      setFindings(d.findings || [])
     })().catch(() => {})
   }, [])
 
@@ -436,7 +438,7 @@ export default function CoDesignPage() {
                       ))}
                     </div>
                     {view === 'schematic' ? (
-                      <Schematic blueprint={blueprint} beads={beads} />
+                      <Schematic blueprint={blueprint} beads={beads} findings={findings} />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
