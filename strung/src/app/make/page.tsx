@@ -9,6 +9,7 @@ import StrandLoader from '@/components/StrandLoader'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
 import { VALID_STYLES, STYLE_LABELS, STYLE_DESCRIPTIONS, type Style } from '@/lib/designVocab'
+import type { Assembly } from '@/lib/assembly'
 
 const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
 const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
@@ -35,6 +36,9 @@ interface Design {
   pieceType: string
   materialsCheck: { allAvailable: boolean; notes: string }
   components: { item: string; quantity: number; note: string }[]
+  // Optional — absent for plain single-strand pieces, and for every design
+  // saved before the field existed.
+  assembly?: Assembly
   steps: Step[]
 }
 

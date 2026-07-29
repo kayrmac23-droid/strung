@@ -40,6 +40,45 @@ export const DIFFICULTY_RUBRIC = `Difficulty gating — assign difficulty from t
 // Without this, a fourteen-link rosary chain becomes fourteen near-identical steps.
 export const REPEAT_STEP_RULE = `One physical action per step — EXCEPT where a step is a repeating unit. Write a repeating unit ONCE and give it an explicit repeat count (e.g. "Repeat steps 3-4 until you have 12 links") instead of enumerating every repetition as its own step.`
 
+// Optional structure field. Without it every design reads as one vertical run,
+// so chandeliers and multi-drop earrings cannot be diagrammed. Both design
+// routes describe it identically — the schema is generated from one object so
+// the pretty (make) and compact (codesign) forms can never drift.
+export const ASSEMBLY_FORMS = ['strand', 'drop', 'branched'] as const
+
+export type AssemblyForm = (typeof ASSEMBLY_FORMS)[number]
+
+export const ASSEMBLY_FORM_LIST_TEXT = ASSEMBLY_FORMS.map((f) => `"${f}"`).join(', ')
+
+const ASSEMBLY_SCHEMA_SHAPE = {
+  form: ASSEMBLY_FORMS.join('|'),
+  anchor: 'exact component name the strands hang from, or null',
+  strands: [
+    {
+      id: 1,
+      attachAt: 'left|centre|right',
+      repeat: 1,
+      elements: [{ item: 'exact component name', quantity: 1 }],
+    },
+  ],
+}
+
+// Pretty-printed, indented two spaces to sit inside a multi-line schema block.
+export const ASSEMBLY_SCHEMA_TEXT = `"assembly": ${JSON.stringify(ASSEMBLY_SCHEMA_SHAPE, null, 2).replace(/\n/g, '\n  ')}`
+
+// Single line, for the minified blueprint schema in the codesign system prompt.
+export const ASSEMBLY_SCHEMA_COMPACT = `"assembly":${JSON.stringify(ASSEMBLY_SCHEMA_SHAPE)}`
+
+export const ASSEMBLY_RULES = `ASSEMBLY — how the piece hangs together (the "assembly" field):
+- assembly is OPTIONAL. Omit it entirely for a plain single-strand necklace or bracelet — those render fine without it.
+- form "strand" is one continuous run (necklace, bracelet). "drop" is a single vertical dangle (simple drop earring). "branched" is multiple drops hanging from a shared anchor (chandelier, hoop fringe, tiered earring).
+- anchor is the component everything attaches to — an ear wire, a hoop, a filigree connector, a statement_component. Null for form "strand".
+- elements are ordered TOP to BOTTOM as the piece hangs.
+- repeat means this identical strand appears N times across the anchor. Use it for evenly spaced fringe rather than listing the same strand repeatedly.
+- Vary element counts between strands to make a chandelier taper — that is how the shape is expressed.
+- CRITICAL: every item named in assembly must already appear in components[]. assembly describes arrangement only, never introduces new materials.
+- For earrings, assembly describes ONE earring. components[] still covers the pair.`
+
 export const VALID_STYLES = ['vintage_brass', 'delicate_gold', 'bohemian', 'crystal_sparkle'] as const
 
 export type Style = (typeof VALID_STYLES)[number]

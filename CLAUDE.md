@@ -96,9 +96,17 @@ Every AI route uses model `claude-sonnet-4-6`.
 
 ## Shared Design Vocabulary
 
-`/api/make` and `/api/codesign` both produce buildable designs, so the parts of their prompts that must agree live in `src/lib/designVocab.ts` rather than in each route: `ALLOWED_TECHNIQUES` (also used to validate `steps[].technique`), the technique glossary, the difficulty rubric, the repeating-step rule, and the `VALID_STYLES` allowlist with its descriptors. Change it there — never inline a copy into a prompt, or the two routes drift.
+`/api/make` and `/api/codesign` both produce buildable designs, so the parts of their prompts that must agree live in `src/lib/designVocab.ts` rather than in each route: `ALLOWED_TECHNIQUES` (also used to validate `steps[].technique`), the technique glossary, the difficulty rubric, the repeating-step rule, the `ASSEMBLY_*` block, and the `VALID_STYLES` allowlist with its descriptors. Change it there — never inline a copy into a prompt, or the two routes drift.
 
 The Make page imports `VALID_STYLES` / `STYLE_LABELS` / `STYLE_DESCRIPTIONS` from the same module for its style selector, so the UI cannot offer a style the API would reject.
+
+## Design Assembly
+
+`assembly` is an **optional** top-level field on a design: `{ form: 'strand' | 'drop' | 'branched', anchor, strands[] }`, where each strand has an `attachAt`, a `repeat` count and `elements` ordered top to bottom. It describes arrangement only — every item it names must already appear in `components[]`.
+
+`src/lib/assembly.ts` holds everything runtime about it: `validateAssembly()` (called from `validateDesign()` in `/api/make`, so failures feed the existing one-shot repair retry; called again on the parsed blueprint in the codesign page, which streams and so has no retry — an invalid assembly is dropped there), `normaliseAssembly()` and the branched layout maths. The prompt schema and rules live in `designVocab.ts` as `ASSEMBLY_SCHEMA_TEXT` (pretty, for `/api/make`), `ASSEMBLY_SCHEMA_COMPACT` (one line, for the codesign blueprint) and `ASSEMBLY_RULES`; all three derive from one shape object so the routes cannot drift.
+
+`src/components/Schematic.tsx` picks its layout from `normaliseAssembly()`: null (no assembly, `form: 'strand'`, or an unusable shape) renders the original single column, anything else renders the branched diagram — an anchor glyph at top centre with each strand hanging below it. `builds.design` is jsonb and rows saved before this field exist, so the single column must stay the default.
 
 ## Supabase Access
 

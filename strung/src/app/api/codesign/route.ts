@@ -7,6 +7,8 @@ import {
   TECHNIQUE_GLOSSARY,
   DIFFICULTY_RUBRIC,
   REPEAT_STEP_RULE,
+  ASSEMBLY_RULES,
+  ASSEMBLY_SCHEMA_COMPACT,
   STYLE_MENU,
   STYLE_OVERRIDE_RULE,
 } from '@/lib/designVocab'
@@ -128,7 +130,7 @@ Assume basic findings are available even if not listed (jump rings, ear wires, h
 When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact JSON format with no markdown fences:
 
 <blueprint>
-{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
+{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],${ASSEMBLY_SCHEMA_COMPACT},"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
 </blueprint>
 
 Each step's "technique" must be null or from this exact list only: ${TECHNIQUE_LIST_TEXT}.
@@ -138,6 +140,8 @@ ${TECHNIQUE_GLOSSARY}
 ${DIFFICULTY_RUBRIC}
 
 ${REPEAT_STEP_RULE}
+
+${ASSEMBLY_RULES}
 
 Settle on ONE style early and hold it for the whole design rather than blending aesthetics — a piece should read as one of these:
 ${STYLE_MENU}
