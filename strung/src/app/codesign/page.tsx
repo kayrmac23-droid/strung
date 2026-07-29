@@ -8,6 +8,7 @@ import BeadIcon from '@/components/BeadIcon'
 import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { buildVisualPrompt, visualUrl } from '@/lib/visual'
+import { validateAssembly, type Assembly } from '@/lib/assembly'
 import { getAuthHeaders } from '@/lib/authClient'
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -39,7 +40,23 @@ interface Blueprint {
   pieceType: string
   materialsCheck?: { allAvailable: boolean; notes: string }
   components: { item: string; quantity: number; note: string }[]
+  assembly?: Assembly
   steps: BlueprintStep[]
+}
+
+// The codesign route streams, so it has no one-shot repair retry like /api/make.
+// The same check runs here instead, on the parsed blueprint: an assembly that
+// names materials outside components[] describes an arrangement the design does
+// not contain, so it is dropped rather than drawn or saved. The rest of the
+// blueprint is untouched and falls back to the single-strand diagram.
+function checkedBlueprint(parsed: Blueprint): Blueprint {
+  if (!parsed?.assembly) return parsed
+  const violations = validateAssembly(parsed)
+  if (violations.length === 0) return parsed
+  console.warn('Dropping invalid blueprint assembly:', violations)
+  const stripped = { ...parsed }
+  delete stripped.assembly
+  return stripped
 }
 
 function parseMessage(text: string): { display: string; blueprint: Blueprint | null } {
@@ -47,7 +64,7 @@ function parseMessage(text: string): { display: string; blueprint: Blueprint | n
   if (!match) return { display: text, blueprint: null }
   try {
     const display = text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').replace(/\n{3,}/g, '\n\n').trim()
-    return { display, blueprint: JSON.parse(match[1].trim()) }
+    return { display, blueprint: checkedBlueprint(JSON.parse(match[1].trim())) }
   } catch {
     return { display: text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').trim(), blueprint: null }
   }

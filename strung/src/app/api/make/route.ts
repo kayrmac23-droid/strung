@@ -9,10 +9,13 @@ import {
   TECHNIQUE_GLOSSARY,
   DIFFICULTY_RUBRIC,
   REPEAT_STEP_RULE,
+  ASSEMBLY_RULES,
+  ASSEMBLY_SCHEMA_TEXT,
   isValidStyle,
   styleConstraint,
   type Style,
 } from '@/lib/designVocab'
+import { validateAssembly } from '@/lib/assembly'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -104,6 +107,9 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
       violations.push(`You used technique "${String(tech)}" which is not in the allowed technique list`)
     }
   }
+
+  // assembly is optional; when present it may only arrange components[].
+  violations.push(...validateAssembly(design))
 
   return violations
 }
@@ -228,6 +234,8 @@ ${TECHNIQUE_GLOSSARY}
 - Seed beads cannot go on thick wire or leather; large-hole beads slide off fine chain — keep the stringing material sensible for the bead sizes used.
 - ${DIFFICULTY_RUBRIC}
 
+${ASSEMBLY_RULES}
+
 Here is an EXAMPLE of the quality and granularity expected — it uses a made-up stash. Do NOT copy its materials or wording; only mirror its structure and level of detail:
 EXAMPLE STASH — BEADS: matte teal seed beads (2mm, qty:40), amazonite rounds (8mm, qty:6), rose quartz chips (qty:14). FINDINGS: silver lobster clasp (qty:1), silver jump rings (qty:20).
 EXAMPLE OUTPUT:
@@ -270,6 +278,7 @@ Return ONLY valid JSON, no markdown, no backticks:
   "components": [
     { "item": "exact name from stash", "quantity": 1, "note": "how it's used" }
   ],
+  ${ASSEMBLY_SCHEMA_TEXT},
   "steps": [
     {
       "id": 1,
