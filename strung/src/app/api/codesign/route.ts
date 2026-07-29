@@ -2,6 +2,14 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import {
+  TECHNIQUE_LIST_TEXT,
+  TECHNIQUE_GLOSSARY,
+  DIFFICULTY_RUBRIC,
+  REPEAT_STEP_RULE,
+  STYLE_MENU,
+  STYLE_OVERRIDE_RULE,
+} from '@/lib/designVocab'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -120,10 +128,20 @@ Assume basic findings are available even if not listed (jump rings, ear wires, h
 When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact JSON format with no markdown fences:
 
 <blueprint>
-{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
+{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
 </blueprint>
 
-Each step's "technique" must be null or from this exact list only: "Wrapped Loop", "Simple Loop", "Crimping", "Wire Coiling", "Wire Wrapping", "Jump Ring", "Briolette Wrap", "Stringing", "Knotting".
+Each step's "technique" must be null or from this exact list only: ${TECHNIQUE_LIST_TEXT}.
+
+${TECHNIQUE_GLOSSARY}
+
+${DIFFICULTY_RUBRIC}
+
+${REPEAT_STEP_RULE}
+
+Settle on ONE style early and hold it for the whole design rather than blending aesthetics — a piece should read as one of these:
+${STYLE_MENU}
+${STYLE_OVERRIDE_RULE}
 
 Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 

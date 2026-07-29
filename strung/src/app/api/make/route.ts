@@ -3,6 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import {
+  ALLOWED_TECHNIQUES,
+  TECHNIQUE_LIST_TEXT,
+  TECHNIQUE_GLOSSARY,
+  DIFFICULTY_RUBRIC,
+  REPEAT_STEP_RULE,
+  isValidStyle,
+  styleConstraint,
+  type Style,
+} from '@/lib/designVocab'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -41,7 +51,6 @@ type TimeAvailable = '15min' | '1hour' | 'afternoon'
 const VALID_PIECE_TYPES = ['earrings', 'necklace', 'bracelet', 'pendant', 'ring', 'anklet', 'any']
 const VALID_TIME: TimeAvailable[] = ['15min', '1hour', 'afternoon']
 
-const ALLOWED_TECHNIQUES = ['Wrapped Loop', 'Simple Loop', 'Crimping', 'Wire Coiling', 'Wire Wrapping', 'Jump Ring', 'Briolette Wrap', 'Stringing', 'Knotting']
 // Loose terms that mark a component as a basic finding the maker is assumed to
 // own (the prompt tells the model to assume these), so they need not be in stash.
 const BASIC_FINDING_TERMS = ['jump ring', 'ear wire', 'earwire', 'head pin', 'headpin', 'eye pin', 'eyepin', 'clasp', 'crimp', 'beading wire', 'wire']
@@ -91,7 +100,7 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
     const s = (raw && typeof raw === 'object' ? raw : {}) as { technique?: unknown }
     const tech = s.technique
     if (tech === null || tech === undefined || tech === '') continue
-    if (typeof tech !== 'string' || !ALLOWED_TECHNIQUES.includes(tech)) {
+    if (typeof tech !== 'string' || !(ALLOWED_TECHNIQUES as readonly string[]).includes(tech)) {
       violations.push(`You used technique "${String(tech)}" which is not in the allowed technique list`)
     }
   }
@@ -108,6 +117,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     pieceType?: string
+    style?: string
     mood?: string
     timeAvailable?: TimeAvailable
     previousDesign?: unknown
@@ -120,7 +130,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
-  const { pieceType, mood, timeAvailable, previousDesign, adjustment, recentTitles } = body
+  const { pieceType, style, mood, timeAvailable, previousDesign, adjustment, recentTitles } = body
 
   const recentTitlesClean =
     Array.isArray(recentTitles) &&
@@ -164,6 +174,12 @@ export async function POST(req: NextRequest) {
   if (pieceTypeNorm && (!VALID_PIECE_TYPES.includes(pieceTypeNorm) || pieceTypeNorm.length > 50)) {
     return NextResponse.json({ error: 'Invalid piece type' }, { status: 400 })
   }
+  // Style is validated the same way as piece type: normalise, then allowlist.
+  const styleRaw = typeof style === 'string' ? style.trim().toLowerCase() : ''
+  if (styleRaw && (styleRaw.length > 50 || !isValidStyle(styleRaw))) {
+    return NextResponse.json({ error: 'Invalid style' }, { status: 400 })
+  }
+  const styleNorm: Style | '' = styleRaw && isValidStyle(styleRaw) ? styleRaw : ''
   if (mood && mood.length > 200) {
     return NextResponse.json({ error: 'Mood too long' }, { status: 400 })
   }
@@ -194,8 +210,9 @@ ${stashSummary}
 
 THEIR REQUEST:
 - Piece type: ${pieceTypeNorm || 'any — choose the best fit for the stash'}
-- Mood/vibe: ${mood || 'open'}
 - Time available: ${selectedTime}
+${styleNorm ? `\n${styleConstraint(styleNorm)}\n` : ''}
+- Mood/vibe (secondary nuance only${styleNorm ? ', subordinate to the style above' : ''}): ${mood || 'open'}
 
 CRITICAL RULES:
 - Only use materials they actually have. Check quantities — if they have qty:2 of something, use at most 2.
@@ -203,11 +220,13 @@ CRITICAL RULES:
 - Treat stash findings marked as "statement_component" as the featured structural pieces (e.g. earring frames, chandeliers, focal connectors) and prioritise using them when present.
 - If stash is empty or very sparse, design a simple piece and note what basic materials they'd need.
 - The steps must be genuinely sequential and buildable — someone should be able to follow them with their hands.
-- Technique tags must be from this exact list only: "Wrapped Loop", "Simple Loop", "Crimping", "Wire Coiling", "Wire Wrapping", "Jump Ring", "Briolette Wrap", "Stringing", "Knotting"
+- Technique tags must be from this exact list only: ${TECHNIQUE_LIST_TEXT}
+${TECHNIQUE_GLOSSARY}
+- ${REPEAT_STEP_RULE}
 - Earrings: every bead and dangle component must be used in even quantities so the pair is symmetric. If a focal bead has an odd quantity, design around a matched pair or choose a different piece type.
 - Necklaces and bracelets: do rough length math — state the target length and confirm the specified bead counts and sizes plausibly reach it. Bracelets are ~18cm, necklaces 40–45cm unless the design says otherwise.
 - Seed beads cannot go on thick wire or leather; large-hole beads slide off fine chain — keep the stringing material sensible for the bead sizes used.
-- Difficulty gating: for 15min/Beginner designs use ONLY "Stringing", "Simple Loop", "Jump Ring", and "Crimping". "Wrapped Loop" and "Wire Coiling" are Intermediate or above. "Briolette Wrap" and "Wire Wrapping" are Advanced or "afternoon" only.
+- ${DIFFICULTY_RUBRIC}
 
 Here is an EXAMPLE of the quality and granularity expected — it uses a made-up stash. Do NOT copy its materials or wording; only mirror its structure and level of detail:
 EXAMPLE STASH — BEADS: matte teal seed beads (2mm, qty:40), amazonite rounds (8mm, qty:6), rose quartz chips (qty:14). FINDINGS: silver lobster clasp (qty:1), silver jump rings (qty:20).
@@ -234,7 +253,7 @@ EXAMPLE OUTPUT:
     { "id": 5, "instruction": "Crimp the closing end to a jump ring and trim the tail flush.", "material": "silver jump rings", "technique": "Crimping", "tip": "Twist jump rings sideways to open, never pull them apart." }
   ]
 }
-This example shows the target granularity — one physical action per step, a real material and technique on each, and a colourStory that names specific beads. It is an example of quality, not content to reuse.
+This example shows the target granularity — one physical action per step (with repeating units collapsed into a single step carrying a repeat count), a real material and technique on each, and a colourStory that names specific beads. It is an example of quality, not content to reuse.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -254,7 +273,7 @@ Return ONLY valid JSON, no markdown, no backticks:
   "steps": [
     {
       "id": 1,
-      "instruction": "Clear, specific instruction — one action per step",
+      "instruction": "Clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count",
       "material": "Exact material name being used in this step, or null",
       "technique": "One of the allowed technique tags, or null",
       "tip": "A practical tip for this specific step, or null"

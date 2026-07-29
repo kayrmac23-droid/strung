@@ -69,7 +69,7 @@ Nav has 5 primary items (Stash, Make, Palette, Learn, Journal) plus Account. Not
 | Route | Method(s) | Auth | What it does |
 |---|---|---|---|
 | `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables |
-| `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
+| `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Validates `pieceType` and `style` against allowlists (`style` is the firm aesthetic constraint; `mood` stays optional free text underneath it). Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
 | `/api/make/image` | POST | yes — 401 | Builds a DALL-E 3 prompt via Claude, calls OpenAI DALL-E 3 |
 | `/api/builds` | GET, POST, DELETE, PATCH | yes — GET returns `[]` without auth, others 401 | CRUD for `builds` table. `GET ?id=` returns a single build or 404 |
 | `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100 |
@@ -93,6 +93,12 @@ Every AI route uses model `claude-sonnet-4-6`.
 ## Image Generation
 
 `/api/make/image`: Claude first generates an optimised DALL-E prompt (under 850 chars) from the design JSON, then calls OpenAI's `dall-e-3` model at `1024x1024` / `hd` quality. Returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set.
+
+## Shared Design Vocabulary
+
+`/api/make` and `/api/codesign` both produce buildable designs, so the parts of their prompts that must agree live in `src/lib/designVocab.ts` rather than in each route: `ALLOWED_TECHNIQUES` (also used to validate `steps[].technique`), the technique glossary, the difficulty rubric, the repeating-step rule, and the `VALID_STYLES` allowlist with its descriptors. Change it there — never inline a copy into a prompt, or the two routes drift.
+
+The Make page imports `VALID_STYLES` / `STYLE_LABELS` / `STYLE_DESCRIPTIONS` from the same module for its style selector, so the UI cannot offer a style the API would reject.
 
 ## Supabase Access
 

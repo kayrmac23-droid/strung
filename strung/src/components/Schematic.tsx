@@ -1,5 +1,6 @@
 'use client'
-import type { BeadItem } from '@/lib/supabase'
+import type { BeadItem, FindingItem } from '@/lib/supabase'
+import { metalColours } from '@/lib/stash-colours'
 
 // A deterministic, buildable SVG diagram of a design — the counterpart to the
 // decorative AI render. Reads the design's element list, matches each element to
@@ -49,6 +50,15 @@ function matchBead(matchStr: string, beads: BeadItem[]): BeadItem | undefined {
   })
 }
 
+// Same name matching as beads — findings have no colour field to fall back on.
+function matchFinding(matchStr: string, findings: FindingItem[]): FindingItem | undefined {
+  if (!matchStr) return undefined
+  return findings.find((f) => {
+    const name = (f.name || '').toLowerCase().trim()
+    return !!name && (matchStr.includes(name) || name.includes(matchStr))
+  })
+}
+
 function hexPoints(cx: number, cy: number, r: number): string {
   return Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i - Math.PI / 2
@@ -92,7 +102,7 @@ function Glyph({ shape, cx, cy, fill }: { shape: string; cx: number; cy: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function Schematic({ blueprint, beads = [] }: { blueprint: any; beads?: BeadItem[] }) {
+export default function Schematic({ blueprint, beads = [], findings = [] }: { blueprint: any; beads?: BeadItem[]; findings?: FindingItem[] }) {
   const elements = normalise(blueprint)
   if (elements.length === 0) {
     return (
@@ -112,8 +122,13 @@ export default function Schematic({ blueprint, beads = [] }: { blueprint: any; b
       )}
       {elements.map((el, i) => {
         const cy = TOP + i * ROW_H
+        // Beads first, then findings — same precedence as the stash decrement.
         const bead = matchBead(el.matchStr, beads)
-        const fill = bead?.hex || 'var(--muted)'
+        const finding = bead ? undefined : matchFinding(el.matchStr, findings)
+        const fill =
+          bead?.hex ||
+          (finding ? metalColours[finding.metal] || metalColours.other : '') ||
+          'var(--muted)'
         return (
           <g key={i}>
             <text x={COL_X - 34} y={cy + 4} fill="var(--muted)" fontSize={11} fontFamily="var(--font-mono)" textAnchor="middle">{i + 1}</text>
