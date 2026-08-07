@@ -93,6 +93,88 @@ describe('validateAssembly', () => {
   })
 })
 
+describe('validateAssembly — physical sense of the anchor', () => {
+  // A stash where the finding types classify the components: a hoop is a
+  // structural connector, the cabochon and drops are beads (one drop-shaped).
+  const beads = [
+    { name: 'Amber cabochon', shape: 'round' },
+    { name: 'Teal briolette drops', shape: 'briolette' },
+    { name: 'Freshwater pearls', shape: 'round' },
+  ]
+  const findings = [
+    { name: 'Brass hoop', type: 'connector' },
+    { name: 'Gold ear wire', type: 'ear_wire' },
+    { name: 'Silver jump ring', type: 'jump_ring' },
+  ]
+  const dropDesign = (assembly: unknown) => ({
+    title: 'Chandelier',
+    components: [
+      { item: 'Brass hoop', quantity: 2 },
+      { item: 'Amber cabochon', quantity: 2 },
+      { item: 'Teal briolette drops', quantity: 6 },
+      { item: 'Freshwater pearls', quantity: 8 },
+    ],
+    assembly,
+  })
+  const strandsOf = (anchor: string) => ({
+    form: 'branched',
+    anchor,
+    strands: [{ id: 1, attachAt: 'centre', repeat: 1, elements: [{ item: 'Freshwater pearls', quantity: 3 }] }],
+  })
+
+  it('passes a structural finding as the anchor', () => {
+    expect(validateAssembly(dropDesign(strandsOf('Brass hoop')), beads, findings)).toEqual([])
+  })
+
+  it('flags a plain (round) bead used as the anchor', () => {
+    // Freshwater pearls are a round bead with no drop keyword in the name, so
+    // this exercises the bead branch specifically (not the drop branch).
+    const v = validateAssembly(dropDesign(strandsOf('Freshwater pearls')), beads, findings)
+    expect(v).toHaveLength(1)
+    expect(v[0]).toContain('Freshwater pearls')
+    expect(v[0]).toMatch(/is a bead/)
+    expect(v[0]).toContain('strand element')
+  })
+
+  it('flags a drop-shaped bead (by stash shape) used as the anchor', () => {
+    const v = validateAssembly(dropDesign(strandsOf('Teal briolette drops')), beads, findings)
+    expect(v).toHaveLength(1)
+    expect(v[0]).toMatch(/drop\/dangle-shaped/)
+  })
+
+  it('flags a drop-shaped anchor by name even with no stash to consult', () => {
+    // No beads/findings passed — falls back to the name-keyword classifier.
+    const v = validateAssembly(dropDesign(strandsOf('amber teardrop')))
+    // "amber teardrop" is not in components[] here, so expect the drop violation
+    // among the reported issues.
+    expect(v.some((s) => /drop\/dangle-shaped/.test(s))).toBe(true)
+  })
+
+  it('leaves an assumed-owned ear wire anchor alone even when absent from stash', () => {
+    // Ear wire is a basic finding the maker owns; it may not be a stash row, but
+    // the structural keyword clears it rather than false-flagging.
+    const d = {
+      title: 'Simple drop',
+      components: [
+        { item: 'silver ear wire', quantity: 2 },
+        { item: 'Freshwater pearls', quantity: 4 },
+      ],
+      assembly: {
+        form: 'drop',
+        anchor: 'silver ear wire',
+        strands: [{ id: 1, attachAt: 'centre', repeat: 1, elements: [{ item: 'Freshwater pearls', quantity: 2 }] }],
+      },
+    }
+    expect(validateAssembly(d, [], [])).toEqual([])
+  })
+
+  it('does not flag the anchor when no stash and no keyword signal (conservative)', () => {
+    const v = validateAssembly(dropDesign(strandsOf('Brass hoop')))
+    // "Brass hoop" carries the structural "hoop" keyword, so still clears.
+    expect(v).toEqual([])
+  })
+})
+
 describe('normaliseAssembly', () => {
   it('returns null for a design with no assembly — pre-assembly saved builds', () => {
     expect(normaliseAssembly(design(undefined))).toBeNull()
@@ -198,5 +280,13 @@ describe('assembly prompt vocabulary', () => {
     expect(ASSEMBLY_RULES).toMatch(/OPTIONAL/)
     expect(ASSEMBLY_RULES).toContain('components[]')
     for (const f of ASSEMBLY_FORMS) expect(ASSEMBLY_RULES).toContain(`"${f}"`)
+  })
+
+  it('demonstrates the correct chandelier pattern — anchor is the finding, cabochon hangs below', () => {
+    expect(ASSEMBLY_RULES).toMatch(/WORKED EXAMPLE/)
+    expect(ASSEMBLY_RULES).toMatch(/chandelier finding/)
+    expect(ASSEMBLY_RULES).toMatch(/cabochon/)
+    // The example must forbid drops/cabochons in the anchor, not just describe.
+    expect(ASSEMBLY_RULES).toMatch(/NEVER put a bead, cabochon, drop/)
   })
 })

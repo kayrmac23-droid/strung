@@ -72,12 +72,19 @@ export const ASSEMBLY_SCHEMA_COMPACT = `"assembly":${JSON.stringify(ASSEMBLY_SCH
 export const ASSEMBLY_RULES = `ASSEMBLY — how the piece hangs together (the "assembly" field):
 - assembly is OPTIONAL. Omit it entirely for a plain single-strand necklace or bracelet — those render fine without it.
 - form "strand" is one continuous run (necklace, bracelet). "drop" is a single vertical dangle (simple drop earring). "branched" is multiple drops hanging from a shared anchor (chandelier, hoop fringe, tiered earring).
-- anchor is the component everything attaches to — an ear wire, a hoop, a filigree connector, a statement_component. Null for form "strand".
+- anchor is the TOP mount point that bears the piece — it must be a structural finding (an ear wire, a hoop, a filigree connector, a chandelier finding, a statement_component). In the stash these are the findings flagged [structural — can be an assembly anchor]. Null for form "strand".
+- NEVER put a bead, cabochon, drop, briolette, teardrop or any dangling element in anchor — those hang FROM the anchor as strand elements. Putting a drop or cabochon in anchor builds the piece upside down.
 - elements are ordered TOP to BOTTOM as the piece hangs.
 - repeat means this identical strand appears N times across the anchor. Use it for evenly spaced fringe rather than listing the same strand repeatedly.
 - Vary element counts between strands to make a chandelier taper — that is how the shape is expressed.
 - CRITICAL: every item named in assembly must already appear in components[]. assembly describes arrangement only, never introduces new materials.
-- For earrings, assembly describes ONE earring. components[] still covers the pair.`
+- For earrings, assembly describes ONE earring. components[] still covers the pair.
+- WORKED EXAMPLE (a chandelier earring): the chandelier finding (or hoop) is the anchor at the top; a central cabochon and pearl drops hang below it. The anchor is the structural finding — NOT the cabochon:
+  "assembly": { "form": "branched", "anchor": "brass chandelier finding", "strands": [
+    { "id": 1, "attachAt": "left", "repeat": 1, "elements": [{ "item": "freshwater pearls", "quantity": 3 }] },
+    { "id": 2, "attachAt": "centre", "repeat": 1, "elements": [{ "item": "amber cabochon", "quantity": 1 }] },
+    { "id": 3, "attachAt": "right", "repeat": 1, "elements": [{ "item": "freshwater pearls", "quantity": 3 }] } ] }
+  Note the cabochon and pearls are strand elements hanging below; only the chandelier finding is the anchor.`
 
 export const VALID_STYLES = ['vintage_brass', 'delicate_gold', 'bohemian', 'crystal_sparkle'] as const
 

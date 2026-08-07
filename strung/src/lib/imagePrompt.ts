@@ -9,6 +9,8 @@
 export const DALLE_PHOTO_SUFFIX =
   'Macro product photography, flat lay on dark weathered slate, soft studio rim lighting, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks.'
 
+import { normaliseAssembly, expandStrands, type AssemblyStrand } from './assembly'
+
 // Practical prompt ceiling used elsewhere in this route.
 const MAX_PROMPT_CHARS = 850
 
@@ -18,6 +20,43 @@ type ImageDesign = {
   pieceType?: unknown
   colourStory?: unknown
   components?: unknown
+  assembly?: unknown
+}
+
+// One strand, top to bottom, as the image model should read it.
+function strandText(strand: AssemblyStrand): string {
+  return strand.elements
+    .map((el) => (el.quantity > 1 ? `${el.quantity}× ${el.item}` : el.item))
+    .join(', then ')
+}
+
+/**
+ * Turn a branched/drop assembly into a plain-English orientation sentence: what
+ * mounts at the top and what hangs below it, in authored order. This is the fix
+ * for the inverted-render bug — without it the image model sees only a flat
+ * component list and guesses the structure (e.g. a cabochon as the top post).
+ * Returns '' when there is no branched assembly to describe (plain strands, or
+ * a design saved before the field existed), so callers can append unconditionally.
+ * The wording matches what the deterministic Schematic draws from the same data.
+ */
+export function describeAssembly(design: unknown): string {
+  const a = normaliseAssembly(design)
+  if (!a) return ''
+  const strands = expandStrands(a.strands)
+  if (strands.length === 0) return ''
+
+  const anchorPart = a.anchor
+    ? `The ${a.anchor} is mounted at the very top and everything else hangs below it`
+    : `A finding at the very top holds the piece and everything hangs below it`
+
+  const single = strands.length === 1
+  const strandParts = strands.map((s, i) => {
+    const label = single ? 'The drop hangs downward' : `Strand ${i + 1} hangs downward`
+    return `${label}: ${strandText(s)} (ordered top to bottom)`
+  })
+  const layout = single ? '' : ` ${strands.length} strands hang side by side, left to right.`
+
+  return `Physical structure (render this exact orientation, never inverted): ${anchorPart}.${layout} ${strandParts.join('; ')}. Nothing sits above the top anchor.`
 }
 
 export function buildFallbackImagePrompt(design: ImageDesign): string {
@@ -39,8 +78,14 @@ export function buildFallbackImagePrompt(design: ImageDesign): string {
     .filter(Boolean)
     .join(', ')
 
+  const structure = describeAssembly(design)
+
+  // Structure sits ahead of the free-text prose so that if the body is trimmed
+  // to fit the ceiling, the orientation (which fixes the inverted render) is
+  // kept and the more expendable description/colourStory is what gets cut.
   const body = [
     `A finished handmade ${pieceType}${title ? ` titled "${title}"` : ''}.`,
+    structure,
     description,
     colourStory,
     compText ? `Made from: ${compText}.` : '',
