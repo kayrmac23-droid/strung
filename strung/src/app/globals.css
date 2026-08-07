@@ -404,6 +404,22 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .guides-grid { display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: start; }
 @media (max-width: 800px) { .guides-grid { grid-template-columns: 1fr; } }
 
+/* Guide list. Sticky only while it sits in its own column — once .guides-grid
+   collapses to one column it stacks above the guide text, and staying sticky
+   would pin it over the top of what you are trying to read. */
+.guides-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
+}
+@media (max-width: 800px) {
+  .guides-sidebar { position: static; max-height: none; overflow-y: visible; }
+}
+
 .stats-grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 2px; }
 @media (max-width: 680px) { .stats-grid-4 { grid-template-columns: repeat(2,1fr); } }
 
