@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Strung is an AI-powered beaded jewellery design studio. Stack: Next.js 15 (App Router), TypeScript, Supabase (auth + database), Anthropic SDK (Claude), and OpenAI (DALL-E 3 image generation). The Next.js app lives in the `strung/` subdirectory — all commands below must be run from there.
+Strung is an AI-powered beaded jewellery design studio. Stack: Next.js 15 (App Router), TypeScript, Supabase (auth + database), Anthropic SDK (Claude), and OpenAI (GPT Image 2 image generation). The Next.js app lives in the `strung/` subdirectory — all commands below must be run from there.
 
 ## Commands
 
@@ -26,7 +26,7 @@ Create `strung/.env.local`:
 ANTHROPIC_API_KEY=...
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-OPENAI_API_KEY=...          # required for DALL-E 3 image generation
+OPENAI_API_KEY=...          # required for GPT Image 2 image generation
 ```
 
 ## Core Loop
@@ -50,7 +50,7 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 |---|---|---|
 | `/` | — | Landing / home |
 | `/inventory` | Stash | Bead + findings CRUD, photo identification, bulk text stash parsing |
-| `/make` | Make | AI design generator + refinement + DALL-E preview |
+| `/make` | Make | AI design generator + refinement + GPT Image preview |
 | `/make/build/[id]` | — | Step-by-step build mode; optional stash decrement on completion |
 | `/sequence` | Palette | Colour palette + repeating bead sequence generator |
 | `/codesign` | — | Conversational AI co-designer |
@@ -70,7 +70,7 @@ Nav has 5 primary items (Stash, Make, Palette, Learn, Journal) plus Account. Not
 |---|---|---|---|
 | `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables |
 | `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Validates `pieceType` and `style` against allowlists (`style` is the firm aesthetic constraint; `mood` stays optional free text underneath it). Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
-| `/api/make/image` | POST | yes — 401 | Builds a DALL-E 3 prompt via Claude, calls OpenAI DALL-E 3 |
+| `/api/make/image` | POST | yes — 401 | Builds an image prompt via Claude, calls OpenAI GPT Image 2 (`gpt-image-2`) |
 | `/api/builds` | GET, POST, DELETE, PATCH | yes — GET returns `[]` without auth, others 401 | CRUD for `builds` table. `GET ?id=` returns a single build or 404 |
 | `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100 |
 | `/api/codesign` | POST | yes — 401 | Streaming co-design chat (Claude) |
@@ -92,7 +92,7 @@ Every AI route uses model `claude-sonnet-4-6`.
 
 ## Image Generation
 
-`/api/make/image`: Claude first generates an optimised DALL-E prompt (under 850 chars) from the design JSON, then calls OpenAI's `dall-e-3` model at `1024x1024` / `hd` quality. Returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set.
+`/api/make/image`: Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `high` quality. GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set. (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
 
 ## Shared Design Vocabulary
 

@@ -6,7 +6,7 @@ import { buildFallbackImagePrompt } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// DALL-E 3 hd is the priciest upstream call in the app, so cap it tighter.
+// GPT Image 2 at high quality is the priciest upstream call in the app, so cap it tighter.
 const RATE_LIMIT = 10
 const RATE_WINDOW_MS = 60_000
 
@@ -26,7 +26,7 @@ async function buildPrompt(design: Record<string, unknown>): Promise<string> {
     messages: [
       {
         role: 'user',
-        content: `You are writing a prompt for DALL-E 3 to generate a photorealistic image of a specific finished handmade beaded jewellery piece.
+        content: `You are writing a prompt for an image generation model to generate a photorealistic image of a specific finished handmade beaded jewellery piece.
 
 Here is the complete design:
 ${JSON.stringify(summary, null, 2)}
@@ -88,25 +88,29 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-2',
         prompt,
         n: 1,
         size: '1024x1024',
-        quality: 'hd',
+        quality: 'high',
       }),
     })
 
     if (!res.ok) {
-      console.error('DALL-E error:', await res.json().catch(() => ({})))
+      console.error('OpenAI image error:', await res.json().catch(() => ({})))
       return NextResponse.json({ error: 'Image generation failed' }, { status: res.status })
     }
 
-    const data = await res.json() as { data?: { url?: string }[] }
-    const imageUrl = data.data?.[0]?.url
-    if (!imageUrl) {
-      console.error('DALL-E returned no image url:', JSON.stringify(data).slice(0, 300))
+    // GPT image models always return base64 (b64_json) — the `url` response
+    // format DALL-E used isn't supported — so wrap it in a data URI the
+    // client <img> can render directly.
+    const data = await res.json() as { data?: { b64_json?: string }[] }
+    const b64 = data.data?.[0]?.b64_json
+    if (!b64) {
+      console.error('OpenAI image returned no image data:', JSON.stringify(data).slice(0, 300))
       return NextResponse.json({ error: 'Image generation failed' }, { status: 502 })
     }
+    const imageUrl = `data:image/png;base64,${b64}`
     return NextResponse.json({ imageUrl })
   } catch (e: unknown) {
     console.error('image route error:', e)
