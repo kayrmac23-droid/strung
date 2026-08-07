@@ -126,7 +126,7 @@ export default function GuidesPage() {
 
           <div className="guides-grid">
             {/* Sidebar */}
-            <aside style={{display:'flex',flexDirection:'column',gap:2,position:'sticky',top:76}}>
+            <aside className="guides-sidebar">
               {guides.map(g => (
                 <button key={g.id} onClick={()=>{setActive(g);setSection(0);setAiA('')}} style={{
                   display:'flex',alignItems:'flex-start',gap:12,padding:'14px 16px',
