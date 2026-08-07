@@ -49,9 +49,9 @@ interface Blueprint {
 // names materials outside components[] describes an arrangement the design does
 // not contain, so it is dropped rather than drawn or saved. The rest of the
 // blueprint is untouched and falls back to the single-strand diagram.
-function checkedBlueprint(parsed: Blueprint): Blueprint {
+function checkedBlueprint(parsed: Blueprint, beads: BeadItem[], findings: FindingItem[]): Blueprint {
   if (!parsed?.assembly) return parsed
-  const violations = validateAssembly(parsed)
+  const violations = validateAssembly(parsed, beads, findings)
   if (violations.length === 0) return parsed
   console.warn('Dropping invalid blueprint assembly:', violations)
   const stripped = { ...parsed }
@@ -59,12 +59,12 @@ function checkedBlueprint(parsed: Blueprint): Blueprint {
   return stripped
 }
 
-function parseMessage(text: string): { display: string; blueprint: Blueprint | null } {
+function parseMessage(text: string, beads: BeadItem[], findings: FindingItem[]): { display: string; blueprint: Blueprint | null } {
   const match = text.match(/<blueprint>([\s\S]*?)<\/blueprint>/)
   if (!match) return { display: text, blueprint: null }
   try {
     const display = text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').replace(/\n{3,}/g, '\n\n').trim()
-    return { display, blueprint: checkedBlueprint(JSON.parse(match[1].trim())) }
+    return { display, blueprint: checkedBlueprint(JSON.parse(match[1].trim()), beads, findings) }
   } catch {
     return { display: text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').trim(), blueprint: null }
   }
@@ -225,7 +225,7 @@ export default function CoDesignPage() {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
       }
 
-      const { display, blueprint: bp } = parseMessage(full)
+      const { display, blueprint: bp } = parseMessage(full, beads, findings)
       setMessages(m => {
         const updated = [...m]
         updated[updated.length - 1] = { role: 'assistant', content: full, display }

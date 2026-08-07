@@ -15,7 +15,7 @@ import {
   styleConstraint,
   type Style,
 } from '@/lib/designVocab'
-import { validateAssembly } from '@/lib/assembly'
+import { validateAssembly, isStructuralFindingType } from '@/lib/assembly'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -108,8 +108,10 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
     }
   }
 
-  // assembly is optional; when present it may only arrange components[].
-  violations.push(...validateAssembly(design))
+  // assembly is optional; when present it may only arrange components[], and the
+  // anchor must be a structural finding rather than a bead or drop (physical
+  // sense uses the stash to classify each named component).
+  violations.push(...validateAssembly(design, beads, findings))
 
   return violations
 }
@@ -198,7 +200,7 @@ export async function POST(req: NextRequest) {
       ? `BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
       : 'No beads in stash.',
     safeFindings.length > 0
-      ? `FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})`).join('\n')}`
+      ? `FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})${isStructuralFindingType(f.type) ? ' [structural — can be an assembly anchor]' : ''}`).join('\n')}`
       : 'No findings in stash.',
   ].join('\n\n')
 

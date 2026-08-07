@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { buildFallbackImagePrompt } from '@/lib/imagePrompt'
+import { buildFallbackImagePrompt, describeAssembly } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -11,12 +11,18 @@ const RATE_LIMIT = 10
 const RATE_WINDOW_MS = 60_000
 
 async function buildPrompt(design: Record<string, unknown>): Promise<string> {
+  // The assembly describes what mounts at top vs what hangs below. Deriving it
+  // here (rather than handing over the raw assembly JSON) gives the model the
+  // orientation in plain English so the render matches the schematic instead of
+  // inverting the piece.
+  const structure = describeAssembly(design)
   const summary = {
     title: design.title,
     description: design.description,
     pieceType: design.pieceType,
     colourStory: design.colourStory,
     components: design.components,
+    ...(structure ? { structure } : {}),
     steps: (design.steps as Array<{ instruction: string }>).map(s => s.instruction),
   }
 
@@ -36,7 +42,7 @@ Write a single dense paragraph (under 850 characters) that describes EXACTLY wha
 - Each component: precise colours, sizes, shapes, quantities, and their positions
 - How elements connect (wrapped loops, jump rings, crimp beads, stringing pattern, etc.)
 - The overall silhouette and feel of the finished piece
-
+${structure ? '- CRITICAL orientation: honour the "structure" field EXACTLY — the named anchor is mounted at the top and every strand hangs downward below it in the given order. Never invert it (do not put a hanging drop or cabochon at the top).\n' : ''}
 Then append exactly this sentence: "Macro product photography, flat lay on deep warm mocha-brown velvet, soft warm lamplight, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks."
 
 Output ONLY the prompt text, nothing else.`,
@@ -77,6 +83,9 @@ export async function POST(req: NextRequest) {
       colourStory: typeof raw.colourStory === 'string' ? raw.colourStory.slice(0, 500) : '',
       components: Array.isArray(raw.components) ? raw.components.slice(0, 50) : [],
       steps: Array.isArray(raw.steps) ? raw.steps.slice(0, 50) : [],
+      // Carried through (not stripped) so the prompt can describe top-vs-hanging
+      // orientation. describeAssembly is fully defensive about the shape.
+      assembly: raw.assembly && typeof raw.assembly === 'object' ? raw.assembly : undefined,
     }
     if (!design.title) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
     const prompt = await buildPrompt(design)

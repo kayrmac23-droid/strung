@@ -27,6 +27,79 @@ export type Assembly = {
 
 export type AttachPoint = 'left' | 'centre' | 'right'
 
+// Minimal shapes for the physical-sense pass — a component is classified by
+// looking it up in the maker's stash. Kept structural so BeadItem/FindingItem
+// (and any looser caller) satisfy them without importing the supabase types.
+export type StashBeadLite = { name?: string | null; shape?: string | null }
+export type StashFindingLite = { name?: string | null; type?: string | null }
+
+// Finding types that can physically bear a piece from the top — the anchor is a
+// mount point, so only these (and equivalent by-name findings below) belong in
+// the anchor field. Exported so the make prompt can flag anchor-eligible stash.
+export const ANCHOR_STRUCTURAL_FINDING_TYPES = new Set([
+  'ear_wire',
+  'connector',
+  'statement_component',
+  'chain',
+  'clasp',
+])
+
+export function isStructuralFindingType(type: unknown): boolean {
+  return typeof type === 'string' && ANCHOR_STRUCTURAL_FINDING_TYPES.has(type)
+}
+
+// Bead shapes that are drops — a briolette or teardrop hangs FROM an anchor, it
+// is never the anchor itself.
+const DROP_BEAD_SHAPES = new Set(['briolette', 'teardrop'])
+
+// Name signals, used when a component is not in the stash (e.g. basic findings
+// the maker is assumed to own, like an ear wire, are legitimately absent).
+// Structural wins over drop so a clearly-mounting component is never flagged.
+const STRUCTURAL_ANCHOR_KEYWORDS = ['ear wire', 'earwire', 'ear hook', 'hoop', 'filigree', 'connector', 'chandelier', 'frame', 'hook', 'post', 'stud', 'clasp', 'bail']
+const DROP_KEYWORDS = ['cabochon', 'briolette', 'teardrop', 'tear drop', 'droplet', 'dangle', 'drop']
+
+// Loose both-ways name match, mirroring how the schematic resolves a component
+// name to a stash entry.
+function nameMatches(itemLc: string, nameLc: string): boolean {
+  return !!itemLc && !!nameLc && (itemLc.includes(nameLc) || nameLc.includes(itemLc))
+}
+
+/**
+ * Physical-sense check on the anchor only (strand contents are deliberately not
+ * policed — a strand may legitimately hold a spacer finding or a jump ring).
+ * Returns a human-readable violation, or null when the anchor is plausibly a
+ * top mount. Conservative: structural evidence always clears it, and an unknown
+ * component (not in stash, no keyword) is left alone rather than guessed at.
+ */
+function anchorPhysicalViolation(anchor: string, beads: StashBeadLite[], findings: StashFindingLite[]): string | null {
+  const lc = anchor.toLowerCase()
+
+  // 1. Clearly structural → always a valid anchor.
+  const structuralFinding = findings.some(
+    (f) => isStructuralFindingType(f.type) && nameMatches(lc, String(f.name ?? '').toLowerCase().trim()),
+  )
+  if (structuralFinding) return null
+  if (STRUCTURAL_ANCHOR_KEYWORDS.some((k) => lc.includes(k))) return null
+
+  // 2. Drop-shaped → hangs from the anchor, cannot be one.
+  const dropBead = beads.some(
+    (b) => DROP_BEAD_SHAPES.has(String(b.shape ?? '').toLowerCase().trim()) && nameMatches(lc, String(b.name ?? '').toLowerCase().trim()),
+  )
+  if (dropBead || DROP_KEYWORDS.some((k) => lc.includes(k))) {
+    return `assembly.anchor "${anchor}" is a drop/dangle-shaped component, which hangs FROM the anchor rather than serving as one. The anchor is the TOP mount point — use a structural finding (ear wire, hoop, filigree connector, or statement_component) as the anchor and list "${anchor}" as a strand element hanging below it.`
+  }
+
+  // 3. A plain bead → not a mount point.
+  const isBead = beads.some((b) => nameMatches(lc, String(b.name ?? '').toLowerCase().trim()))
+  if (isBead) {
+    return `assembly.anchor "${anchor}" is a bead, but the anchor is the TOP mount point the strands hang from and must be a structural finding (ear wire, hoop, filigree connector, or statement_component). Anchor from a finding and list "${anchor}" as a strand element instead.`
+  }
+
+  // Unknown component — no evidence either way; leave it (a basic assumed-owned
+  // finding such as "ear wire" already cleared step 1 via its keyword).
+  return null
+}
+
 // Caps on a single rendered diagram. A pathological saved design (or a model
 // that writes repeat: 9999) must not produce a million-node SVG.
 const MAX_STRANDS = 24
@@ -66,7 +139,11 @@ function componentNames(design: unknown): Set<string> {
  * field is optional). The strings are fed straight back to the model by the
  * one-shot repair retry, so they name the offending value.
  */
-export function validateAssembly(design: unknown): string[] {
+export function validateAssembly(
+  design: unknown,
+  beads: StashBeadLite[] = [],
+  findings: StashFindingLite[] = [],
+): string[] {
   const violations: string[] = []
   const d = asObject(design)
   if (d.assembly === undefined || d.assembly === null) return violations
@@ -85,6 +162,12 @@ export function validateAssembly(design: unknown): string[] {
   const anchor = asString(a.anchor)
   if (anchor && !names.has(anchor.toLowerCase())) {
     violations.push(`assembly.anchor "${anchor}" does not appear in components[] — assembly may only arrange components you already listed`)
+  }
+  // Physical sense: the anchor is the top mount, so it must be a structural
+  // finding — not a bead or a drop-shaped element hanging beneath it.
+  if (anchor) {
+    const anchorIssue = anchorPhysicalViolation(anchor, beads, findings)
+    if (anchorIssue) violations.push(anchorIssue)
   }
 
   const strands = Array.isArray(a.strands) ? a.strands : []
