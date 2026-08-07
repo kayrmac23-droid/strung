@@ -20,7 +20,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 | Page | Nav | What it does |
 |---|---|---|
 | **Stash** (`/inventory`) | Stash | Log every bead and finding you own — name, type, colour, size, quantity. Photograph an item and Claude identifies it, or paste a plain-text description of your whole stash and review the parsed result before saving. Full inline edit and delete. |
-| **Make** (`/make`) | Make | Pick a piece type, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps. Refine it in plain language, then view it two ways: a **Visual** DALL·E render, or a **Schematic** — a deterministic SVG diagram that lays the design out as a strand using your stash's real colours and shapes. Save it or start building. |
+| **Make** (`/make`) | Make | Pick a piece type, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps. Refine it in plain language, then view it two ways: a **Visual** AI render, or a **Schematic** — a deterministic SVG diagram that lays the design out as a strand using your stash's real colours and shapes. Save it or start building. |
 | **Build** (`/make/build/[id]`) | — | Step-by-step build mode. Tracks your current step, time taken, notes, and a rating. On completion it offers to subtract the materials you used from your stash automatically. |
 | **Palette** (`/sequence`) | Palette | Choose a colour harmony, an anchor colour family, and a piece type. Claude returns a 3–5 colour palette, a repeating bead sequence with a pattern unit, a metal recommendation, and any close matches from your stash. |
 | **Co-design** (`/codesign`) | — | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design — with the same Visual render and Schematic diagram as Make — then save it straight to your builds. |
@@ -39,7 +39,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 - **Framework** — Next.js 15 (App Router)
 - **Language** — TypeScript
 - **AI** — Anthropic Claude (`claude-sonnet-4-6`) via the Anthropic SDK — text, streaming, and vision
-- **Image generation** — OpenAI DALL·E 3 (`/api/make/image`)
+- **Image generation** — OpenAI GPT Image 2 (`/api/make/image`)
 - **Database** — Supabase (PostgreSQL, per-user rows with Row Level Security)
 - **Styling** — CSS custom properties + inline styles (no CSS framework)
 - **Fonts** — Playfair Display, Cormorant Garamond, DM Mono
@@ -53,7 +53,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 |---|---|---|---|
 | `/api/inventory` | GET, POST, PATCH, DELETE | yes | CRUD for `beads` and `findings` |
 | `/api/make` | POST | yes | Generates one design as structured JSON; also handles refinements |
-| `/api/make/image` | POST | yes | Claude writes a DALL·E prompt from the design, then calls DALL·E 3. Returns `501` without `OPENAI_API_KEY` |
+| `/api/make/image` | POST | yes | Claude writes an image prompt from the design, then calls OpenAI GPT Image 2 (`gpt-image-2`). Returns `501` without `OPENAI_API_KEY` |
 | `/api/sequence` | POST | **no** | Colour palette + repeating bead sequence, with stash matching |
 | `/api/builds` | GET, POST, PATCH, DELETE | yes | CRUD for `builds`. GET returns `[]` when signed out rather than erroring |
 | `/api/codesign` | POST | yes | Streaming co-design chat |
@@ -63,7 +63,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 
 All AI routes use `claude-sonnet-4-6`. Images are downscaled client-side to 1568px JPEG before upload (Vercel caps request bodies at 4.5MB).
 
-Every route that hits a paid upstream (Anthropic / OpenAI) is rate limited with an in-memory sliding window — keyed per user, or per IP for the public `/api/sequence` route — and returns `429` with a `Retry-After` header when the window is full. The image route is capped tighter, since DALL·E 3 `hd` is the most expensive call in the app. The limit is per serverless instance, so it's a first line of defence against runaway loops rather than a strict global billing cap.
+Every route that hits a paid upstream (Anthropic / OpenAI) is rate limited with an in-memory sliding window — keyed per user, or per IP for the public `/api/sequence` route — and returns `429` with a `Retry-After` header when the window is full. The image route is capped tighter, since GPT Image 2 at `high` quality is the most expensive call in the app. The limit is per serverless instance, so it's a first line of defence against runaway loops rather than a strict global billing cap.
 
 ---
 
@@ -85,7 +85,7 @@ Create `strung/.env.local`:
 ANTHROPIC_API_KEY=your_anthropic_api_key
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-OPENAI_API_KEY=your_openai_api_key   # required for DALL·E 3 images (/api/make/image returns 501 without it)
+OPENAI_API_KEY=your_openai_api_key   # required for GPT Image 2 images (/api/make/image returns 501 without it)
 ```
 
 ### 3. Set up the database

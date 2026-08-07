@@ -1,4 +1,4 @@
-// Deterministic DALL-E prompt built directly from a design. Used as a fallback
+// Deterministic image prompt built directly from a design. Used as a fallback
 // when the Claude prompt-writer call is truncated (stop_reason === 'max_tokens')
 // or returns nothing: the AI-written prompt is a nicety, but the preview image
 // should still generate, so we assemble a serviceable prompt from the design
@@ -9,7 +9,7 @@
 export const DALLE_PHOTO_SUFFIX =
   'Macro product photography, flat lay on dark weathered slate, soft studio rim lighting, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks.'
 
-// DALL-E 3 practical prompt ceiling used elsewhere in this route.
+// Practical prompt ceiling used elsewhere in this route.
 const MAX_PROMPT_CHARS = 850
 
 type ImageDesign = {
