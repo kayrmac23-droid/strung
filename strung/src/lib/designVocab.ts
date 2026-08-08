@@ -25,12 +25,20 @@ export const TECHNIQUE_LIST_TEXT = ALLOWED_TECHNIQUES.map((t) => `"${t}"`).join(
 // Several tags are easy to conflate, so the prompt states what each one means.
 // "Wire Wrapping" is decorative binding only — forming a frame is its own tag.
 export const TECHNIQUE_GLOSSARY = `Technique meanings (use the tag that matches the actual action):
+- "Stringing": beads onto a continuous flexible medium (beading wire, cord, thread, or chain) finished at both ends — NOT a bead loaded onto a head pin or eye pin. A bead on a head pin is finished with "Wrapped Loop" or "Simple Loop", never "Stringing".
+- "Simple Loop": a plain round loop turned in a head pin or eye pin and closed, no wrap.
 - "Wrapped Loop": a loop turned in wire and secured with two or three wraps around its own stem.
 - "Briolette Wrap": wire threaded through a top-drilled bead, crossed above it and wrapped into a stem.
 - "Linked Chain": a run of individually wire-wrapped beads joined loop-to-loop into a chain (rosary chain).
 - "Wire Coiling": tight decorative coils of fine wire around a stem or core wire.
 - "Wire Wrapping": decorative binding, or wrapping a wire tail against a form.
 - "Frame Forming": hand-forming a hoop or frame from bare wire and wrapping beads onto it.`
+
+// Metal-tone cohesion for structural findings. Stated in warm/cool tone
+// families (not exact-metal equality) so brass+copper is fine but silver on a
+// brass anchor is a mismatch. The stash metal values are silver, gold_filled,
+// gold, copper, brass, oxidised, other.
+export const METAL_COHESION_RULE = `Metal tone cohesion: the piece's structural findings — jump rings, ear wires, head pins, eye pins, clasps, and wire — must sit in the SAME tone family as the dominant structural anchor (the chandelier finding, connector, hoop, or frame the piece hangs from). Warm family: gold, gold_filled, brass, copper, and antiqued/oxidised brass. Cool family: silver and oxidised/gunmetal silver. Do not pair a cool-tone finding with a warm-tone anchor (e.g. a silver head pin on an antique-brass chandelier connector is a mismatch); choose findings in the anchor's tone family. Warm metals may mingle with each other (brass with copper, gold with brass) — that is not a mismatch. A deliberate warm/cool mix is only allowed for the bohemian style AND must be named as intentional in colourStory. When a needed finding isn't in the anchor's tone, assume it exists in that tone rather than switching family. Do NOT list a qty:0 'not used' finding as a rejected alternative in the materials.`
 
 export const DIFFICULTY_RUBRIC = `Difficulty gating — assign difficulty from the techniques actually used:
 - Beginner: Stringing, Simple Loop, Jump Ring, Crimping, Wrapped Loop, Briolette Wrap
@@ -78,6 +86,7 @@ export const ASSEMBLY_RULES = `ASSEMBLY — how the piece hangs together (the "a
 - repeat means this identical strand appears N times across the anchor. Use it for evenly spaced fringe rather than listing the same strand repeatedly.
 - Vary element counts between strands to make a chandelier taper — that is how the shape is expressed.
 - CRITICAL: every item named in assembly must already appear in components[]. assembly describes arrangement only, never introduces new materials.
+- Each strand's elements MUST list every bead in that physical drop, top to bottom, exactly as the steps build it — including junction and spacer beads (e.g. rondelles) that sit between other beads. If the steps describe a drop as rondelle → fire-polished → teardrop, the strand must list those three elements in that order, not a single teardrop. The assembly and the steps describe the same physical object and must show the same beads in the same order. Strand element quantities must reconcile with components[] and with the step counts.
 - For earrings, assembly describes ONE earring. components[] still covers the pair.
 - WORKED EXAMPLE (a chandelier earring): the chandelier finding (or hoop) is the anchor at the top; a central cabochon and pearl drops hang below it. The anchor is the structural finding — NOT the cabochon:
   "assembly": { "form": "branched", "anchor": "brass chandelier finding", "strands": [

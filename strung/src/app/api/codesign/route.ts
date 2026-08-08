@@ -5,6 +5,7 @@ import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 import {
   TECHNIQUE_LIST_TEXT,
   TECHNIQUE_GLOSSARY,
+  METAL_COHESION_RULE,
   DIFFICULTY_RUBRIC,
   REPEAT_STEP_RULE,
   ASSEMBLY_RULES,
@@ -136,6 +137,8 @@ When you have enough detail to create a design (usually after 3–4 exchanges), 
 Each step's "technique" must be null or from this exact list only: ${TECHNIQUE_LIST_TEXT}.
 
 ${TECHNIQUE_GLOSSARY}
+
+${METAL_COHESION_RULE}
 
 ${DIFFICULTY_RUBRIC}
 

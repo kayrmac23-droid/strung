@@ -7,6 +7,7 @@ import {
   ALLOWED_TECHNIQUES,
   TECHNIQUE_LIST_TEXT,
   TECHNIQUE_GLOSSARY,
+  METAL_COHESION_RULE,
   DIFFICULTY_RUBRIC,
   REPEAT_STEP_RULE,
   ASSEMBLY_RULES,
@@ -234,6 +235,7 @@ ${TECHNIQUE_GLOSSARY}
 - Earrings: every bead and dangle component must be used in even quantities so the pair is symmetric. If a focal bead has an odd quantity, design around a matched pair or choose a different piece type.
 - Necklaces and bracelets: do rough length math — state the target length and confirm the specified bead counts and sizes plausibly reach it. Bracelets are ~18cm, necklaces 40–45cm unless the design says otherwise.
 - Seed beads cannot go on thick wire or leather; large-hole beads slide off fine chain — keep the stringing material sensible for the bead sizes used.
+- ${METAL_COHESION_RULE}
 - ${DIFFICULTY_RUBRIC}
 
 ${ASSEMBLY_RULES}
