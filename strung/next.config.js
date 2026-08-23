@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'oaidalleapiprodscus.blob.core.windows.net' },
+      { protocol: 'https', hostname: 'image.pollinations.ai' },
     ],
   },
   async headers() {
@@ -16,7 +16,7 @@ const nextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://oaidalleapiprodscus.blob.core.windows.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://image.pollinations.ai; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'" },
         ],
       },
     ]
