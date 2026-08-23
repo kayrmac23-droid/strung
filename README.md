@@ -20,7 +20,7 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 | Page | Nav | What it does |
 |---|---|---|
 | **Stash** (`/inventory`) | Stash | Log every bead and finding you own — name, type, colour, size, quantity. Photograph an item and Claude identifies it, or paste a plain-text description of your whole stash and review the parsed result before saving. Full inline edit and delete. |
-| **Make** (`/make`) | Make | Pick a piece type, style, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps — keeping techniques, difficulty, and metal-tone cohesion consistent (structural findings match the anchor's warm or cool tone family). Refine it in plain language, then view it two ways: a **Visual** AI render, or a **Schematic** — a deterministic SVG diagram that lays the design out as a strand using your stash's real colours and shapes. Save it or start building. |
+| **Make** (`/make`) | Make | Pick a piece type, style, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps — keeping techniques, difficulty, and metal-tone cohesion consistent (structural findings match the anchor's warm or cool tone family). Refine it in plain language, then view it two ways: a **Visual** AI render, or a **Schematic** — a deterministic SVG diagram that lays the design out using your stash's real colours and shapes, as a single strand or, for drops and chandeliers, a branched arrangement hanging from an anchor. Save it or start building. |
 | **Build** (`/make/build/[id]`) | — | Step-by-step build mode. Tracks your current step, time taken, notes, and a rating. On completion it offers to subtract the materials you used from your stash automatically. |
 | **Palette** (`/sequence`) | Palette | Choose a colour harmony, an anchor colour family, and a piece type. Claude returns a 3–5 colour palette, a repeating bead sequence with a pattern unit, a metal recommendation, and any close matches from your stash. |
 | **Co-design** (`/codesign`) | — | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design — with the same Visual render and Schematic diagram as Make — then save it straight to your builds. |
@@ -211,8 +211,10 @@ strung/
         │   ├── assembly.ts       # Assembly validation + branched-layout maths
         │   ├── imagePrep.ts      # Client-side image downscaling
         │   ├── stashItems.ts     # Normalises AI-identified items
+        │   ├── stash-colours.ts  # Bead + metal colour constants for the stash pickers
         │   ├── stashDecrement.ts # Plans per-row stash subtractions on build completion
-        │   ├── visual.ts         # Shared AI image-prompt builder
+        │   ├── visual.ts         # Shared AI image-prompt builder for the Visual render
+        │   ├── imagePrompt.ts    # Deterministic image-prompt fallback when the AI prompt-writer is truncated
         │   └── rateLimit.ts      # In-memory sliding-window rate limiter
         └── __tests__/
 ```
