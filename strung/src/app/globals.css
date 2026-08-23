@@ -1,16 +1,16 @@
 :root {
   /* ── the mocha ladder — every dark: R > G ≥ B (DESIGN Rule 1) ── */
-  --bean:   #0D0A09;  /* level 0 · canvas — the bench */
-  --roast:  #14100F;  /* recess  · wells, inputs, image placeholders */
-  --mocha:  #1A1413;  /* level 1 · cards — the tray */
-  --umber:  #2B2321;  /* level 2 · header bands, hover, modals, sticky panels */
-  --seam:   #3E3330;  /* hairline borders */
-  --saddle: #544740;  /* hairline hover, strong rules, strand thread */
-  --tan:    #9C8070;  /* suede accent — tag text/borders, secondary glyphs */
+  --bean:   #121110;  /* level 0 · canvas — the bench */
+  --roast:  #191817;  /* recess  · wells, inputs, image placeholders */
+  --mocha:  #211F1D;  /* level 1 · cards — the tray */
+  --umber:  #2E2B28;  /* level 2 · header bands, hover, modals, sticky panels */
+  --seam:   #403C38;  /* hairline borders */
+  --saddle: #5A544E;  /* hairline hover, strong rules, strand thread */
+  --tan:    #A39488;  /* suede accent — tag text/borders, secondary glyphs */
 
-  --cream:  #EDE6DB;  /* primary text, headings, primary button fill */
-  --text2:  #B9ACA2;  /* body/secondary text */
-  --meta:   #8D8078;  /* mono meta — caps sizes only */
+  --cream:  #EFEAE2;  /* primary text, headings, primary button fill */
+  --text2:  #B5ADA6;  /* body/secondary text */
+  --meta:   #8A827B;  /* mono meta — caps sizes only */
 
   --madder:      #C4564C;  /* the red thread — accents, active, focus, marked bead */
   --madder-deep: #A8352C;  /* pressed states, filled accents, selection background */
