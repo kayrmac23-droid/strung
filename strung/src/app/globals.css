@@ -15,6 +15,13 @@
   --madder:      #C4564C;  /* the red thread — accents, active, focus, marked bead */
   --madder-deep: #A8352C;  /* pressed states, filled accents, selection background */
 
+  /* oxblood — the primary-button fill only. Deep enough to dominate the hero,
+     but too low-contrast at small sizes on dark (2:1 vs madder's 4.3:1), so
+     small markers/focus/active dots stay on --madder above. */
+  --button-accent:        #7D2C34;
+  --button-accent-hover:  #8F3540;
+  --button-accent-active: #6B252C;
+
   --sage:  #8FA383;   /* success, in-stock, stash-matched */
   --ochre: #C99B3F;   /* warning, low quantity (semantic only — not decoration) */
 
@@ -98,26 +105,26 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 600; letter-spacing
 .fade-up-4 { animation: fadeUp 0.5s 0.32s ease both; }
 
 /* Buttons — de-chamfered, no gradients, no metal (DESIGN Rule 3, §Buttons).
-   Primary fills cream; the madder thread appears under the label on hover.
-   .btn-primary is canonical; .btn-silver is kept as an alias so existing
-   markup picks up the new treatment without a rename. */
+   Primary fills oxblood (--button-accent) so the hero action dominates; the
+   fill is the accent, so no under-label thread is needed. .btn-primary is
+   canonical; .btn-silver is kept as an alias so existing markup picks up the
+   new treatment without a rename. */
 .btn-primary, .btn-silver {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 11px 20px 10px;
-  background: var(--cream); color: var(--bean);
-  border: 1px solid var(--cream); border-radius: 2px;
+  background: var(--button-accent); color: var(--cream);
+  border: none; border-radius: 2px;
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.14em; text-transform: uppercase;
   position: relative; cursor: pointer; transition: background 0.2s, color 0.2s;
 }
-.btn-primary::after, .btn-silver::after {
-  content: ""; position: absolute; left: 10%; right: 10%; bottom: 5px; height: 1px;
-  background: var(--madder-deep); transform: scaleX(0); transform-origin: left;
-  transition: transform 0.25s;
+.btn-primary:hover, .btn-silver:hover { background: var(--button-accent-hover); }
+.btn-primary:active, .btn-silver:active { background: var(--button-accent-active); }
+/* Cream outline on keyboard focus — never red-on-red against the oxblood fill. */
+.btn-primary:focus-visible, .btn-silver:focus-visible {
+  outline: 2px solid var(--cream); outline-offset: 2px;
 }
-.btn-primary:hover::after, .btn-silver:hover::after { transform: scaleX(1); }
 .btn-primary:disabled, .btn-silver:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-primary:disabled::after, .btn-silver:disabled::after { display: none; }
 
 .btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;

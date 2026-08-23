@@ -60,8 +60,8 @@ export default function Home() {
               Track your bead stash, get AI-generated design blueprints from what you actually own, and learn the techniques that bring it all together.
             </p>
             <div className="fade-up-3" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
-              <Link href="/inventory" className="btn-silver">Add My Beads</Link>
-              <Link href="/make" className="btn-outline">Make Something</Link>
+              <Link href="/make" className="btn-primary">Make Something</Link>
+              <Link href="/inventory" className="btn-outline">Add My Beads</Link>
               <Link href="/codesign" className="btn-ghost">Co-Design →</Link>
             </div>
           </div>
