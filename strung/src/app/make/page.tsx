@@ -370,7 +370,7 @@ export default function MakePage() {
             <button className="btn-silver" style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
               onClick={generate} disabled={loading || signedOut}>
               {loading
-                ? <><span className="spinner" />Reading stash &amp; designing…</>
+                ? <><span className="strand-loader"><i/><i/><i/></span>Reading stash &amp; designing…</>
                 : signedOut
                   ? 'Sign in to design'
                   : 'Design Something'}
