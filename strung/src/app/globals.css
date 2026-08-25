@@ -244,7 +244,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .spinner-dark { width: 14px; height: 14px; }
 
 /* The strand loader — beads slide along a thread (DESIGN §Loading strand) */
-.strand-loader { position: relative; width: 160px; height: 18px; }
+.strand-loader { position: relative; width: 134px; height: 18px; margin: 0 auto; }
 .strand-loader::before {
   content: ""; position: absolute; inset: 8.5px 0 auto; height: 1px; background: var(--saddle);
 }
