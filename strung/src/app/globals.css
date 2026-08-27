@@ -52,7 +52,7 @@
   --text: var(--text2);
   /* --gold / --emerald deleted (Rule 3 — no metal in the interface) */
 
-  --font-display: var(--font-instrument), system-ui, sans-serif;
+  --font-display: var(--font-instrument-serif), Georgia, serif;
   --font-body: var(--font-instrument), system-ui, sans-serif;
   --font-mono: var(--font-dm-mono), monospace;
   --font-serif: var(--font-newsreader), Georgia, serif;  /* marginalia only (Rule 2) */
