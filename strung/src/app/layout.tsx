@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Instrument_Sans, Newsreader, DM_Mono } from 'next/font/google'
+import { Instrument_Sans, Instrument_Serif, Newsreader, DM_Mono } from 'next/font/google'
 import './globals.css'
 
 // Display + interface grotesk (DESIGN §Type). No serif in the chrome (Rule 2).
@@ -7,6 +7,15 @@ const instrument = Instrument_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   variable: '--font-instrument',
+  display: 'swap',
+})
+
+// Display face — headings only. Companion serif to Instrument Sans.
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-instrument-serif',
   display: 'swap',
 })
 
@@ -39,7 +48,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${instrument.variable} ${newsreader.variable} ${dmMono.variable}`}>{children}</body>
+    <body className={`${instrument.variable} ${instrumentSerif.variable} ${newsreader.variable} ${dmMono.variable}`}>{children}</body>
     </html>
   )
 }
