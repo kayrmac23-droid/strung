@@ -1,7 +1,9 @@
 'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import BeadIcon, { type BeadShape } from '@/components/BeadIcon'
+import { getAuthHeaders } from '@/lib/authClient'
 
 const gems = ['Labradorite','Moonstone','Amethyst','Garnet','Aquamarine','Tourmaline','Rose Quartz','Tiger Eye','Iolite','Citrine','Prehnite','Larimar']
 
@@ -17,6 +19,28 @@ const features: { href: string; icon: BeadShape; label: string; title: string; d
 ]
 
 export default function Home() {
+  // State-aware CTA hierarchy: a new/empty/logged-out user is pointed at their
+  // stash first (nothing to design from yet); a user with beads is pointed at
+  // Make first. Default to the empty-stash treatment until the count loads so
+  // the maroon primary never lands on the dead-end action for a new visitor.
+  const [hasBeads, setHasBeads] = useState(false)
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+        if (res.status === 401) return // logged out — keep empty-stash treatment
+        const d = await res.json()
+        setHasBeads((d.beads?.length ?? 0) > 0)
+      } catch {
+        // best-effort — leave the safe empty-stash default in place
+      }
+    })()
+  }, [])
+
+  const makeClass = hasBeads ? 'btn-primary' : 'btn-outline'
+  const beadsClass = hasBeads ? 'btn-outline' : 'btn-primary'
+
   return (
     <>
       <Nav />
@@ -51,7 +75,7 @@ export default function Home() {
               fontFamily:'var(--font-display)',fontWeight:400,
               lineHeight:1.0,color:'var(--cream)',marginBottom:24
             }}>
-              Make something<br /><em style={{fontStyle:'italic',color:'var(--silver)'}}>beautiful.</em>
+              You already own<br /><em style={{fontStyle:'italic',color:'var(--silver)'}}>your next piece.</em>
             </h1>
             <p className="fade-up-2" style={{
               fontSize:18,color:'var(--text2)',lineHeight:1.7,
@@ -59,10 +83,12 @@ export default function Home() {
             }}>
               Track your bead stash, get AI-generated design blueprints from what you actually own, and learn the techniques that bring it all together.
             </p>
-            <div className="fade-up-3" style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
-              <Link href="/make" className="btn-primary">Make Something</Link>
-              <Link href="/inventory" className="btn-outline">Add My Beads</Link>
-              <Link href="/codesign" className="btn-ghost">Co-Design →</Link>
+            <div className="fade-up-3" style={{display:'flex',flexDirection:'column',alignItems:'center',gap:18}}>
+              <div style={{display:'flex',gap:14,justifyContent:'center',flexWrap:'wrap'}}>
+                <Link href="/make" className={makeClass}>Make Something</Link>
+                <Link href="/inventory" className={beadsClass}>Add My Beads</Link>
+              </div>
+              <Link href="/codesign" className="btn-text">Or co-design it with AI →</Link>
             </div>
           </div>
         </section>
