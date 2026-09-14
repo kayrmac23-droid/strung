@@ -152,7 +152,7 @@ export default function CalculatorPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+      <main id="main" className="page-main">
         <div className="page-pad" style={{ maxWidth: 1100, margin: '0 auto', paddingTop: 52, paddingBottom: 96 }}>
 
           {/* ── Header ── */}

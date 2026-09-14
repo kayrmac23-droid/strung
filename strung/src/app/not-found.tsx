@@ -5,8 +5,7 @@ export default function NotFound() {
   return (
     <>
       <Nav />
-      <main style={{
-        paddingTop: 60, minHeight: '100vh',
+      <main id="main" className="page-main" style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         position: 'relative', overflow: 'hidden'
       }}>

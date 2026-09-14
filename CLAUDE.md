@@ -40,7 +40,7 @@ OPENAI_API_KEY=...          # required for GPT Image 2 image generation
 
 ## Auth
 
-Supabase email/password auth. **Almost everything requires a session.** `/api/sequence` is the only route with no auth check — the Palette page is the one feature that fully works signed out. Every other route calls `getUserFromRequest(req)` and returns 401 when there is no user (`/api/builds` GET is the exception: it returns `[]` rather than 401).
+Supabase email/password auth. **Almost everything requires a session.** `/api/sequence` is the only route with no auth check — the Palette page is the one feature that fully works signed out. Every other route calls `getUserFromRequest(req)` and returns 401 when there is no user. The one exception is the **list** form of `/api/builds` GET, which returns `[]` so the journal can render an empty state signed out. `GET ?id=` is *not* an exception — it returns 401 with `'Sign in to open this build.'`, because it answers with a single object and returning `[]` there handed the build page an array where it expects an object; the page's `!record?.id` guard then reported a misleading "Build not found" instead of prompting a sign-in. Match the shape of the response to the shape of the request.
 
 Client-side, `getSession()` from `@/lib/authClient` checks auth state before save actions, and `getAuthHeaders()` attaches the bearer token. Pages that can render signed-out (e.g. `/make`) track a `signedOut` flag by checking for `res.status === 401` on their initial fetch.
 
@@ -71,7 +71,7 @@ Nav has 5 primary items (Stash, Make, Palette, Learn, Journal) plus Account. Not
 | `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables |
 | `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Validates `pieceType` and `style` against allowlists (`style` is the firm aesthetic constraint; `mood` stays optional free text underneath it). Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
 | `/api/make/image` | POST | yes — 401 | Builds an image prompt via Claude, calls OpenAI GPT Image 2 (`gpt-image-2`) |
-| `/api/builds` | GET, POST, DELETE, PATCH | yes — GET returns `[]` without auth, others 401 | CRUD for `builds` table. `GET ?id=` returns a single build or 404 |
+| `/api/builds` | GET, POST, DELETE, PATCH | yes — bare `GET` returns `[]` without auth, `GET ?id=` and all other methods 401 | CRUD for `builds` table. `GET ?id=` returns a single build, 404, or 401 |
 | `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100 |
 | `/api/codesign` | POST | yes — 401 | Streaming co-design chat (Claude) |
 | `/api/advice` | POST | yes — 401 | Streaming jewellery advice (Claude) |
@@ -93,6 +93,18 @@ Every AI route uses model `claude-sonnet-4-6`.
 ## Image Generation
 
 `/api/make/image`: Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `high` quality. GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set. (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
+
+## Shared Route Helpers
+
+`src/lib/apiRequest.ts` holds the plumbing every API route repeats. Use it rather than re-inlining a copy:
+
+- `getToken(req)` — bearer token, or `''` when absent.
+- `parseBody(req)` — `null` when the body is not valid JSON (answer 400), `{}` when it parses to a non-object (a number, string, `null`, or array) so the caller falls through to its own field validation.
+- `firstTextBlock(msg)` — the first `type: 'text'` block of an Anthropic response, `''` if there is none. **Never read `content[0]` directly** — that assumes the first block is text, so a leading non-text block silently yields `''` and the route reports a parse failure for a good response.
+- `truncStr(v, max)` — clamp a prompt field; non-strings become `''` rather than being coerced, so an object's `toString` cannot smuggle text past the cap.
+- `STREAM_ERROR_MARKER` — appended in-band when a stream dies partway. Past the first chunk the status line is already sent, so this is the only way to tell the reader the text is incomplete.
+
+`src/lib/richText.ts` is the single HTML escaper and formatter for everything rendered through `dangerouslySetInnerHTML` (the guide body, the advisor answer, the co-design chat bubble). Call `formatRichText(text, PRESET)` with `GUIDE_PROSE`, `ADVISOR_ANSWER` or `CHAT_MESSAGE`. **Escaping runs over the raw text before any markdown replacement** — reversing that order would let markup in the source survive as live HTML. Do not add a fourth local escaper.
 
 ## Shared Design Vocabulary
 
@@ -164,7 +176,11 @@ No CSS framework. Two layers:
 
 CSS custom properties (`:root`) handle the colour palette. Use variables in all new code: `var(--silver)`, `var(--moonstone)`, `var(--rose)`, `var(--surface)`, `var(--border)`, etc.
 
-Fonts: `var(--font-display)` = Playfair Display (headings), `var(--font-body)` = Cormorant Garamond (prose), `var(--font-mono)` = DM Mono (labels/tags/meta).
+Fonts: `var(--font-display)` = Instrument Serif (headings), `var(--font-body)` = Instrument Sans (UI + prose), `var(--font-serif)` = Newsreader italic (marginalia only), `var(--font-mono)` = DM Mono (labels/tags/meta).
+
+**Text colour vs UI colour.** `--madder` (#C4564C) is 3.74:1 on `--mocha` cards — fine for borders, dots and focus rings (WCAG 1.4.11 asks 3:1 of non-text) but under the 4.5:1 AA floor for the 10–11px mono caps it was being used at. Small text on the accent uses `--madder-text` (#D17A72, 5.60:1); `--madder` itself is unchanged and stays for every non-text use. Likewise `--field-edge` (#6E6A66, 3.31:1 on `--roast`) is the input/select border — `--seam` was 1.62:1 there, an effectively invisible control boundary. Every token keeps R > G ≥ B per DESIGN Rule 1.
+
+**Page shell.** Every page renders `<main id="main" className="page-main">` rather than repeating `paddingTop: 60` / `minHeight: '100vh'` inline. `.page-main` carries both, and `id="main"` is the target of the `.skip-link` that `Nav` renders as the first focusable element on the page. Use `100dvh`, never `100vh` — mobile browser chrome makes `100vh` overflow the viewport.
 
 ## Path Alias
 
@@ -172,6 +188,7 @@ Fonts: `var(--font-display)` = Playfair Display (headings), `var(--font-body)` =
 
 ## Known Constraints
 
+- **Dead palette exports**: `colourFamilies`, `metalTones` and `harmonyScore` in `@/lib/colour` have no consumer anywhere in the app — nothing imports them outside the tests. They are covered and correct (the family-miscount bug is fixed and regression-tested), but they are shipped weight with no UI behind them. Either wire them into the Palette page or delete them; do not leave them drifting.
 - **Vercel**: Root directory must be set to `strung/`. Do not add a `vercel.json` with a `builds` key.
 - **Next.js 15**: Components that use event handlers or browser APIs must have `'use client'` at the top.
 - All pages are `'use client'` React components.

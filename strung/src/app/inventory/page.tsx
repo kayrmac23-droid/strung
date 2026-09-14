@@ -55,6 +55,11 @@ const shapes = ['round','rondelle','briolette','teardrop','faceted','chip','tube
 
 export default function InventoryPage() {
   const [tab, setTab] = useState<'beads'|'findings'>('beads')
+  // Delete/edit failures used to fire a native alert(): it blocks the whole
+  // page, is not styled, cannot be dismissed with the keyboard on some mobile
+  // browsers, and is announced out of context. An inline role="alert" banner
+  // lets a screen reader announce it in place and leaves the page usable.
+  const [listError, setListError] = useState('')
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [findings, setFindings] = useState<FindingItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -130,15 +135,17 @@ export default function InventoryPage() {
   async function deleteItem(id: string) {
     setConfirmingId(null)
     setDeletingId(id)
+    setListError('')
     try {
       const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
       await load()
-    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to delete')) }
+    } catch (e: unknown) { setListError(getErrorMessage(e, 'Failed to delete')) }
     finally { setDeletingId(null) }
   }
 
   async function editItem(id: string) {
+    setListError('')
     try {
       const res = await fetch('/api/inventory', {
         method: 'PATCH',
@@ -150,7 +157,7 @@ export default function InventoryPage() {
       await load()
       setEditingId(null)
       setEditForm({})
-    } catch (e: unknown) { alert(getErrorMessage(e, 'Failed to update')) }
+    } catch (e: unknown) { setListError(getErrorMessage(e, 'Failed to update')) }
   }
 
   async function identifyMulti(file: File) {
@@ -263,13 +270,32 @@ export default function InventoryPage() {
   return (
     <>
       <Nav />
-      <main style={{paddingTop:60,minHeight:'100vh'}}>
+      <main id="main" className="page-main">
         <div style={{maxWidth:1100,margin:'0 auto',padding:'52px 40px 80px'}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Inventory</p>
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>My Stash</h1>
             <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Log your beads and findings. The AI reads this to generate designs from what you actually own.</p>
           </header>
+
+          {listError && (
+            <div
+              role="alert"
+              style={{
+                display:'flex',alignItems:'flex-start',gap:12,
+                padding:'12px 18px',marginBottom:24,
+                background:'var(--surface)',border:'1px solid var(--rose)'
+              }}
+            >
+              <span style={{flex:1,fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>{listError}</span>
+              <button
+                onClick={() => setListError('')}
+                aria-label="Dismiss error"
+                className="btn-ghost"
+                style={{padding:'2px 8px'}}
+              >Dismiss</button>
+            </div>
+          )}
 
           {signedOut && (
             <div style={{padding:'12px 18px',background:'var(--surface)',border:'1px solid var(--border)',marginBottom:24}}>

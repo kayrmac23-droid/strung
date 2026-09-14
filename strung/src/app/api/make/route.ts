@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { getToken, firstTextBlock, truncStr } from '@/lib/apiRequest'
 import {
   ALLOWED_TECHNIQUES,
   TECHNIQUE_LIST_TEXT,
@@ -28,10 +29,6 @@ const RATE_WINDOW_MS = 60_000
 // like every other free-text field. A real design is a few KB; this leaves
 // generous headroom while rejecting anything pathological.
 const MAX_PREVIOUS_DESIGN_CHARS = 20_000
-
-function getToken(req: NextRequest) {
-  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-}
 
 type StashBead = {
   name: string
@@ -174,7 +171,6 @@ export async function POST(req: NextRequest) {
   const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
   const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
 
-  const truncStr = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
   const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50), size: truncStr(f.size, 50) }))
   // The client sends display-cased values ("Earrings", "Necklace"); normalise
@@ -189,9 +185,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid style' }, { status: 400 })
   }
   const styleNorm: Style | '' = styleRaw && isValidStyle(styleRaw) ? styleRaw : ''
+  // Type before length. `mood` is typed as `string | undefined` but arrives
+  // unvalidated from the request body, so an array got here with a `.length`
+  // that passed the check and was then interpolated straight into the prompt.
+  // Check the type first, then the length, then use the clamped copy below.
+  if (mood !== undefined && typeof mood !== 'string') {
+    return NextResponse.json({ error: 'Invalid mood' }, { status: 400 })
+  }
   if (mood && mood.length > 200) {
     return NextResponse.json({ error: 'Mood too long' }, { status: 400 })
   }
+  const moodNorm = truncStr(mood, 200)
   if (timeAvailable && !VALID_TIME.includes(timeAvailable)) {
     return NextResponse.json({ error: 'Invalid time' }, { status: 400 })
   }
@@ -221,7 +225,7 @@ THEIR REQUEST:
 - Piece type: ${pieceTypeNorm || 'any — choose the best fit for the stash'}
 - Time available: ${selectedTime}
 ${styleNorm ? `\n${styleConstraint(styleNorm)}\n` : ''}
-- Mood/vibe (secondary nuance only${styleNorm ? ', subordinate to the style above' : ''}): ${mood || 'open'}
+- Mood/vibe (secondary nuance only${styleNorm ? ', subordinate to the style above' : ''}): ${moodNorm || 'open'}
 
 CRITICAL RULES:
 - Only use materials they actually have. Check quantities — if they have qty:2 of something, use at most 2.
@@ -320,7 +324,7 @@ Produce a revised version of the SAME design that applies this change while keep
       console.error('make error: response truncated at max_tokens')
       return NextResponse.json({ error: 'Design too long — try again' }, { status: 502 })
     }
-    const text = response.content[0].type === 'text' ? response.content[0].text : ''
+    const text = firstTextBlock(response)
     let design = parseJsonLoose(text)
 
     let violations = validateDesign(design, beads, findings)
@@ -338,7 +342,7 @@ Correct ONLY these issues while keeping everything else the same, and return the
           messages: [{ role: 'user', content: retryPrompt }],
         })
         if (retry.stop_reason !== 'max_tokens') {
-          const retryText = retry.content[0].type === 'text' ? retry.content[0].text : ''
+          const retryText = firstTextBlock(retry)
           const retryDesign = parseJsonLoose(retryText)
           const retryViolations = validateDesign(retryDesign, beads, findings)
           if (retryViolations.length === 0) {

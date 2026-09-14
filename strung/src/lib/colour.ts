@@ -84,22 +84,87 @@ export const metalTones = [
   {name:'Gunmetal',hex:'#2c3539',note:'Edgy, modern — suits dark and jewel tones'},
 ]
 
+/**
+ * The family a colour belongs to, or null if it is not in the palette data.
+ *
+ * Several colour NAMES appear in more than one family — "Periwinkle" is both a
+ * Sky & Powder blue (#ccccff) and a Lavender purple (#8c93cf), and "Antique
+ * Gold" (#b8860b) sits in both Yellows & Golds and Metallics & Sheens. So a
+ * name alone does not identify a family. Match on name AND hex first, which
+ * separates the two Periwinkles, and fall back to name alone for a colour
+ * carrying a hex the palette does not know (a hand-edited swatch, say) so it
+ * still lands somewhere rather than dropping out of the count entirely.
+ *
+ * Where name and hex are both identical across two families (the two Antique
+ * Golds), the first family in declaration order wins. That is arbitrary but
+ * deterministic, which is what the count needs.
+ */
+export function familyOf(colour: Colour): string | null {
+  const name = colour?.n
+  if (typeof name !== 'string' || !name) return null
+  const hex = typeof colour.h === 'string' ? colour.h.toLowerCase() : ''
+
+  for (const family of colourFamilies) {
+    for (const sub of family.subcategories) {
+      if (sub.colours.some(c => c.n === name && c.h.toLowerCase() === hex)) return family.name
+    }
+  }
+  // No exact match — fall back to the first family carrying the name.
+  for (const family of colourFamilies) {
+    for (const sub of family.subcategories) {
+      if (sub.colours.some(c => c.n === name)) return family.name
+    }
+  }
+  return null
+}
+
 export function harmonyScore(selected: Colour[]): { score: string; note: string } {
-  if (selected.length < 2) return { score: '—', note: 'Select 2+ colours to see harmony rating' }
-  const families = colourFamilies.filter(f =>
-    f.subcategories.some(s => s.colours.some(c => selected.find(x => x.n === c.n)))
-  ).length
-  if (families === 1) return { score: 'Tonal', note: 'Same family — cohesive and polished. Safe bet for elegant pieces.' }
-  if (families === 2) return { score: 'Complementary', note: 'Two families — natural contrast without clashing.' }
-  if (families === 3) return { score: 'Triad', note: 'Three families — works best with one dominant colour and two accents.' }
+  if (!Array.isArray(selected) || selected.length < 2) {
+    return { score: '—', note: 'Select 2+ colours to see harmony rating' }
+  }
+
+  // Deduplicate first: the same swatch picked twice is one colour, and used to
+  // be counted twice toward the family total.
+  const seen = new Set<string>()
+  const unique = selected.filter(c => {
+    if (!c || typeof c.n !== 'string') return false
+    const key = `${c.n}|${typeof c.h === 'string' ? c.h.toLowerCase() : ''}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  // Count DISTINCT families, resolved per colour. The previous implementation
+  // asked the inverse question — "which families contain any selected name?" —
+  // so a colour whose name lives in two families incremented the total twice.
+  // Picking Periwinkle (#ccccff) plus Gold reported three families, "Triad",
+  // for what is plainly two families and Complementary.
+  const families = new Set<string>()
+  for (const c of unique) {
+    const family = familyOf(c)
+    if (family) families.add(family)
+  }
+
+  const count = families.size
+  if (count === 0) {
+    return { score: '—', note: 'These colours are not in the palette library, so there is nothing to rate.' }
+  }
+  if (count === 1) return { score: 'Tonal', note: 'Same family — cohesive and polished. Safe bet for elegant pieces.' }
+  if (count === 2) return { score: 'Complementary', note: 'Two families — natural contrast without clashing.' }
+  if (count === 3) return { score: 'Triad', note: 'Three families — works best with one dominant colour and two accents.' }
   return { score: 'Complex', note: 'Many families — bold choice. Anchor with one hero colour used most.' }
 }
 
 export const ALLOWED_TABLES = ['beads', 'findings'] as const
 export type AllowedTable = (typeof ALLOWED_TABLES)[number]
 
-export function isAllowedTable(table: string | null | undefined): table is AllowedTable {
-  return ALLOWED_TABLES.includes(table as AllowedTable)
+/**
+ * Accepts `unknown` so callers can hand it a raw value straight off a request
+ * body or query string. Narrowing to a string happens here rather than at each
+ * call site, where a `typeof table !== 'string'` check was easy to forget.
+ */
+export function isAllowedTable(table: unknown): table is AllowedTable {
+  return typeof table === 'string' && (ALLOWED_TABLES as readonly string[]).includes(table)
 }
 
 export function stripJsonFences(raw: string): string {

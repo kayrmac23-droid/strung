@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { getToken, STREAM_ERROR_MARKER } from '@/lib/apiRequest'
 import {
   TECHNIQUE_LIST_TEXT,
   TECHNIQUE_GLOSSARY,
@@ -19,13 +20,12 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const RATE_LIMIT = 30
 const RATE_WINDOW_MS = 60_000
 
-function getToken(req: NextRequest) {
-  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-}
-
 const MAX_IMAGES_PER_MESSAGE = 2
 const MAX_IMAGES_TOTAL = 6
-const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024
+// Named for what it actually measures. This is compared against the length of
+// the base64 *string*, not the decoded byte count — base64 is ~4/3 the size of
+// the bytes it encodes, so the real ceiling here is roughly 1.1MB of image.
+const MAX_IMAGE_BASE64_CHARS = 1.5 * 1024 * 1024
 
 type StashBead = {
   name: string
@@ -67,6 +67,13 @@ export async function POST(req: NextRequest) {
     if (!['user', 'assistant'].includes(m.role as string)) {
       return new Response('Invalid message role', { status: 400 })
     }
+    // content must be a string or an array of blocks. Anything else (a number,
+    // null, a bare object) used to fall into the else branch and throw on
+    // `for (const b of blocks)` — an uncaught TypeError surfacing as a 500 for
+    // what is plainly a malformed request.
+    if (typeof m.content !== 'string' && !Array.isArray(m.content)) {
+      return new Response('Invalid message content', { status: 400 })
+    }
     let textOnly = ''
     if (typeof m.content === 'string') {
       textOnly = m.content
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
             return new Response('Too many images in message', { status: 400 })
           }
           const data = b.source?.type === 'base64' ? b.source.data ?? '' : ''
-          if (data.length > MAX_IMAGE_BYTES) {
+          if (data.length > MAX_IMAGE_BASE64_CHARS) {
             return new Response('Image too large', { status: 400 })
           }
         }
@@ -175,7 +182,16 @@ Keep your conversational text concise and engaging. After generating a blueprint
           }
         }
       } catch (e) {
+        // The status line went out with the first chunk, so an error status is
+        // no longer available. Without this marker a stream that dies halfway
+        // is indistinguishable from one that finished, and the reader renders a
+        // truncated answer as if it were complete.
         console.error('Codesign stream chunk error:', e)
+        try {
+          controller.enqueue(encoder.encode(STREAM_ERROR_MARKER))
+        } catch {
+          // Controller already closed or errored — nothing useful left to do.
+        }
       }
       controller.close()
     },

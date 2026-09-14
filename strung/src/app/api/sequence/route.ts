@@ -2,9 +2,13 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests, clientIp } from '@/lib/rateLimit'
-import type { BeadItem } from '@/lib/supabase'
+import { firstTextBlock, truncStr } from '@/lib/apiRequest'
 
-const client = new Anthropic()
+// Without an explicit key the SDK falls back to its own env lookup, which is
+// easy to break by renaming the variable and gives a confusing runtime error
+// rather than a clear one. Every other route passes it explicitly; this is the
+// last one that did not.
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // This is the only public AI route (Palette works signed out), so it is the
 // most exposed to abuse. Limit by client IP since there is no user id.
@@ -17,6 +21,16 @@ const VALID_HARMONY_TYPES = [
 ]
 
 const VALID_PIECE_TYPES = ['Necklace', 'Bracelet', 'Earrings', 'Anklet', 'Any']
+
+// Per-field caps for the client-supplied stash. Generous against real bead
+// names, restrictive against anything pathological.
+const MAX_BEADS = 100
+const MAX_NAME_CHARS = 100
+const MAX_COLOUR_CHARS = 60
+const MAX_ATTR_CHARS = 30
+const MAX_QUANTITY = 9999
+const MAX_STASH_BLOCK_CHARS = 8000
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
 
 export async function POST(request: Request) {
   const limit = rateLimit(`sequence:${clientIp(request)}`, RATE_LIMIT, RATE_WINDOW_MS)
@@ -43,12 +57,32 @@ export async function POST(request: Request) {
     ? String(raw.pieceType)
     : 'Any'
 
-  const beads = Array.isArray(raw.beads) ? (raw.beads as BeadItem[]).slice(0, 100) : []
+  // This route is public, and every one of these fields is interpolated into a
+  // prompt that Anthropic bills us for. The 100-bead cap alone bounded the row
+  // count but not the row size, so a single request carrying 100 beads with
+  // megabyte-long names was an unauthenticated lever on our own bill. Clamp
+  // every field, then clamp the assembled block as a backstop.
+  const rawBeads = Array.isArray(raw.beads) ? raw.beads.slice(0, MAX_BEADS) : []
+  const beadLines = rawBeads
+    .map((entry) => {
+      const b = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>
+      const name = truncStr(b.name, MAX_NAME_CHARS).trim()
+      if (!name) return ''
+      const colour = truncStr(b.colour, MAX_COLOUR_CHARS).trim()
+      // Only a well-formed 6-digit hex is passed through; anything else is
+      // dropped rather than truncated, so a partial hex never reaches the model.
+      const hex = HEX_RE.test(truncStr(b.hex, 7).trim()) ? truncStr(b.hex, 7).trim() : ''
+      const size = truncStr(b.size, MAX_ATTR_CHARS).trim()
+      const shape = truncStr(b.shape, MAX_ATTR_CHARS).trim()
+      const qty = Number.isFinite(Number(b.quantity))
+        ? Math.min(MAX_QUANTITY, Math.max(0, Math.floor(Number(b.quantity))))
+        : 0
+      return `- ${name}: ${colour}${hex ? ` (${hex})` : ''}, ${size}, ${shape}, qty: ${qty}`
+    })
+    .filter(Boolean)
 
-  const stashSummary = beads.length > 0
-    ? `USER'S BEAD STASH:\n${beads.map(b =>
-        `- ${b.name}: ${b.colour}${b.hex ? ` (${b.hex})` : ''}, ${b.size ?? ''}, ${b.shape ?? ''}, qty: ${b.quantity}`
-      ).join('\n')}\nIf any stash beads closely match the palette colours, include them in stashMatches.`
+  const stashSummary = beadLines.length > 0
+    ? `USER'S BEAD STASH:\n${beadLines.join('\n').slice(0, MAX_STASH_BLOCK_CHARS)}\nIf any stash beads closely match the palette colours, include them in stashMatches.`
     : 'No stash provided — stashMatches should be an empty array [].'
 
   const prompt = `You are an expert beaded jewellery colour consultant with deep knowledge of colour theory and bead sequencing.
@@ -125,7 +159,7 @@ Rules:
       console.error('sequence error: response truncated at max_tokens')
       return NextResponse.json({ error: 'Palette too long — try again' }, { status: 502 })
     }
-    const text = msg.content[0].type === 'text' ? msg.content[0].text : ''
+    const text = firstTextBlock(msg)
     const json = parseJsonLoose(text)
     return NextResponse.json(json)
   } catch (e: unknown) {

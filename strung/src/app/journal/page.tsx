@@ -99,7 +99,7 @@ export default function JournalPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+      <main id="main" className="page-main">
         <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
 
           <header style={{ marginBottom: 40 }}>

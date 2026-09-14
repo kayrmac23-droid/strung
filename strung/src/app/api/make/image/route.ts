@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { firstTextBlock } from '@/lib/apiRequest'
 import { buildFallbackImagePrompt, describeAssembly } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -50,7 +51,7 @@ Output ONLY the prompt text, nothing else.`,
     ],
   })
 
-  const text = res.content[0].type === 'text' ? res.content[0].text.trim() : ''
+  const text = firstTextBlock(res).trim()
   // The prompt-writer is non-critical: if it truncates at max_tokens or comes
   // back empty, fall back to a deterministic prompt so the preview still renders
   // rather than failing the whole request.
@@ -106,8 +107,24 @@ export async function POST(req: NextRequest) {
     })
 
     if (!res.ok) {
-      console.error('OpenAI image error:', await res.json().catch(() => ({})))
-      return NextResponse.json({ error: 'Image generation failed' }, { status: res.status })
+      console.error('OpenAI image error:', res.status, await res.json().catch(() => ({})))
+      // Never proxy OpenAI's status straight through. Their 401 (our API key is
+      // bad or unverified) and 429 (our org is rate-limited) are our problems,
+      // not the maker's, and those codes already mean something specific on our
+      // own API contract — 401 is "your session is invalid" everywhere else in
+      // this app, and 429 is our own rate limiter. Forwarding them conflates an
+      // upstream fault with a client fault for anything reading status alone.
+      // Only a 400 is genuinely about the submitted design; everything else is
+      // an upstream fault and reports as 502.
+      return res.status === 400
+        ? NextResponse.json(
+            { error: 'This design could not be turned into an image — try adjusting it and generating again.' },
+            { status: 400 },
+          )
+        : NextResponse.json(
+            { error: 'The image service is unavailable right now. Please try again in a moment.' },
+            { status: 502 },
+          )
     }
 
     // GPT image models always return base64 (b64_json) — the `url` response
