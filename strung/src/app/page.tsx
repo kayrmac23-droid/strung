@@ -44,7 +44,7 @@ export default function Home() {
   return (
     <>
       <Nav />
-      <main style={{paddingTop:60}}>
+      <main id="main" className="page-main">
         {/* Hero */}
         <section style={{
           minHeight:'90vh',display:'flex',alignItems:'center',justifyContent:'center',

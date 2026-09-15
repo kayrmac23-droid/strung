@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Nav from '@/components/Nav'
 import BeadIcon, { type BeadShape } from '@/components/BeadIcon'
 import { getAuthHeaders } from '@/lib/authClient'
+import { formatRichText, GUIDE_PROSE, ADVISOR_ANSWER } from '@/lib/richText'
 
 const guides = [
   { id:'wrapped-loop', icon:'ring', category:'Wire Work', title:'The Wrapped Loop', difficulty:'Beginner', time:'20 min',
@@ -108,15 +109,11 @@ export default function GuidesPage() {
 
   const diffColor = (d:string) => d==='Beginner'?'var(--sage)':d==='Advanced'?'var(--rose)':'var(--moonstone)'
 
-  const esc = (s:string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  const fmt = (text:string) => esc(text)
-    .replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>')
-    .split('\n\n').map(p=>`<p style="margin-bottom:13px;color:var(--text);font-family:var(--font-body);font-size:17px;line-height:1.8">${p.replace(/\n/g,'<br/>')}</p>`).join('')
 
   return (
     <>
       <Nav />
-      <main style={{paddingTop:60,minHeight:'100vh'}}>
+      <main id="main" className="page-main">
         <div style={{maxWidth:1200,margin:'0 auto',padding:'52px 40px 80px'}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Technique Library</p>
@@ -170,7 +167,7 @@ export default function GuidesPage() {
 
               <div className="card" style={{padding:30}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:24,fontWeight:400,color:'var(--silver2)',marginBottom:18}}>{active.sections[section].heading}</h3>
-                <div dangerouslySetInnerHTML={{__html:fmt(active.sections[section].body)}}/>
+                <div dangerouslySetInnerHTML={{__html:formatRichText(active.sections[section].body, GUIDE_PROSE)}}/>
                 <div style={{display:'flex',marginTop:22,paddingTop:18,borderTop:'1px solid var(--border)'}}>
                   {section>0&&<button className="btn-outline" onClick={()=>setSection(s=>s-1)}>← Previous</button>}
                   {section<active.sections.length-1&&<button className="btn-silver" style={{marginLeft:'auto'}} onClick={()=>setSection(s=>s+1)}>Next →</button>}
@@ -192,7 +189,7 @@ export default function GuidesPage() {
                 ) : (
                   <>
                     {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:15,color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
-                      dangerouslySetInnerHTML={{__html:esc(aiA).replace(/\*\*(.+?)\*\*/g,'<strong style="color:var(--silver3)">$1</strong>').split('\n\n').map(p=>`<p style="margin-bottom:10px">${p}</p>`).join('')}}/>}
+                      dangerouslySetInnerHTML={{__html:formatRichText(aiA, ADVISOR_ANSWER)}}/>}
                     <div style={{display:'flex',gap:10}}>
                       <input type="text" className="input-base" style={{flex:1}}
                         placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"

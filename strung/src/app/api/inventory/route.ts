@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { getToken, parseBody } from '@/lib/apiRequest'
+import { isAllowedTable } from '@/lib/colour'
 
 // Set well above the AI-route limits: decrementStash() fires a parallel PATCH
 // per matched row and "Save all" batches inserts, so the UI legitimately bursts
@@ -11,19 +13,6 @@ const RATE_WINDOW_MS = 60_000
 function rateLimited(userId: string): Response | null {
   const limit = rateLimit(`inventory:${userId}`, RATE_LIMIT, RATE_WINDOW_MS)
   return limit.allowed ? null : tooManyRequests(limit.retryAfter)
-}
-
-function getToken(req: NextRequest) {
-  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-}
-
-async function parseBody(req: NextRequest): Promise<Record<string, unknown> | null> {
-  try {
-    const body = await req.json()
-    return body && typeof body === 'object' ? body as Record<string, unknown> : {}
-  } catch {
-    return null
-  }
 }
 
 const BEAD_FIELDS = ['name', 'type', 'colour', 'hex', 'size', 'quantity', 'shape', 'notes'] as const
@@ -60,7 +49,10 @@ export async function POST(req: NextRequest) {
   const body = await parseBody(req)
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { table, data } = body
-  if (typeof table !== 'string' || !['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
+  // Route the table check through the single allowlist in @/lib/colour rather
+  // than an inline literal — an inline copy is how a new table reachable by
+  // ?table= gets added in one place and silently missed in the other three.
+  if (!isAllowedTable(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
   const allowed = table === 'beads' ? BEAD_FIELDS : FINDING_FIELDS
 
   // Bulk insert: a single request with an array of rows (used by "Save all").
@@ -96,7 +88,7 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const table = searchParams.get('table')
   const id = searchParams.get('id')
-  if (!table || !id || !['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
+  if (!id || !isAllowedTable(table)) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
   const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', user.id)
   if (error) {
     console.error('inventory DELETE error:', error)
@@ -114,7 +106,7 @@ export async function PATCH(req: NextRequest) {
   const body = await parseBody(req)
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { table, id, data } = body
-  if (typeof table !== 'string' || !['beads', 'findings'].includes(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
+  if (!isAllowedTable(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
   if (!id || !data || typeof data !== 'object') return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
   const allowed = table === 'beads' ? BEAD_FIELDS : FINDING_FIELDS
   const sanitized = pickFields(data as Record<string, unknown>, allowed)

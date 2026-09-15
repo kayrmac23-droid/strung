@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { STREAM_ERROR_MARKER } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -69,7 +70,14 @@ Be specific, practical, and honest. Warn about common beginner mistakes. Explain
           }
         }
       } catch (e) {
+        // See codesign: past the first chunk the status is already sent, so the
+        // only way to tell the reader the answer is incomplete is in-band.
         console.error('Advice stream chunk error:', e)
+        try {
+          controller.enqueue(encoder.encode(STREAM_ERROR_MARKER))
+        } catch {
+          // Controller already closed or errored — nothing useful left to do.
+        }
       }
       controller.close()
     },

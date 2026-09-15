@@ -202,7 +202,7 @@ export default function BuildPage() {
     return (
       <>
         <Nav />
-        <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+        <main id="main" className="page-main">
           <div style={{ maxWidth: 900, margin: '0 auto', padding: '60px 40px' }}>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <span className="spinner-dark" />
@@ -217,7 +217,7 @@ export default function BuildPage() {
     return (
       <>
         <Nav />
-        <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+        <main id="main" className="page-main">
           <div style={{ maxWidth: 900, margin: '0 auto', padding: '60px 40px' }}>
             <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)' }}>{error || 'Build not found'}</p>
             <div style={{ marginTop: 20 }}>
@@ -232,7 +232,7 @@ export default function BuildPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+      <main id="main" className="page-main">
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '52px 40px 80px' }}>
           <p className="section-eyebrow">Build mode</p>
           <h1 style={{

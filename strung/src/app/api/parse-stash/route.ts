@@ -4,6 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { firstTextBlock } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -66,7 +67,7 @@ Omit "shape" and "notes" when empty. Use an empty string for unknown "size". If 
       console.error('parse-stash error: response truncated at max_tokens')
       return NextResponse.json({ error: 'That description was too long to parse — try splitting it up' }, { status: 502 })
     }
-    const rawText = response.content[0].type === 'text' ? response.content[0].text : ''
+    const rawText = firstTextBlock(response)
     const parsed = parseJsonLoose(rawText) as { beads?: unknown; findings?: unknown }
     const beads = (Array.isArray(parsed.beads) ? parsed.beads : [])
       .slice(0, MAX_ITEMS_PER_LIST)

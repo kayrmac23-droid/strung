@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { getToken, parseBody } from '@/lib/apiRequest'
 
 // Set well above the AI-route limits: the UI legitimately bursts this route —
 // decrementStash() is per-row and the journal loads/saves in quick succession —
@@ -13,19 +14,6 @@ function rateLimited(userId: string): Response | null {
   return limit.allowed ? null : tooManyRequests(limit.retryAfter)
 }
 
-function getToken(req: NextRequest) {
-  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-}
-
-async function parseBody(req: NextRequest): Promise<Record<string, unknown> | null> {
-  try {
-    const body = await req.json()
-    return body && typeof body === 'object' ? body as Record<string, unknown> : {}
-  } catch {
-    return null
-  }
-}
-
 const BUILD_FIELDS = ['title', 'design', 'status', 'current_step', 'started_at', 'completed_at', 'time_taken_minutes', 'notes', 'rating'] as const
 
 function pickBuildFields(data: Record<string, unknown>) {
@@ -33,12 +21,22 @@ function pickBuildFields(data: Record<string, unknown>) {
 }
 
 export async function GET(req: NextRequest) {
+  const id = new URL(req.url).searchParams.get('id')
   const user = await getUserFromRequest(req)
-  if (!user) return NextResponse.json([])
+
+  // The list form answers [] without auth so the journal can render an empty
+  // state signed out. The ?id= form must not: it returns a single object, and
+  // handing the build page an array where it expects an object left it reading
+  // properties off [] and rendering a broken build rather than a sign-in
+  // prompt. Shape of the response has to match the shape of the request.
+  if (!user) {
+    return id
+      ? NextResponse.json({ error: 'Sign in to open this build.' }, { status: 401 })
+      : NextResponse.json([])
+  }
   const limited = rateLimited(user.id)
   if (limited) return limited
   const supabase = getAuthenticatedClient(getToken(req))
-  const id = new URL(req.url).searchParams.get('id')
 
   // ?id= returns a single build (or 404) instead of the full list.
   if (id) {

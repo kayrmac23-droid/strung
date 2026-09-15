@@ -10,10 +10,19 @@
 
   --cream:  #EFEAE2;  /* primary text, headings, primary button fill */
   --text2:  #B5ADA6;  /* body/secondary text */
-  --meta:   #8A827B;  /* mono meta — caps sizes only */
+  --meta:   #98918B;  /* mono meta — caps sizes only. 5.29:1 on cards (was
+                         #8A827B at 4.35:1, under AA for the 10-11px caps
+                         this is used at). */
 
   --madder:      #C4564C;  /* the red thread — accents, active, focus, marked bead */
   --madder-deep: #A8352C;  /* pressed states, filled accents, selection background */
+
+  /* Madder is 3.74:1 on --mocha cards — fine for borders, dots and focus rings
+     (WCAG 1.4.11 wants 3:1 for non-text), but under the 4.5:1 AA floor for the
+     10-11px mono caps that .section-eyebrow and .btn-text render at. This is
+     the same hue lifted to 5.60:1 for TEXT only; --madder stays as-is for
+     every non-text use so the accent colour itself is unchanged. */
+  --madder-text: #D17A72;
 
   /* oxblood — the primary-button fill only. Deep enough to dominate the hero,
      but too low-contrast at small sizes on dark (2:1 vs madder's 4.3:1), so
@@ -46,7 +55,12 @@
   --steel: var(--seam);
   --steel2: var(--saddle);
   --muted: var(--meta);
-  --muted2: #7E7268;
+  --muted2: #8F847C;           /* 4.86:1 on --roast (was #7E7268 at 3.79:1) */
+
+  /* Input and select borders. --seam is 1.62:1 on --roast, so the field edge
+     was effectively invisible — well under the 3:1 WCAG 1.4.11 asks of a
+     control boundary. 3.31:1 here. */
+  --field-edge: #6E6A66;
   --rose: var(--madder);       /* errors join the madder family */
   --amethyst: var(--tan);      /* bead-data role moves to stash constants */
   --text: var(--text2);
@@ -68,7 +82,7 @@ body {
   font-weight: 400;
   font-size: 17px;
   line-height: 1.65;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
 }
 
@@ -151,9 +165,42 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
 /* mono-caps text link — the madder underline */
 .btn-text {
   background: none; border: none; padding: 0;
-  color: var(--madder); border-bottom: 1px solid var(--madder-deep);
+  color: var(--madder-text); border-bottom: 1px solid var(--madder-deep);
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
+}
+
+/* Page shell — the fixed 60px nav means every page offsets its content by the
+   same amount and claims the same minimum height. That pair of values was
+   copy-pasted inline into all twelve pages; it lives here instead, with the
+   <main id="main"> the skip link targets. */
+.page-main {
+  padding-top: 60px;
+  min-height: 100dvh;
+}
+
+/* Skip link — first focusable element on the page, visually hidden until
+   focused. Without it every keyboard user tabs through the full nav on every
+   page before reaching content. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 200;
+  padding: 10px 18px;
+  background: var(--umber);
+  color: var(--cream);
+  border: 1px solid var(--madder);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.skip-link:focus {
+  left: 8px;
+  top: 8px;
 }
 
 /* Cards — the tray. Nap shadow below, lamplight edge on top (DESIGN Rule 4). */
@@ -196,7 +243,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
 /* Inputs — sunk into roast, madder focus (DESIGN §Buttons & inputs) */
 .input-base {
   width: 100%; background: var(--roast);
-  border: 1px solid var(--seam); border-radius: 2px; color: var(--cream);
+  border: 1px solid var(--field-edge); border-radius: 2px; color: var(--cream);
   font-family: var(--font-body); font-size: 16px;
   padding: 11px 14px; outline: none; transition: border-color 0.2s;
 }
@@ -206,7 +253,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 
 .select-base {
   width: 100%; background: var(--roast);
-  border: 1px solid var(--seam); border-radius: 2px; color: var(--cream);
+  border: 1px solid var(--field-edge); border-radius: 2px; color: var(--cream);
   font-family: var(--font-mono); font-size: 11px;
   letter-spacing: 0.06em; padding: 10px 14px;
   outline: none; appearance: none; cursor: pointer;
@@ -291,7 +338,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .section-eyebrow {
   font-family: var(--font-mono); font-size: 10px;
   letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--madder); margin-bottom: 8px;
+  color: var(--madder-text); margin-bottom: 8px;
 }
 
 /* Responsive grid — 3 → 2 → 1 columns */
@@ -420,7 +467,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   gap: 2px;
   position: sticky;
   top: 76px;
-  max-height: calc(100vh - 92px);
+  max-height: calc(100dvh - 92px);
   overflow-y: auto;
 }
 @media (max-width: 800px) {

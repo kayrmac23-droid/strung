@@ -55,7 +55,7 @@ export default function AccountPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+      <main id="main" className="page-main">
         <div style={{ maxWidth: 520, margin: '0 auto', padding: '80px 40px' }}>
 
           <header style={{ marginBottom: 40 }}>

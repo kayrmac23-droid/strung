@@ -8,6 +8,7 @@ import BeadIcon from '@/components/BeadIcon'
 import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { buildVisualPrompt, visualUrl } from '@/lib/visual'
+import { formatRichText, CHAT_MESSAGE } from '@/lib/richText'
 import { validateAssembly, type Assembly } from '@/lib/assembly'
 import { getAuthHeaders } from '@/lib/authClient'
 
@@ -68,18 +69,6 @@ function parseMessage(text: string, beads: BeadItem[], findings: FindingItem[]):
   } catch {
     return { display: text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').trim(), blueprint: null }
   }
-}
-
-function esc(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-function fmt(text: string) {
-  return esc(text)
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:var(--cream)">$1</strong>')
-    .replace(/^[-•]\s(.+)/gm, '<li style="margin-bottom:4px;padding-left:4px">$1</li>')
-    .replace(/(<li[^>]*>[\s\S]*?<\/li>)/g, '<ul style="margin:8px 0 10px 16px">$1</ul>')
-    .split('\n\n').map(p => p.startsWith('<') ? p : `<p style="margin-bottom:10px">${p}</p>`).join('')
 }
 
 const starters = [
@@ -271,7 +260,7 @@ export default function CoDesignPage() {
   return (
     <>
       <Nav />
-      <main style={{ paddingTop: 60, minHeight: '100vh' }}>
+      <main id="main" className="page-main">
         <div className="page-pad" style={{ maxWidth: 1300, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
           <header style={{ marginBottom: 32 }}>
             <p className="section-eyebrow fade-up">AI Co-Designer</p>
@@ -339,7 +328,7 @@ export default function CoDesignPage() {
                           )}
                           {msg.role === 'assistant'
                             ? msg.display
-                              ? <div dangerouslySetInnerHTML={{ __html: fmt(msg.display) }} />
+                              ? <div dangerouslySetInnerHTML={{ __html: formatRichText(msg.display, CHAT_MESSAGE) }} />
                               : <span className="spinner-dark" />
                             : msg.display}
                         </div>
@@ -408,7 +397,7 @@ export default function CoDesignPage() {
               {!blueprint ? (
                 <StrandEmpty line="Your blueprint will build up here as you chat. The AI will generate it once the design has enough shape." />
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto' }}>
                   {/* Header */}
                   <div className="card" style={{ padding: 24, borderTop: '2px solid var(--silver)' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
