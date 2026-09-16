@@ -264,7 +264,13 @@ export function expandStrands(strands: AssemblyStrand[]): AssemblyStrand[] {
 // radius — columns and rows are spaced off it so glyphs never touch.
 export const GLYPH_R = 15
 const COL_GAP = 64
-const ROW_GAP = 42
+// Default row spacing (straight joins — necklaces, and every saved design that
+// predates join glyphs). WRAP_ROW_GAP is the wider spacing used only when a
+// diagram actually draws wrapped-loop joins, which need vertical room for a loop
+// at the top and bottom of each gap; a design with no wrapping technique keeps
+// ROW_GAP and so renders byte-identically to before.
+export const ROW_GAP = 42
+export const WRAP_ROW_GAP = 58
 const ANCHOR_Y = 46
 const STRAND_TOP = 118
 const PAD_X = 48
@@ -289,7 +295,7 @@ export type BranchedLayout = {
  * one row per glyph in the longest strand — so a wide chandelier and a long
  * single drop both fit without fixed dimensions.
  */
-export function layoutBranched(strandLengths: number[]): BranchedLayout {
+export function layoutBranched(strandLengths: number[], rowGap: number = ROW_GAP): BranchedLayout {
   const count = Math.max(1, strandLengths.length)
   const longest = Math.max(1, ...strandLengths, 1)
   const width = Math.max(MIN_WIDTH, (count - 1) * COL_GAP + PAD_X * 2)
@@ -297,11 +303,11 @@ export function layoutBranched(strandLengths: number[]): BranchedLayout {
   const columns = Array.from({ length: count }, (_, i) => anchorX + (i - (count - 1) / 2) * COL_GAP)
   return {
     width,
-    height: STRAND_TOP + (longest - 1) * ROW_GAP + PAD_BOTTOM,
+    height: STRAND_TOP + (longest - 1) * rowGap + PAD_BOTTOM,
     anchorX,
     anchorY: ANCHOR_Y,
     strandTop: STRAND_TOP,
-    rowGap: ROW_GAP,
+    rowGap,
     columns,
   }
 }

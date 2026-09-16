@@ -6,6 +6,8 @@ import {
   expandStrands,
   layoutBranched,
   GLYPH_R,
+  ROW_GAP,
+  WRAP_ROW_GAP,
   type Assembly,
 } from '@/lib/assembly'
 
@@ -20,7 +22,11 @@ import {
 
 const COL_X = 70 // x of the centre "wire"
 const LABEL_X = 104 // x where labels begin
-const ROW_H = 58 // vertical space per element
+const ROW_H = 58 // vertical space per element (straight joins — the default)
+// Wider row spacing used only when a column draws wrapped-loop joins, which need
+// clearance for a loop at the top and bottom of each gap plus wrap ticks. A
+// column with no wrapping join keeps ROW_H, so old designs are byte-identical.
+const WRAP_ROW_H = 72
 const TOP = 30
 const R = GLYPH_R // base glyph radius
 const VB_W = 520
@@ -130,6 +136,130 @@ function Glyph({ shape, cx, cy, fill }: { shape: string; cx: number; cy: number;
   }
 }
 
+// --- Joins between beads -----------------------------------------------------
+//
+// The design schema does NOT yet carry a per-connection "join" field, so the
+// glyph-to-glyph connection is derived from technique data already on the design:
+// steps[].technique. Each step names the material it works and the technique it
+// uses; a glyph is matched to the step that works its material (same both-ways
+// name match the stash resolver uses) and that step's technique picks the join
+// drawn beneath the glyph. No matching step — or a plain Stringing/Crimping step
+// — leaves the join straight, so a design with no technique signal (every build
+// saved before this change) renders exactly as it did before.
+
+type JoinTech = 'wrapped' | 'jumpring' | 'briolette' | 'straight'
+
+// Technique tag (from ALLOWED_TECHNIQUES) → the join glyph it should draw.
+// Only the wire techniques that visibly change a connection map to a glyph;
+// everything else (Stringing, Crimping, Simple Loop, Knotting, …) is a plain
+// straight line, unchanged from before.
+function joinFromTechnique(technique: string): JoinTech {
+  switch (technique.trim().toLowerCase()) {
+    case 'wrapped loop':
+    case 'linked chain':
+      return 'wrapped'
+    case 'jump ring':
+      return 'jumpring'
+    case 'briolette wrap':
+      return 'briolette'
+    default:
+      return 'straight'
+  }
+}
+
+// Build a resolver: element matchStr (already lowercased) → the join to draw
+// beneath that glyph. Returns a constant "straight" resolver when the design
+// carries no wire-technique steps, which is the byte-identical old-design path.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildJoinResolver(blueprint: any): (matchStr: string) => JoinTech {
+  const steps = Array.isArray(blueprint?.steps) ? blueprint.steps : []
+  const entries: { material: string; join: JoinTech }[] = []
+  for (const raw of steps) {
+    const s = raw && typeof raw === 'object' ? raw : {}
+    // Read every plausible field name so a missing one never throws.
+    const material = String(s.material ?? s.item ?? s.component ?? s.part ?? '').toLowerCase().trim()
+    const join = joinFromTechnique(String(s.technique ?? ''))
+    if (material && join !== 'straight') entries.push({ material, join })
+  }
+  if (entries.length === 0) return () => 'straight'
+  return (matchStr: string) => {
+    if (!matchStr) return 'straight'
+    const hit = entries.find((e) => matchStr.includes(e.material) || e.material.includes(matchStr))
+    return hit ? hit.join : 'straight'
+  }
+}
+
+const JOIN_STROKE = 'var(--border2)'
+
+// A ~330° arc leaving a small opening on the right — an open jump ring.
+function openRingPath(cx: number, cy: number, r: number): string {
+  const gap = 0.5 // radians of opening
+  const start = gap / 2
+  const end = Math.PI * 2 - gap / 2
+  const x1 = cx + r * Math.cos(start)
+  const y1 = cy + r * Math.sin(start)
+  const x2 = cx + r * Math.cos(end)
+  const y2 = cy + r * Math.sin(end)
+  // large-arc-flag=1, sweep-flag=1 → the long way round, leaving the gap at 0°.
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`
+}
+
+// The connection drawn in the gap between an upper glyph (cy1) and the lower
+// glyph (cy2) in column x. "straight" reproduces the original 2px centre-to-
+// centre line exactly, so a run of straight JoinGlyphs is visually identical to
+// the single spanning line it replaces.
+function JoinGlyph({ x, cy1, cy2, join, r }: { x: number; cy1: number; cy2: number; join: JoinTech; r: number }) {
+  if (join === 'straight') {
+    return <line className="join join-straight" x1={x} y1={cy1} x2={x} y2={cy2} stroke={JOIN_STROKE} strokeWidth={2} />
+  }
+
+  const top = cy1 + r // bottom edge of the upper glyph
+  const bot = cy2 - r // top edge of the lower glyph
+  const lr = r * 0.3 // small loop radius
+
+  if (join === 'jumpring') {
+    return (
+      <g className="join join-jumpring">
+        <line x1={x} y1={cy1} x2={x} y2={cy2} stroke={JOIN_STROKE} strokeWidth={1.5} />
+        <path d={openRingPath(x, (cy1 + cy2) / 2, r * 0.42)} fill="none" stroke={JOIN_STROKE} strokeWidth={1.5} />
+      </g>
+    )
+  }
+
+  if (join === 'briolette') {
+    // Wire down from the upper glyph, then a single wrap loop sitting at the TOP
+    // of the lower (drop) glyph.
+    const loopCy = bot - lr
+    return (
+      <g className="join join-briolette">
+        <line x1={x} y1={cy1} x2={x} y2={loopCy - lr} stroke={JOIN_STROKE} strokeWidth={1.5} />
+        <circle cx={x} cy={loopCy} r={lr} fill="none" stroke={JOIN_STROKE} strokeWidth={1.5} />
+      </g>
+    )
+  }
+
+  // wrapped (Wrapped Loop / Linked Chain): a loop at the top and bottom of the
+  // gap with a few wrap ticks on the wire between them — each bead reads as an
+  // individually wrapped link.
+  const topLoopCy = top + lr
+  const botLoopCy = bot - lr
+  const wireTop = topLoopCy + lr
+  const wireBot = botLoopCy - lr
+  const span = wireBot - wireTop
+  const tw = r * 0.45 // wrap-tick half width
+  const ticks = span > 0 ? [1, 2, 3].map((k) => wireTop + (span * k) / 4) : []
+  return (
+    <g className="join join-wrapped">
+      <circle cx={x} cy={topLoopCy} r={lr} fill="none" stroke={JOIN_STROKE} strokeWidth={1.5} />
+      <line x1={x} y1={wireTop} x2={x} y2={wireBot} stroke={JOIN_STROKE} strokeWidth={1.5} />
+      {ticks.map((ty, k) => (
+        <line key={k} x1={x - tw} y1={ty} x2={x + tw} y2={ty} stroke={JOIN_STROKE} strokeWidth={1.2} />
+      ))}
+      <circle cx={x} cy={botLoopCy} r={lr} fill="none" stroke={JOIN_STROKE} strokeWidth={1.5} />
+    </g>
+  )
+}
+
 const svgStyle = { display: 'block', background: 'var(--surface)', border: '1px solid var(--border)' } as const
 
 function Empty() {
@@ -141,17 +271,28 @@ function Empty() {
 }
 
 // One vertical run: the original layout, and still the default.
-function StrandSchematic({ elements, beads, findings }: { elements: NormElement[]; beads: BeadItem[]; findings: FindingItem[] }) {
-  const height = TOP * 2 + (elements.length - 1) * ROW_H
-  const wireBottom = TOP + (elements.length - 1) * ROW_H
+function StrandSchematic({ elements, beads, findings, joinFor }: { elements: NormElement[]; beads: BeadItem[]; findings: FindingItem[]; joinFor: (matchStr: string) => JoinTech }) {
+  // One join per gap, governed by the upper glyph of the pair (its bottom loop
+  // connects down to the next bead).
+  const joins = elements.slice(0, -1).map((el) => joinFor(el.matchStr))
+  const anyWrap = joins.some((j) => j !== 'straight')
+  const rowH = anyWrap ? WRAP_ROW_H : ROW_H
+  const height = TOP * 2 + (elements.length - 1) * rowH
+  const wireBottom = TOP + (elements.length - 1) * rowH
 
   return (
     <svg viewBox={`0 0 ${VB_W} ${height}`} width="100%" role="img" aria-label="Build schematic" style={svgStyle}>
-      {elements.length > 1 && (
+      {/* No wrapping join anywhere → keep the original single spanning line, so a
+          design with no technique signal renders byte-identically. */}
+      {elements.length > 1 && !anyWrap && (
         <line x1={COL_X} y1={TOP} x2={COL_X} y2={wireBottom} stroke="var(--border2)" strokeWidth={2} />
       )}
+      {anyWrap &&
+        joins.map((join, i) => (
+          <JoinGlyph key={`join-${i}`} x={COL_X} cy1={TOP + i * rowH} cy2={TOP + (i + 1) * rowH} join={join} r={R} />
+        ))}
       {elements.map((el, i) => {
-        const cy = TOP + i * ROW_H
+        const cy = TOP + i * rowH
         const { shape, fill } = resolveGlyph(el.matchStr, beads, findings)
         return (
           <g key={i}>
@@ -173,13 +314,21 @@ function StrandSchematic({ elements, beads, findings }: { elements: NormElement[
 // Drops and chandeliers: an anchor glyph at top centre, with each strand hanging
 // from it in its own column. Columns are too narrow for inline labels, so every
 // glyph carries a <title> — hovering names the material.
-function BranchedSchematic({ assembly, beads, findings }: { assembly: Assembly; beads: BeadItem[]; findings: FindingItem[] }) {
+function BranchedSchematic({ assembly, beads, findings, joinFor }: { assembly: Assembly; beads: BeadItem[]; findings: FindingItem[]; joinFor: (matchStr: string) => JoinTech }) {
   // A strand element with quantity 3 is three beads stacked down the strand, so
-  // expand quantities into glyphs — that is what makes a taper visible.
+  // expand quantities into glyphs — that is what makes a taper visible. Because
+  // the expanded copies keep the element's matchStr, a quantity-3 linked element
+  // resolves to a wrapped join on every gap between its copies, so it reads as
+  // three individual wrapped links rather than three flush beads under one line.
   const strands = expandStrands(assembly.strands).map((strand) =>
     strand.elements.flatMap((el) => Array.from({ length: el.quantity }, () => normaliseElement(el))),
   )
-  const { width, height, anchorX, anchorY, strandTop, rowGap, columns } = layoutBranched(strands.map((s) => s.length))
+  // Per glyph, the join to draw beneath it. Derived per expanded copy, so the
+  // quantity expansion inserts a join between every copy.
+  const strandJoins = strands.map((els) => els.map((el) => joinFor(el.matchStr)))
+  const anyWrap = strandJoins.some((js) => js.some((j) => j !== 'straight'))
+  const rowGapValue = anyWrap ? WRAP_ROW_GAP : ROW_GAP
+  const { width, height, anchorX, anchorY, strandTop, rowGap, columns } = layoutBranched(strands.map((s) => s.length), rowGapValue)
   const anchor = assembly.anchor ? normaliseElement({ item: assembly.anchor }) : null
   const anchorGlyph = anchor ? resolveGlyph(anchor.matchStr, beads, findings) : null
 
@@ -202,12 +351,25 @@ function BranchedSchematic({ assembly, beads, findings }: { assembly: Assembly; 
       )}
       {strands.map((elements, s) => {
         const x = columns[s]
+        const joins = strandJoins[s]
+        const strandHasWrap = joins.some((j) => j !== 'straight')
         const bottom = strandTop + (elements.length - 1) * rowGap
         return (
           <g key={s}>
-            {elements.length > 1 && (
+            {/* Straight strand → original single spanning line (byte-identical). */}
+            {elements.length > 1 && !strandHasWrap && (
               <line x1={x} y1={strandTop} x2={x} y2={bottom} stroke="var(--border2)" strokeWidth={2} />
             )}
+            {/* Cap: the topmost link's own loop attaching up to the anchor, so a
+                loop-jointed strand shows one join per link (a quantity-3 linked
+                element → cap + 2 gap joins = 3 links, 3 joins). */}
+            {strandHasWrap && (joins[0] === 'wrapped' || joins[0] === 'briolette') && (
+              <circle className="join join-cap" cx={x} cy={strandTop - R - R * 0.3} r={R * 0.3} fill="none" stroke="var(--border2)" strokeWidth={1.5} />
+            )}
+            {strandHasWrap &&
+              joins.slice(0, -1).map((join, i) => (
+                <JoinGlyph key={`j-${i}`} x={x} cy1={strandTop + i * rowGap} cy2={strandTop + (i + 1) * rowGap} join={join} r={R} />
+              ))}
             {elements.map((el, i) => {
               const { shape, fill } = resolveGlyph(el.matchStr, beads, findings)
               return (
@@ -230,9 +392,10 @@ export default function Schematic({ blueprint, beads = [], findings = [] }: { bl
   // Null for everything without a usable branched assembly — including every
   // design saved before the field existed.
   const assembly = normaliseAssembly(blueprint)
-  if (assembly) return <BranchedSchematic assembly={assembly} beads={beads} findings={findings} />
+  const joinFor = buildJoinResolver(blueprint)
+  if (assembly) return <BranchedSchematic assembly={assembly} beads={beads} findings={findings} joinFor={joinFor} />
 
   const elements = normalise(blueprint)
   if (elements.length === 0) return <Empty />
-  return <StrandSchematic elements={elements} beads={beads} findings={findings} />
+  return <StrandSchematic elements={elements} beads={beads} findings={findings} joinFor={joinFor} />
 }
