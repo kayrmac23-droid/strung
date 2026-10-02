@@ -18,6 +18,8 @@ npm run start      # serve the production build
 
 Lint with `npm run lint` (ESLint) and test with `npm test` (Vitest).
 
+`.github/workflows/ci.yml` runs exactly these three on every pull request and on pushes to `main`: `npm ci`, then lint, test and build, on Node 22 from the `strung/` directory. It installs with `npm ci` rather than `npm install` so a lockfile that has drifted from `package.json` fails the run instead of being silently rewritten, and it sets **no environment variables** — the build must not require API keys or Supabase credentials. If a change makes the build need them, fix the change, not the workflow.
+
 ## Required Environment Variables
 
 Create `strung/.env.local`:
