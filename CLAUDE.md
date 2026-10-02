@@ -18,6 +18,8 @@ npm run start      # serve the production build
 
 Lint with `npm run lint` (ESLint) and test with `npm test` (Vitest).
 
+`.github/workflows/ci.yml` runs exactly these three on every pull request and on pushes to `main`: `npm ci`, then lint, test and build, on Node 22 from the `strung/` directory. It installs with `npm ci` rather than `npm install` so a lockfile that has drifted from `package.json` fails the run instead of being silently rewritten, and it sets **no environment variables** — the build must not require API keys or Supabase credentials. If a change makes the build need them, fix the change, not the workflow.
+
 ## Required Environment Variables
 
 Create `strung/.env.local`:
@@ -111,6 +113,20 @@ Every AI route uses model `claude-sonnet-4-6`.
 `/api/make` and `/api/codesign` both produce buildable designs, so the parts of their prompts that must agree live in `src/lib/designVocab.ts` rather than in each route: `ALLOWED_TECHNIQUES` (also used to validate `steps[].technique`), the technique glossary, the difficulty rubric, the repeating-step rule, the `ASSEMBLY_*` block, and the `VALID_STYLES` allowlist with its descriptors. Change it there — never inline a copy into a prompt, or the two routes drift.
 
 The Make page imports `VALID_STYLES` / `STYLE_LABELS` / `STYLE_DESCRIPTIONS` from the same module for its style selector, so the UI cannot offer a style the API would reject.
+
+## Design Reference Pool
+
+`src/data/referencePool.json` holds 157 tagged references from a Pinterest inspiration board, read through `src/lib/referencePool.ts`. It is **descriptive, not prescriptive** — it exists to widen the range Strung can draw on. The four styles in `designVocab.ts` remain the only firm aesthetic constraint; **never feed the pool to a design prompt as a style constraint**, and never let it narrow what the app will generate.
+
+149 records are tagged, 6 are tutorial graphics marked `status: 'excluded'`, and 2 are duplicate images marked `status: 'duplicate'` pointing at the record that carries the tags. Filter with `isTagged()` or use the pre-filtered `TAGGED_REFERENCES`.
+
+Every value comes from the image, not from the source board's keyword tags (those were unreliable and are not used). Fields are controlled vocabularies published in the JSON's `vocabulary` block so the tags merge with other sources; a test asserts both that nothing uses an unpublished value and that nothing is published that tags nothing. `technique_hints` is constrained to `ALLOWED_TECHNIQUES` and `strung_style_affinity` to `VALID_STYLES`, so neither can drift from `designVocab.ts`.
+
+**Uncertainty is part of the data.** Material and metal names are visual guesses — 232 of 315 material entries are `confidence: 'uncertain'` and carry `alternatives`. Surface them as guesses or not at all; never state one as fact. No measurement was taken from any image: `dimensions.range_mm` is null unless a hand in frame gave a scale reference, and where present `estimated` is true.
+
+`findReferences(query)` ands across fields and ors within one. `sampleVariedReferences(count, seed)` spreads a deterministic sample across distinct forms so a sample reads as a range rather than one silhouette repeated.
+
+**Nothing consumes this yet** — it is data plus a loader, deliberately not wired into any route, because wiring it into `/api/make` is exactly the move that would turn a variety pool into a style constraint. Decide a consumer before it ages into the same dead weight as the palette exports below.
 
 ## Design Assembly
 

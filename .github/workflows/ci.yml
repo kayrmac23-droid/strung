@@ -1,0 +1,51 @@
+# Runs the same checks a contributor runs locally. The Next.js app lives in
+# `strung/`, so every step runs from there and the npm cache is keyed on that
+# lockfile rather than the repo root.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push supersedes the run in flight for the same ref. `main` is excluded
+# so pushes to it never cancel each other.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: strung
+
+jobs:
+  check:
+    name: lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: strung/package-lock.json
+
+      # `npm ci` over `npm install`: it fails when package-lock.json has drifted
+      # from package.json rather than quietly rewriting the lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      # No env vars are set on purpose. The build must not need API keys or
+      # Supabase credentials — if it starts to, that is the bug, not this step.
+      - name: Build
+        run: npm run build
