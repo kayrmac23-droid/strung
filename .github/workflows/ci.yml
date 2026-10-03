@@ -26,9 +26,14 @@ jobs:
     name: lint, test, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v7 of both actions declares `using: node24`. v4 declared node20, which
+      # GitHub has deprecated and now force-runs on node24 anyway, warning on
+      # every run. This is the Node the actions themselves execute on and is
+      # unrelated to `node-version` below, which is the Node the npm scripts
+      # get.
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
