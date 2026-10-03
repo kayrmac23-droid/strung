@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Instrument_Sans, Instrument_Serif, Newsreader, DM_Mono } from 'next/font/google'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 // Display + interface grotesk (DESIGN §Type). No serif in the chrome (Rule 2).
@@ -47,7 +48,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${instrument.variable} ${instrumentSerif.variable} ${newsreader.variable} ${dmMono.variable}`}>{children}</body>
+      <body className={`${instrument.variable} ${instrumentSerif.variable} ${newsreader.variable} ${dmMono.variable}`}>
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   )
 }

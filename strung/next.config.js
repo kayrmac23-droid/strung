@@ -14,7 +14,7 @@ const csp = [
   // pollinations is the live image host for the co-designer's visual preview —
   // removing it blanks that panel.
   "img-src 'self' data: https://image.pollinations.ai",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com",
   "frame-ancestors 'none'",
   // No plugin content anywhere.
   "object-src 'none'",
