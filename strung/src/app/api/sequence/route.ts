@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests, clientIp } from '@/lib/rateLimit'
-import { firstTextBlock, truncStr } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, truncStr } from '@/lib/apiRequest'
 
 // Without an explicit key the SDK falls back to its own env lookup, which is
 // easy to break by renaming the variable and gives a confusing runtime error
@@ -151,7 +151,7 @@ Rules:
 
   try {
     const msg = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })

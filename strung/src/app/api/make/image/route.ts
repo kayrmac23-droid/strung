@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { firstTextBlock } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock } from '@/lib/apiRequest'
 import { buildFallbackImagePrompt, describeAssembly } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -28,7 +28,7 @@ async function buildPrompt(design: Record<string, unknown>): Promise<string> {
   }
 
   const res = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
+    model: MODEL,
     max_tokens: 400,
     messages: [
       {

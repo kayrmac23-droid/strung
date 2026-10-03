@@ -4,6 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding, itemConfidence } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { MODEL } from '@/lib/apiRequest'
 
 const client = new Anthropic()
 
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 3000,
       temperature: 0.2,
       messages: [{

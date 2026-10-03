@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { getToken, STREAM_ERROR_MARKER } from '@/lib/apiRequest'
+import { MODEL, getToken, STREAM_ERROR_MARKER } from '@/lib/apiRequest'
 import {
   TECHNIQUE_LIST_TEXT,
   TECHNIQUE_GLOSSARY,
@@ -162,7 +162,7 @@ Keep your conversational text concise and engaging. After generating a blueprint
   let stream: Awaited<ReturnType<typeof client.messages.stream>>
   try {
     stream = await client.messages.stream({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 3000,
       system,
       messages,
