@@ -9,8 +9,9 @@ const isDev = process.env.NODE_ENV === 'development'
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  // Fonts are self-hosted from src/app/fonts — no third-party font origin.
+  "font-src 'self'",
   // pollinations is the live image host for the co-designer's visual preview —
   // removing it blanks that panel.
   "img-src 'self' data: https://image.pollinations.ai",

@@ -194,6 +194,8 @@ CSS custom properties (`:root`) handle the colour palette. Use variables in all 
 
 Fonts: `var(--font-display)` = Instrument Serif (headings), `var(--font-body)` = Instrument Sans (UI + prose), `var(--font-serif)` = Newsreader italic (marginalia only), `var(--font-mono)` = DM Mono (labels/tags/meta).
 
+Fonts are **self-hosted** via `next/font/local` from `src/app/fonts/` (latin-subset woff2 plus each family's OFL licence). Do not switch back to `next/font/google`: it downloads from Google during the build, and a failed download fails the whole build with "Build failed because of webpack errors". The CSP `font-src` is `'self'` only, so a font loaded from a third-party URL will also be blocked at runtime. To add a weight, download its woff2 into that folder and add it to `layout.tsx`.
+
 **Text colour vs UI colour.** `--madder` (#C4564C) is 3.74:1 on `--mocha` cards — fine for borders, dots and focus rings (WCAG 1.4.11 asks 3:1 of non-text) but under the 4.5:1 AA floor for the 10–11px mono caps it was being used at. Small text on the accent uses `--madder-text` (#D17A72, 5.60:1); `--madder` itself is unchanged and stays for every non-text use. Likewise `--field-edge` (#6E6A66, 3.31:1 on `--roast`) is the input/select border — `--seam` was 1.62:1 there, an effectively invisible control boundary. Every token keeps R > G ≥ B per DESIGN Rule 1.
 
 **Page shell.** Every page renders `<main id="main" className="page-main">` rather than repeating `paddingTop: 60` / `minHeight: '100vh'` inline. `.page-main` carries both, and `id="main"` is the target of the `.skip-link` that `Nav` renders as the first focusable element on the page. Use `100dvh`, never `100vh` — mobile browser chrome makes `100vh` overflow the viewport.
