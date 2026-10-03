@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
@@ -42,6 +42,15 @@ interface Design {
   steps: Step[]
 }
 
+// The design without its preview image. imageUrl is a ~2MB base64 data URI
+// that only this page renders; it was being saved into builds.design (bloating
+// every journal load) and re-uploaded with every refine request.
+function storable(d: Design & { imageUrl?: string }): Design {
+  const rest = { ...d }
+  delete rest.imageUrl
+  return rest
+}
+
 export default function MakePage() {
   const router = useRouter()
   const [beads, setBeads] = useState<BeadItem[]>([])
@@ -64,26 +73,39 @@ export default function MakePage() {
   const [refining, setRefining] = useState(false)
   const [recentTitles, setRecentTitles] = useState<string[]>([])
   const [view, setView] = useState<'visual' | 'schematic'>('visual')
+  const [stashError, setStashError] = useState(false)
+  // Bumped whenever the design on screen changes. A preview request only
+  // applies its result if the counter still matches what it started with —
+  // otherwise "Try another" while a render was in flight dropped the old
+  // design's picture onto the new design.
+  const imageRequest = useRef(0)
 
   useEffect(() => {
     ;(async () => {
-      const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
-      if (res.status === 401) {
-        setSignedOut(true)
+      try {
+        const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+        if (res.status === 401) {
+          setSignedOut(true)
+          return
+        }
+        setSignedOut(false)
+        if (!res.ok) throw new Error('stash load failed')
+        const d = await res.json()
+        setBeads(d.beads || [])
+        setFindings(d.findings || [])
+      } catch {
+        setStashError(true)
+      } finally {
         setStashLoaded(true)
-        return
       }
-      setSignedOut(false)
-      const d = await res.json()
-      setBeads(d.beads || [])
-      setFindings(d.findings || [])
-      setStashLoaded(true)
     })()
   }, [])
 
   async function generate() {
     if (loading) return
     setLoading(true); setError(''); setDesign(null)
+    imageRequest.current++
+    setImageLoading(false); setImageError('')
     try {
       const res = await fetch('/api/make', {
         method: 'POST',
@@ -96,8 +118,8 @@ export default function MakePage() {
           recentTitles,
         }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.error) throw new Error(data.error || 'Generation failed — please try again.')
       setDesign(data)
       if (typeof data.title === 'string' && data.title) {
         setRecentTitles(prev => [data.title, ...prev.filter(t => t !== data.title)].slice(0, 5))
@@ -114,8 +136,7 @@ export default function MakePage() {
     if (!design || loading || refining || !adjustment.trim()) return
     setRefining(true); setError('')
     try {
-      const previousDesign: Record<string, unknown> = { ...design }
-      delete previousDesign.imageUrl
+      const previousDesign = storable(design)
       const res = await fetch('/api/make', {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
@@ -128,8 +149,8 @@ export default function MakePage() {
           adjustment: adjustment.trim(),
         }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.error) throw new Error(data.error || 'Adjustment failed — please try again.')
       setDesign(data)
       setAdjustment('')
       fetchImage(data)
@@ -141,15 +162,18 @@ export default function MakePage() {
   }
 
   async function fetchImage(d: Design) {
+    const request = ++imageRequest.current
+    const current = () => request === imageRequest.current
     setImageLoading(true)
     setImageError('')
     try {
       const res = await fetch('/api/make/image', {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify(d),
+        body: JSON.stringify(storable(d)),
       })
       const data = await res.json().catch(() => ({}))
+      if (!current()) return
       if (res.ok && data.imageUrl) {
         setDesign(prev => prev ? { ...prev, imageUrl: data.imageUrl } : prev)
         return
@@ -162,9 +186,9 @@ export default function MakePage() {
           : 'Couldn’t render a preview image — the design itself is ready to build.'
       )
     } catch {
-      setImageError('Couldn’t render a preview image — the design itself is ready to build.')
+      if (current()) setImageError('Couldn’t render a preview image — the design itself is ready to build.')
     } finally {
-      setImageLoading(false)
+      if (current()) setImageLoading(false)
     }
   }
 
@@ -182,14 +206,14 @@ export default function MakePage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: design.title,
-          design: design,
+          design: storable(design),
           status: 'in_progress',
           current_step: 0,
           started_at: new Date().toISOString(),
         }),
       })
-      const build = await res.json()
-      if (build.error) throw new Error(build.error)
+      const build = await res.json().catch(() => ({}))
+      if (!res.ok || build.error || !build.id) throw new Error(build.error || 'Failed to start build')
       router.push(`/make/build/${build.id}`)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to start build')
@@ -207,13 +231,13 @@ export default function MakePage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           title: design.title,
-          design: design,
+          design: storable(design),
           status: 'draft',
           current_step: 0,
         }),
       })
-      const build = await res.json()
-      if (build.error) throw new Error(build.error)
+      const build = await res.json().catch(() => ({}))
+      if (!res.ok || build.error) throw new Error(build.error || 'Failed to save')
       router.push('/journal')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -228,7 +252,7 @@ export default function MakePage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
+        <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
 
           <header style={{ marginBottom: 40 }}>
             <p className="section-eyebrow fade-up">Design Generator</p>
@@ -272,7 +296,12 @@ export default function MakePage() {
                   {findings.length} finding{findings.length !== 1 ? 's' : ''} in stash
                 </span>
               </div>
-              {beads.length === 0 && findings.length === 0 && (
+              {stashError && (
+                <span role="alert" style={{ fontSize: 14, color: 'var(--rose)', fontFamily: 'var(--font-body)' }}>
+                  Couldn’t load your stash — designs may not reflect what you own. Refresh to try again.
+                </span>
+              )}
+              {!stashError && beads.length === 0 && findings.length === 0 && (
                 <span style={{ fontSize: 14, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
                   Add materials to your stash for personalised designs — or generate anyway for a general idea.
                 </span>
@@ -282,7 +311,7 @@ export default function MakePage() {
 
           {/* Brief form */}
           <div className="card fade-up-2" style={{ padding: 32, marginBottom: 32 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+            <div className="blueprint-grid" style={{ gap: 20, marginBottom: 24 }}>
               <div>
                 <label className="label">Piece type</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
@@ -535,7 +564,7 @@ export default function MakePage() {
               </div>
 
               {/* Materials + Steps preview */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="blueprint-grid">
                 <div className="card" style={{ padding: 28 }}>
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,

@@ -6,8 +6,11 @@
 
 // Appended verbatim so every generated image shares the same photographic look.
 // This must always survive length-trimming, so trim the body, never the suffix.
-export const DALLE_PHOTO_SUFFIX =
-  'Macro product photography, flat lay on dark weathered slate, soft studio rim lighting, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks.'
+// The route's Claude-written prompt ends with this exact sentence too — the two
+// used to disagree (mocha velvet there, dark slate here), so a fallback render
+// came out on a different background from every other preview.
+export const IMAGE_PHOTO_SUFFIX =
+  'Macro product photography, flat lay on deep warm mocha-brown velvet, soft warm lamplight, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks.'
 
 import { normaliseAssembly, expandStrands, type AssemblyStrand } from './assembly'
 
@@ -91,7 +94,7 @@ export function buildFallbackImagePrompt(design: ImageDesign): string {
     compText ? `Made from: ${compText}.` : '',
   ].filter(Boolean).join(' ')
 
-  const maxBody = MAX_PROMPT_CHARS - DALLE_PHOTO_SUFFIX.length - 1
+  const maxBody = MAX_PROMPT_CHARS - IMAGE_PHOTO_SUFFIX.length - 1
   const trimmed = body.length > maxBody ? body.slice(0, maxBody).trimEnd() : body
-  return `${trimmed} ${DALLE_PHOTO_SUFFIX}`
+  return `${trimmed} ${IMAGE_PHOTO_SUFFIX}`
 }

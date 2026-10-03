@@ -17,10 +17,10 @@ export default function AccountPage() {
   const [isError, setIsError] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setSessionEmail(data.user?.email ?? null)
-      setLoading(false)
-    })
+    supabase.auth.getUser()
+      .then(({ data }) => setSessionEmail(data.user?.email ?? null))
+      .catch(() => setSessionEmail(null))
+      .finally(() => setLoading(false))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setSessionEmail(session?.user?.email ?? null)
     })
@@ -32,18 +32,34 @@ export default function AccountPage() {
     setIsError(false)
   }
 
-  async function submit() {
-    if (!email.trim() || !password) return
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!email.trim() || !password || submitting) return
     setSubmitting(true); reset()
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) { setMsg(error.message); setIsError(true) }
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) { setMsg(error.message); setIsError(true) }
-      else setMsg('Account created — you\'re signed in.')
+    try {
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+        if (error) { setMsg(error.message); setIsError(true) }
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          // The confirmation link lands on the callback page, which picks up
+          // the session; without this it went to the project's bare Site URL.
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        })
+        if (error) { setMsg(error.message); setIsError(true) }
+        // With email confirmation on (Supabase's default) signUp returns no
+        // session — telling the maker they were signed in was simply wrong.
+        else if (data.session) setMsg('Account created — you\'re signed in.')
+        else setMsg('Account created — check your email for a confirmation link to finish signing up.')
+      }
+    } catch {
+      setMsg('Could not reach the sign-in service. Check your connection and try again.')
+      setIsError(true)
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   async function signOut() {
@@ -56,7 +72,7 @@ export default function AccountPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{ maxWidth: 520, margin: '0 auto', padding: '80px 40px' }}>
+        <div className="page-pad" style={{ maxWidth: 520, margin: '0 auto', paddingTop: 80, paddingBottom: 80 }}>
 
           <header style={{ marginBottom: 40 }}>
             <p className="section-eyebrow fade-up">Account</p>
@@ -79,7 +95,7 @@ export default function AccountPage() {
               <button className="btn-outline" onClick={signOut}>Sign out</button>
             </div>
           ) : (
-            <div className="card fade-up" style={{ padding: 32 }}>
+            <form className="card fade-up" style={{ padding: 32 }} onSubmit={submit} noValidate>
               <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
                 {mode === 'signin'
                   ? 'Sign in to save and sync your stash, designs, and builds across devices.'
@@ -89,7 +105,7 @@ export default function AccountPage() {
               {/* Mode toggle */}
               <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
                 {(['signin', 'signup'] as Mode[]).map(m => (
-                  <button key={m} onClick={() => { setMode(m); reset() }} style={{
+                  <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); reset() }} style={{
                     flex: 1, padding: '9px 0',
                     fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
                     background: mode === m ? 'var(--surface2)' : 'var(--surface)',
@@ -100,28 +116,31 @@ export default function AccountPage() {
                 ))}
               </div>
 
-              <label className="label" style={{ marginBottom: 6 }}>Email</label>
+              <label className="label" htmlFor="account-email" style={{ marginBottom: 6 }}>Email</label>
               <input
+                id="account-email"
                 className="input-base"
                 type="email"
+                autoComplete="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 style={{ marginBottom: 14 }}
               />
-              <label className="label" style={{ marginBottom: 6 }}>Password</label>
+              <label className="label" htmlFor="account-password" style={{ marginBottom: 6 }}>Password</label>
               <input
+                id="account-password"
                 className="input-base"
                 type="password"
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 placeholder={mode === 'signup' ? 'Choose a password (min 6 chars)' : 'Your password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && submit()}
                 style={{ marginBottom: 14 }}
               />
               <button
+                type="submit"
                 className="btn-silver"
-                onClick={submit}
                 disabled={submitting || !email.trim() || !password}
                 style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
               >
@@ -131,7 +150,7 @@ export default function AccountPage() {
               </button>
 
               {msg && (
-                <p style={{
+                <p role={isError ? 'alert' : 'status'} style={{
                   marginTop: 16, fontSize: 14, lineHeight: 1.5,
                   fontFamily: isError ? 'var(--font-mono)' : 'var(--font-body)',
                   color: isError ? 'var(--rose)' : 'var(--sage)',
@@ -139,7 +158,7 @@ export default function AccountPage() {
                   {msg}
                 </p>
               )}
-            </div>
+            </form>
           )}
         </div>
       </main>

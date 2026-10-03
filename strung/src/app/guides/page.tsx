@@ -5,6 +5,7 @@ import Nav from '@/components/Nav'
 import BeadIcon, { type BeadShape } from '@/components/BeadIcon'
 import { getAuthHeaders } from '@/lib/authClient'
 import { formatRichText, GUIDE_PROSE, ADVISOR_ANSWER } from '@/lib/richText'
+import { readTextStream } from '@/lib/streamText'
 
 const guides = [
   { id:'wrapped-loop', icon:'ring', category:'Wire Work', title:'The Wrapped Loop', difficulty:'Beginner', time:'20 min',
@@ -89,22 +90,18 @@ export default function GuidesPage() {
         body: JSON.stringify({ question: aiQ, context }),
       })
       if (!res.ok) {
+        // The question is kept on failure so it can be retried as-is.
         setAiA(res.status === 429
           ? 'You are asking a lot quickly — give it a moment and try again.'
-          : 'Something went wrong. Please try again.')
+          : res.status === 401
+            ? 'Your session has expired — sign in again to ask the advisor.'
+            : 'Something went wrong. Please try again.')
         return
       }
-      const reader = res.body!.getReader()
-      const dec = new TextDecoder()
-      let full = ''
-      while(true) {
-        const {done,value} = await reader.read()
-        if(done) break
-        full += dec.decode(value)
-        setAiA(full)
-      }
-    } catch { setAiA('Error.') }
-    finally { setAiLoading(false); setAiQ('') }
+      await readTextStream(res.body, setAiA)
+      setAiQ('')
+    } catch { setAiA('Could not reach the advisor. Check your connection and try again.') }
+    finally { setAiLoading(false) }
   }
 
   const diffColor = (d:string) => d==='Beginner'?'var(--sage)':d==='Advanced'?'var(--rose)':'var(--moonstone)'
@@ -114,7 +111,7 @@ export default function GuidesPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{maxWidth:1200,margin:'0 auto',padding:'52px 40px 80px'}}>
+        <div className="page-pad" style={{maxWidth:1200,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Technique Library</p>
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Guides</h1>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildFallbackImagePrompt, describeAssembly, DALLE_PHOTO_SUFFIX } from '@/lib/imagePrompt'
+import { buildFallbackImagePrompt, describeAssembly, IMAGE_PHOTO_SUFFIX } from '@/lib/imagePrompt'
 
 describe('buildFallbackImagePrompt', () => {
   const design = {
@@ -14,7 +14,7 @@ describe('buildFallbackImagePrompt', () => {
   }
 
   it('always ends with the photographic suffix', () => {
-    expect(buildFallbackImagePrompt(design).endsWith(DALLE_PHOTO_SUFFIX)).toBe(true)
+    expect(buildFallbackImagePrompt(design).endsWith(IMAGE_PHOTO_SUFFIX)).toBe(true)
   })
 
   it('includes the title, piece type, and component names', () => {
@@ -28,14 +28,14 @@ describe('buildFallbackImagePrompt', () => {
   it('keeps the suffix intact even when the body is huge (trims body, not suffix)', () => {
     const huge = { ...design, description: 'x'.repeat(5000), colourStory: 'y'.repeat(5000) }
     const p = buildFallbackImagePrompt(huge)
-    expect(p.endsWith(DALLE_PHOTO_SUFFIX)).toBe(true)
+    expect(p.endsWith(IMAGE_PHOTO_SUFFIX)).toBe(true)
     expect(p.length).toBeLessThanOrEqual(850)
   })
 
   it('falls back to a generic piece type and omits missing fields safely', () => {
     const p = buildFallbackImagePrompt({})
     expect(p).toContain('beaded jewellery piece')
-    expect(p.endsWith(DALLE_PHOTO_SUFFIX)).toBe(true)
+    expect(p.endsWith(IMAGE_PHOTO_SUFFIX)).toBe(true)
   })
 
   it('ignores malformed component entries without throwing', () => {
@@ -117,14 +117,14 @@ describe('buildFallbackImagePrompt with assembly', () => {
   it('folds the structural orientation into the prompt', () => {
     const p = buildFallbackImagePrompt(design)
     expect(p).toMatch(/brass chandelier finding is mounted at the very top/)
-    expect(p.endsWith(DALLE_PHOTO_SUFFIX)).toBe(true)
+    expect(p.endsWith(IMAGE_PHOTO_SUFFIX)).toBe(true)
   })
 
   it('keeps the orientation ahead of the suffix and within the ceiling', () => {
     const huge = { ...design, description: 'x'.repeat(4000), colourStory: 'y'.repeat(4000) }
     const p = buildFallbackImagePrompt(huge)
     expect(p.length).toBeLessThanOrEqual(850)
-    expect(p.endsWith(DALLE_PHOTO_SUFFIX)).toBe(true)
+    expect(p.endsWith(IMAGE_PHOTO_SUFFIX)).toBe(true)
     // Structure survives trimming because it sits ahead of the free-text prose.
     expect(p).toMatch(/mounted at the very top/)
   })

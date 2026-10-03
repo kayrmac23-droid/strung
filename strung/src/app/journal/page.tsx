@@ -6,7 +6,7 @@ import Nav from '@/components/Nav'
 import StrandLoader from '@/components/StrandLoader'
 import StrandProgress from '@/components/StrandProgress'
 import StrandEmpty from '@/components/StrandEmpty'
-import { getAuthHeaders } from '@/lib/authClient'
+import { getAuthHeaders, getSession } from '@/lib/authClient'
 
 interface Design {
   title: string
@@ -37,6 +37,13 @@ const ratingLabels: Record<string, { label: string; color: string }> = {
   could_be_better: { label: 'Could be better', color: 'var(--tan)' },
 }
 
+// builds.design is jsonb, so an older or hand-edited row can lack steps. One
+// such row used to throw on `design.steps.length` and blank the whole journal.
+function withSafeDesign(b: Build): Build {
+  const d = b.design && typeof b.design === 'object' ? b.design : ({} as Design)
+  return { ...b, design: { ...d, steps: Array.isArray(d.steps) ? d.steps : [] } }
+}
+
 const diffColor = (d: string) =>
   d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
 
@@ -48,15 +55,19 @@ export default function JournalPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [signedOut, setSignedOut] = useState(false)
 
   // The fetch itself. Its first action is an await, so the mount effect never
   // calls setState synchronously (react-hooks/set-state-in-effect).
   async function refresh() {
     try {
+      // The list route answers [] when signed out, so check the session too —
+      // otherwise a signed-out visitor is told they have no saved ideas.
+      setSignedOut(!(await getSession()))
       const res = await fetch('/api/builds', { headers: await getAuthHeaders() })
       if (!res.ok) throw new Error('Failed to load')
       const data = await res.json()
-      setBuilds(Array.isArray(data) ? data : [])
+      setBuilds(Array.isArray(data) ? data.map(withSafeDesign) : [])
     } catch {
       setError(true)
     } finally {
@@ -77,7 +88,7 @@ export default function JournalPage() {
     setConfirmingId(null)
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/builds?id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
+      const res = await fetch(`/api/builds?id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: await getAuthHeaders() })
       if (!res.ok) throw new Error('Failed to delete')
       setBuilds(b => b.filter(x => x.id !== id))
     } catch {
@@ -100,7 +111,7 @@ export default function JournalPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
+        <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
 
           <header style={{ marginBottom: 40 }}>
             <p className="section-eyebrow fade-up">Your Work</p>
@@ -164,6 +175,10 @@ export default function JournalPage() {
               </p>
               <button onClick={load} className="btn-outline">Retry</button>
             </div>
+          ) : signedOut && builds.length === 0 ? (
+            <StrandEmpty line="Sign in to see the pieces you've saved and built.">
+              <Link href="/account" className="btn-outline">Sign in →</Link>
+            </StrandEmpty>
           ) : active.length === 0 ? (
             <StrandEmpty line={tab === 'in_progress'
               ? 'No saved ideas yet. Generate a design and save it for later.'

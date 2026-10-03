@@ -40,7 +40,9 @@ export function planStashDecrements(
     targets.push({
       table: bead ? 'beads' : 'findings',
       id: row.id,
-      quantity: Math.max(0, (Number(row.quantity) || 0) - used),
+      // Rounded: a model can emit a fractional component quantity, and the
+      // inventory route only accepts whole numbers.
+      quantity: Math.max(0, Math.round((Number(row.quantity) || 0) - used)),
     })
   }
   return targets

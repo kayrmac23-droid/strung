@@ -57,7 +57,7 @@ export default function GlossaryPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{maxWidth:900,margin:'0 auto',padding:'52px 40px 80px'}}>
+        <div className="page-pad" style={{maxWidth:900,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Reference</p>
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Glossary</h1>

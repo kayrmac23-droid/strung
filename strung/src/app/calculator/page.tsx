@@ -1,6 +1,7 @@
 'use client'
 import { useState, useMemo } from 'react'
 import Nav from '@/components/Nav'
+import { beadWeightGrams, type BeadMaterial } from '@/lib/beadMath'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ export default function CalculatorPage() {
   const [customClaspMm, setCustomClaspMm] = useState<string>('10')
   const [knot, setKnot] = useState(false)
   const [strands, setStrands] = useState(1)
-  const [beadMaterial, setBeadMaterial] = useState<'gemstone' | 'glass'>('gemstone')
+  const [beadMaterial, setBeadMaterial] = useState<BeadMaterial>('gemstone')
 
   // Results
   const results = useMemo(() => {
@@ -138,11 +139,8 @@ export default function CalculatorPage() {
     // Wire: length + 15 cm finishing allowance, per strand
     const wireLengthCm = ((lengthMm / 10) + 15) * strands
 
-    // Weight: approximate g
-    const gramsPerBead = beadMaterial === 'gemstone'
-      ? 0.5 * beadMm
-      : 0.3 * beadMm
-    const weightG = totalBeads * gramsPerBead
+    // Weight: approximate g, from bead volume (see beadWeightGrams)
+    const weightG = totalBeads * beadWeightGrams(beadMm, beadMaterial)
 
     return { beadsPerStrand, totalBeads, wireLengthCm, weightG, beadMm }
   }, [length, unit, beadSizeIdx, customMm, claspIdx, customClaspMm, knot, strands, beadMaterial])

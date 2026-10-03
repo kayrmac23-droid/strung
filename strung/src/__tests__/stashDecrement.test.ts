@@ -21,6 +21,11 @@ describe('planStashDecrements', () => {
     expect(targets).toContainEqual({ table: 'findings', id: 'f2', quantity: 0 })
   })
 
+  it('rounds to a whole number, which is all the inventory route accepts', () => {
+    const targets = planStashDecrements([{ item: 'Matte teal seed beads', quantity: 2.4 }], beads, findings)
+    expect(targets).toEqual([{ table: 'beads', id: 'b2', quantity: 38 }])
+  })
+
   it('aggregates duplicate component references into ONE target (the race bug)', () => {
     // Two components both reference the same stash row: the total used is 8, so
     // the single target must be 20 - 8 = 12, not 20 - 5 = 15 (last-write-wins).
