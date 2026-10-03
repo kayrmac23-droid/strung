@@ -23,11 +23,11 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 | **Make** (`/make`) | Make | Pick a piece type, style, mood, and how much time you have. Claude reads your stash and generates one complete, buildable design — components, colour story, and numbered steps — keeping techniques, difficulty, and metal-tone cohesion consistent (structural findings match the anchor's warm or cool tone family). Refine it in plain language, then view it two ways: a **Visual** AI render, or a **Schematic** — a deterministic SVG diagram that lays the design out using your stash's real colours and shapes, as a single strand or, for drops and chandeliers, a branched arrangement hanging from an anchor. Save it or start building. |
 | **Build** (`/make/build/[id]`) | — | Step-by-step build mode. Tracks your current step, time taken, notes, and a rating. On completion it offers to subtract the materials you used from your stash automatically. |
 | **Palette** (`/sequence`) | Palette | Choose a colour harmony, an anchor colour family, and a piece type. Claude returns a 3–5 colour palette, a repeating bead sequence with a pattern unit, a metal recommendation, and any close matches from your stash. |
-| **Co-design** (`/codesign`) | — | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design — with the same Visual render and Schematic diagram as Make — then save it straight to your builds. |
+| **Co-design** (`/codesign`) | Co-Design | Chat-based AI co-designer. Describe what you're imagining and collaboratively build a full design — with the same Schematic diagram as Make and an on-demand Visual render from the same image route — then save it straight to your builds. |
 | **Journal** (`/journal`) | Journal | Every saved build lives here. Track status: Draft → In Progress → Complete. |
 | **Learn** (`/guides`) | Learn | Wire wrapping, crimping, head pins, earring construction, and more — with a streaming AI advisor that answers questions in the context of the guide you're reading. |
 | **Glossary** (`/glossary`) | — | Quick-reference definitions for jewellery-making terms. Reachable under the Learn nav item. |
-| **Bead Math** (`/calculator`) | — | Calculate exactly how many beads a piece needs — with length, size, knotting, and strand options. |
+| **Bead Math** (`/calculator`) | Calculator | Calculate exactly how many beads a piece needs — with length, size, knotting, and strand options — plus wire length and an approximate weight. |
 | **Account** (`/account`) | Account | Sign in / sign up. |
 
 **You need an account for almost everything.** The Palette page is the only feature that works fully signed out — every other AI and data route requires a session.
@@ -38,11 +38,11 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 
 - **Framework** — Next.js 15 (App Router)
 - **Language** — TypeScript
-- **AI** — Anthropic Claude (`claude-sonnet-4-6`) via the Anthropic SDK — text, streaming, and vision
+- **AI** — Anthropic Claude (`claude-sonnet-5-5`, set once as `MODEL` in `src/lib/apiRequest.ts`) via the Anthropic SDK — text, streaming, and vision
 - **Image generation** — OpenAI GPT Image 2 (`/api/make/image`)
 - **Database** — Supabase (PostgreSQL, per-user rows with Row Level Security)
 - **Styling** — CSS custom properties + inline styles (no CSS framework)
-- **Fonts** — Playfair Display, Cormorant Garamond, DM Mono
+- **Fonts** — Instrument Serif, Instrument Sans, Newsreader and DM Mono, self-hosted via `next/font/local`
 - **Testing** — Vitest + Testing Library
 
 ---
@@ -51,17 +51,17 @@ An AI-powered beaded jewellery design studio. Track your bead stash, generate de
 
 | Route | Methods | Auth | What it does |
 |---|---|---|---|
-| `/api/inventory` | GET, POST, PATCH, DELETE | yes | CRUD for `beads` and `findings` |
+| `/api/inventory` | GET, POST, PATCH, DELETE | yes | CRUD for `beads` and `findings`. Writes are validated per field (enums, `#rrggbb` hex, whole-number quantity, length caps) |
 | `/api/make` | POST | yes | Generates one design as structured JSON; also handles refinements |
 | `/api/make/image` | POST | yes | Claude writes an image prompt from the design, then calls OpenAI GPT Image 2 (`gpt-image-2`). Returns `501` without `OPENAI_API_KEY` |
 | `/api/sequence` | POST | **no** | Colour palette + repeating bead sequence, with stash matching |
-| `/api/builds` | GET, POST, PATCH, DELETE | yes | CRUD for `builds`. GET returns `[]` when signed out rather than erroring |
-| `/api/codesign` | POST | yes | Streaming co-design chat |
+| `/api/builds` | GET, POST, PATCH, DELETE | yes | CRUD for `builds`. The list GET returns `[]` when signed out rather than erroring; `GET ?id=` returns 401. Writes are validated, and a design's preview image is never stored |
+| `/api/codesign` | POST | yes | Streaming co-design chat. The message history is rebuilt from validated blocks before it reaches Claude |
 | `/api/advice` | POST | yes | Streaming jewellery advice (used by the guides page) |
 | `/api/identify` | POST | yes | Vision identification of a bead or finding; `mode: 'multi'` identifies every distinct group in one photo |
 | `/api/parse-stash` | POST | yes | Parses a plain-text stash description into beads and findings |
 
-All AI routes use `claude-sonnet-4-6`. Images are downscaled client-side to 1568px JPEG before upload (Vercel caps request bodies at 4.5MB).
+All AI routes use `claude-sonnet-5-5`. Images are downscaled client-side to 1568px JPEG before upload (Vercel caps request bodies at 4.5MB). The streaming routes wait for the first event before answering, so an upstream failure comes back as a `502` rather than a `200` with an empty body.
 
 Every route that hits a paid upstream (Anthropic / OpenAI) is rate limited with an in-memory sliding window — keyed per user, or per IP for the public `/api/sequence` route — and returns `429` with a `Retry-After` header when the window is full. The image route is capped tighter, since GPT Image 2 at `high` quality is the most expensive call in the app. The limit is per serverless instance, so it's a first line of defence against runaway loops rather than a strict global billing cap.
 
@@ -206,14 +206,19 @@ strung/
         │   ├── supabase.ts       # Client + shared types
         │   ├── auth.ts           # Server-side auth helpers
         │   ├── authClient.ts     # Client-side auth helpers
-        │   ├── colour.ts         # Colour + JSON parsing utilities
+        │   ├── apiRequest.ts     # Shared route plumbing: MODEL, body parsing, streaming responses
+        │   ├── colour.ts         # Writable-table allowlist + model JSON parsing
         │   ├── designVocab.ts    # Shared prompt vocabulary for /make + /codesign (techniques, styles, metal cohesion, assembly rules)
         │   ├── assembly.ts       # Assembly validation + branched-layout maths
         │   ├── imagePrep.ts      # Client-side image downscaling
-        │   ├── stashItems.ts     # Normalises AI-identified items
+        │   ├── stashItems.ts     # Normalises AI-identified items; validates stash writes
+        │   ├── builds.ts         # Validates build writes
+        │   ├── chatMessages.ts   # Validates the co-design chat history
+        │   ├── sequenceResult.ts # Normalises the Palette model reply
+        │   ├── streamText.ts     # Client-side reader for the streaming routes
+        │   ├── beadMath.ts       # Bead weight for the calculator
         │   ├── stash-colours.ts  # Bead + metal colour constants for the stash pickers
         │   ├── stashDecrement.ts # Plans per-row stash subtractions on build completion
-        │   ├── visual.ts         # Shared AI image-prompt builder for the Visual render
         │   ├── imagePrompt.ts    # Deterministic image-prompt fallback when the AI prompt-writer is truncated
         │   └── rateLimit.ts      # In-memory sliding-window rate limiter
         └── __tests__/

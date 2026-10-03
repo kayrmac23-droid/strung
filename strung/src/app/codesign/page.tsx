@@ -1,16 +1,18 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import Schematic from '@/components/Schematic'
 import BeadIcon from '@/components/BeadIcon'
 import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
-import { buildVisualPrompt, visualUrl } from '@/lib/visual'
+import StrandLoader from '@/components/StrandLoader'
 import { formatRichText, CHAT_MESSAGE } from '@/lib/richText'
 import { validateAssembly, type Assembly } from '@/lib/assembly'
-import { getAuthHeaders } from '@/lib/authClient'
+import { getAuthHeaders, getSession } from '@/lib/authClient'
+import { prepareImageForIdentify } from '@/lib/imagePrep'
+import { readTextStream } from '@/lib/streamText'
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
 type TextBlock = { type: 'text'; text: string }
@@ -61,14 +63,30 @@ function checkedBlueprint(parsed: Blueprint, beads: BeadItem[], findings: Findin
 }
 
 function parseMessage(text: string, beads: BeadItem[], findings: FindingItem[]): { display: string; blueprint: Blueprint | null } {
-  const match = text.match(/<blueprint>([\s\S]*?)<\/blueprint>/)
-  if (!match) return { display: text, blueprint: null }
+  // The model may revise the design within one reply; the LAST blueprint is the
+  // current one (the first match used to win, showing a superseded design).
+  const matches = [...text.matchAll(/<blueprint>([\s\S]*?)<\/blueprint>/g)]
+  if (matches.length === 0) return { display: text, blueprint: null }
+  const display = text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').replace(/\n{3,}/g, '\n\n').trim()
   try {
-    const display = text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').replace(/\n{3,}/g, '\n\n').trim()
-    return { display, blueprint: checkedBlueprint(JSON.parse(match[1].trim()), beads, findings) }
+    const parsed = JSON.parse(matches[matches.length - 1][1].trim())
+    // Anything without a title and steps cannot be saved or built from.
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.title !== 'string' || !Array.isArray(parsed.steps)) {
+      return { display, blueprint: null }
+    }
+    return { display, blueprint: checkedBlueprint(parsed, beads, findings) }
   } catch {
-    return { display: text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').trim(), blueprint: null }
+    return { display, blueprint: null }
   }
+}
+
+const SIGN_IN_MESSAGE = 'Sign in to chat with the co-designer.'
+
+function errorMessage(status: number): string {
+  if (status === 429) return 'You are sending messages quickly — give it a moment and try again.'
+  if (status === 401) return SIGN_IN_MESSAGE
+  if (status === 400) return 'That message could not be sent — the conversation may be too long or the photo too large. Try starting a new chat.'
+  return 'The co-designer is unavailable right now. Please try again in a moment.'
 }
 
 const starters = [
@@ -84,6 +102,14 @@ export default function CoDesignPage() {
   const [loading, setLoading] = useState(false)
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
+  const [imageLoading, setImageLoading] = useState(false)
+  const [imageError, setImageError] = useState('')
+  const [attachError, setAttachError] = useState('')
+  // Bumped when the blueprint changes so an in-flight render for the previous
+  // blueprint cannot land on the new one.
+  const imageRequest = useRef(0)
   const [saveError, setSaveError] = useState('')
   const [signedOut, setSignedOut] = useState(false)
   const [beads, setBeads] = useState<BeadItem[]>([])
@@ -96,63 +122,92 @@ export default function CoDesignPage() {
 
   useEffect(() => {
     ;(async () => {
-      const { getSession } = await import('@/lib/authClient')
       setSignedOut(!(await getSession()))
     })().catch(() => {})
   }, [])
 
-  // Load the stash once so the schematic + visual prompt reflect the real palette.
+  // Load the stash once so the schematic reflects the real palette.
   useEffect(() => {
     ;(async () => {
       const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
-      if (res.status === 401) return
+      if (!res.ok) return
       const d = await res.json()
       setBeads(d.beads || [])
       setFindings(d.findings || [])
     })().catch(() => {})
   }, [])
 
-  // Stable across streaming re-renders so the <img> doesn't refetch each token.
-  const visualSrc = useMemo(
-    () => (blueprint ? visualUrl(buildVisualPrompt(blueprint, beads)) : ''),
-    [blueprint, beads],
-  )
+  // A new blueprint invalidates the old render. Rendered on demand rather than
+  // automatically: every blueprint revision would otherwise be a GPT Image call,
+  // the most expensive request in the app.
+  function applyBlueprint(bp: Blueprint) {
+    imageRequest.current++
+    setBlueprint(bp)
+    setImageUrl('')
+    setImageError('')
+    setImageLoading(false)
+    setSaved(false)
+  }
+
+  async function renderPreview() {
+    if (!blueprint || imageLoading) return
+    const request = ++imageRequest.current
+    const current = () => request === imageRequest.current
+    setImageLoading(true)
+    setImageError('')
+    try {
+      const res = await fetch('/api/make/image', {
+        method: 'POST',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(blueprint),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!current()) return
+      if (res.ok && data.imageUrl) {
+        setImageUrl(data.imageUrl)
+        return
+      }
+      setImageError(
+        res.status === 501
+          ? 'Preview images aren’t configured on this deployment (missing OPENAI_API_KEY).'
+          : res.status === 429
+            ? 'Too many previews in a row — wait a moment and try again.'
+            : 'Couldn’t render a preview image — the blueprint itself is ready to build.'
+      )
+    } catch {
+      if (current()) setImageError('Couldn’t render a preview image — the blueprint itself is ready to build.')
+    } finally {
+      if (current()) setImageLoading(false)
+    }
+  }
 
   function pickImage() {
     fileInputRef.current?.click()
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  // Same downscale-and-reencode as Stash photo identification. The inline copy
+  // this replaces had no error path, so a photo the browser could not decode
+  // (HEIC on desktop, a corrupt file) silently did nothing.
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const img = new Image()
-      img.onload = () => {
-        const MAX = 1568
-        let { width, height } = img
-        if (width > MAX || height > MAX) {
-          if (width > height) { height = Math.round(height * MAX / width); width = MAX }
-          else { width = Math.round(width * MAX / height); height = MAX }
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')!
-        ctx.drawImage(img, 0, 0, width, height)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-        const base64 = dataUrl.split(',')[1]
-        setPendingImage({ base64, mediaType: 'image/jpeg', dataUrl })
-      }
-      img.src = reader.result as string
-    }
-    reader.readAsDataURL(file)
     e.target.value = ''
+    if (!file) return
+    setAttachError('')
+    try {
+      const { imageData, mediaType } = await prepareImageForIdentify(file)
+      setPendingImage({ base64: imageData, mediaType, dataUrl: `data:${mediaType};base64,${imageData}` })
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : 'Could not read that photo — try a JPEG or PNG')
+    }
   }
 
   async function send(override?: string) {
     const text = (override ?? input).trim()
     if ((!text && !pendingImage) || loading) return
+    if (signedOut) {
+      setMessages(m => [...m, { role: 'assistant', content: '', display: SIGN_IN_MESSAGE }])
+      return
+    }
 
     const content: string | ContentBlock[] = pendingImage
       ? [
@@ -179,52 +234,54 @@ export default function CoDesignPage() {
         method: 'POST',
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
-          messages: next.map(m => ({ role: m.role, content: m.content })),
+          // Error notices are shown in the chat but are not part of the
+          // conversation: their content is '' so they never reach the model.
+          messages: next
+            .filter(m => typeof m.content !== 'string' || m.content.trim())
+            .map(m => ({ role: m.role, content: m.content })),
         }),
       })
 
       if (!res.ok) {
-        const msg = res.status === 429
-          ? 'You are sending messages quickly — give it a moment and try again.'
-          : 'Something went wrong. Check your API key.'
+        const msg = errorMessage(res.status)
+        if (res.status === 401) setSignedOut(true)
         setMessages(m => {
           const updated = [...m]
-          updated[updated.length - 1] = { role: 'assistant', content: msg, display: msg }
+          updated[updated.length - 1] = { role: 'assistant', content: '', display: msg }
           return updated
         })
         setLoading(false)
         return
       }
 
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let full = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const currentFull = full + decoder.decode(value)
-        full = currentFull
-        const liveDisplay = currentFull.replace(/<blueprint>[\s\S]*?(<\/blueprint>)?/g, '').trim()
+      const full = await readTextStream(res.body, currentFull => {
+        // Hide a blueprint while it streams, including one not yet closed.
+        const liveDisplay = currentFull.replace(/<blueprint>[\s\S]*?(<\/blueprint>|$)/g, '').trim()
         setMessages(m => {
           const updated = [...m]
           updated[updated.length - 1] = { role: 'assistant', content: currentFull, display: liveDisplay }
           return updated
         })
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-      }
+      })
 
       const { display, blueprint: bp } = parseMessage(full, beads, findings)
       setMessages(m => {
         const updated = [...m]
-        updated[updated.length - 1] = { role: 'assistant', content: full, display }
+        // An empty display renders as the typing spinner, so a reply that was
+        // only a blueprint (or nothing at all) used to spin forever.
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          content: full,
+          display: display || (bp ? 'Blueprint updated — see the panel.' : 'No reply came back — please try again.'),
+        }
         return updated
       })
-      if (bp) setBlueprint(bp)
+      if (bp) applyBlueprint(bp)
     } catch {
       setMessages(m => {
         const updated = [...m]
-        updated[updated.length - 1] = { role: 'assistant', content: 'Something went wrong.', display: 'Something went wrong. Check your API key.' }
+        updated[updated.length - 1] = { role: 'assistant', content: '', display: 'Could not reach the co-designer. Check your connection and try again.' }
         return updated
       })
     }
@@ -234,10 +291,10 @@ export default function CoDesignPage() {
   }
 
   async function saveToJournal() {
-    if (!blueprint) return
+    if (!blueprint || saving || saved) return
     setSaveError('')
-    const { getSession } = await import('@/lib/authClient')
     if (!await getSession()) { setSaveError('Sign in to save designs.'); return }
+    setSaving(true)
     try {
       const res = await fetch('/api/builds', {
         method: 'POST',
@@ -250,9 +307,11 @@ export default function CoDesignPage() {
         }),
       })
       if (!res.ok) throw new Error('Save failed')
+      // Stays "saved" until the blueprint changes (applyBlueprint resets it).
+      // It used to re-enable after three seconds, inviting a duplicate entry.
       setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
     } catch { setSaveError('Failed to save. Try again.') }
+    finally { setSaving(false) }
   }
 
   const diffColor = (d: string) => d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
@@ -271,7 +330,7 @@ export default function CoDesignPage() {
           {signedOut && (
             <div style={{ padding: '12px 18px', background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 24 }}>
               <span style={{ fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>
-                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to load your stash.
+                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to chat with the co-designer — it designs from your stash.
               </span>
             </div>
           )}
@@ -351,7 +410,7 @@ export default function CoDesignPage() {
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--moonstone)', letterSpacing: '0.1em', marginBottom: 4 }}>IMAGE ATTACHED</p>
                       <p style={{ fontSize: 12, color: 'var(--muted)' }}>Add a message or send as-is</p>
                     </div>
-                    <button onClick={() => setPendingImage(null)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
                   </div>
                 )}
 
@@ -360,6 +419,7 @@ export default function CoDesignPage() {
                   <button
                     onClick={pickImage}
                     title="Attach a photo"
+                    aria-label="Attach a photo"
                     style={{
                       background: 'none', border: '1px solid var(--border)',
                       color: pendingImage ? 'var(--madder)' : 'var(--muted)',
@@ -382,13 +442,16 @@ export default function CoDesignPage() {
                     value={input}
                     rows={2}
                     onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) send() }}
+                    onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
                   />
                   <button className="btn-silver" onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} style={{ padding: '14px 20px', flexShrink: 0, fontSize: 18 }}>
                     {loading ? <span className="spinner" /> : '↑'}
                   </button>
                 </div>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘ + Enter to send · + to attach a photo</p>
+                {attachError && (
+                  <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 6, letterSpacing: '0.06em' }}>{attachError}</p>
+                )}
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘/Ctrl + Enter to send · + to attach a photo</p>
               </div>
             </div>
 
@@ -419,10 +482,10 @@ export default function CoDesignPage() {
                     <button
                       className={saved ? 'btn-outline' : 'btn-silver'}
                       onClick={saveToJournal}
-                      disabled={saved}
+                      disabled={saved || saving}
                       style={{ width: '100%', justifyContent: 'center', marginTop: 14, fontSize: 11 }}
                     >
-                      {saved ? '✓ Saved to Journal' : 'Save to Journal'}
+                      {saved ? '✓ Saved to Journal' : saving ? 'Saving…' : 'Save to Journal'}
                     </button>
                     {saveError && (
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em' }}>{saveError}</p>
@@ -445,13 +508,35 @@ export default function CoDesignPage() {
                     </div>
                     {view === 'schematic' ? (
                       <Schematic blueprint={blueprint} beads={beads} findings={findings} />
-                    ) : (
+                    ) : imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={visualSrc}
+                        src={imageUrl}
                         alt={blueprint.title}
                         style={{ width: '100%', display: 'block', border: '1px solid var(--border)', aspectRatio: '1 / 1', objectFit: 'cover', background: 'var(--bg2)' }}
                       />
+                    ) : imageLoading ? (
+                      <div style={{
+                        aspectRatio: '1 / 1', background: 'var(--roast)', border: '1px solid var(--seam)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+                      }}>
+                        <StrandLoader />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.1em' }}>
+                          RENDERING DESIGN…
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding: '28px 16px', border: '1px dashed var(--border)', textAlign: 'center',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                      }}>
+                        {imageError && (
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text2)' }}>{imageError}</span>
+                        )}
+                        <button className="btn-outline" onClick={renderPreview}>
+                          {imageError ? 'Retry preview' : 'Render preview'}
+                        </button>
+                      </div>
                     )}
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
                       {view === 'schematic' ? 'BUILDABLE DIAGRAM · MATCHED TO YOUR STASH' : 'AI RENDER · FOR REFERENCE ONLY'}

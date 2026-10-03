@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 import { getToken, parseBody } from '@/lib/apiRequest'
+import { cleanBuildInput } from '@/lib/builds'
 
 // Set well above the AI-route limits: the UI legitimately bursts this route —
 // decrementStash() is per-row and the journal loads/saves in quick succession —
@@ -12,12 +13,6 @@ const RATE_WINDOW_MS = 60_000
 function rateLimited(userId: string): Response | null {
   const limit = rateLimit(`builds:${userId}`, RATE_LIMIT, RATE_WINDOW_MS)
   return limit.allowed ? null : tooManyRequests(limit.retryAfter)
-}
-
-const BUILD_FIELDS = ['title', 'design', 'status', 'current_step', 'started_at', 'completed_at', 'time_taken_minutes', 'notes', 'rating'] as const
-
-function pickBuildFields(data: Record<string, unknown>) {
-  return Object.fromEntries(BUILD_FIELDS.filter(f => f in data).map(f => [f, data[f]]))
 }
 
 export async function GET(req: NextRequest) {
@@ -74,10 +69,11 @@ export async function POST(req: NextRequest) {
   const supabase = getAuthenticatedClient(getToken(req))
   const body = await parseBody(req)
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  const sanitized = pickBuildFields(body)
+  const cleaned = cleanBuildInput(body, false)
+  if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
   const { data, error } = await supabase
     .from('builds')
-    .insert({ ...sanitized, user_id: user.id })
+    .insert({ ...cleaned.fields, user_id: user.id })
     .select()
     .single()
   if (error) {
@@ -96,19 +92,22 @@ export async function PATCH(req: NextRequest) {
   const body = await parseBody(req)
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { id, ...raw } = body
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-  const updates = pickBuildFields(raw as Record<string, unknown>)
+  if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  const cleaned = cleanBuildInput(raw, true)
+  if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
+  if (Object.keys(cleaned.fields).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   const { data, error } = await supabase
     .from('builds')
-    .update(updates)
+    .update(cleaned.fields)
     .eq('id', id)
     .eq('user_id', user.id)
     .select()
-    .single()
+    .maybeSingle()
   if (error) {
     console.error('builds PATCH error:', error)
     return NextResponse.json({ error: 'Database error' }, { status: 500 })
   }
+  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(data)
 }
 

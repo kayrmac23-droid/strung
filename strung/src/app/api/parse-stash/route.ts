@@ -4,7 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, parseBody } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -20,12 +20,9 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`parse-stash:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
   if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-  let text: unknown
-  try {
-    ;({ text } = await req.json())
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-  }
+  const body = await parseBody(req)
+  if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  const { text } = body
   if (typeof text !== 'string' || !text.trim()) {
     return NextResponse.json({ error: 'No text to parse' }, { status: 400 })
   }

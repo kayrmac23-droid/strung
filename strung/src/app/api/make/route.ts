@@ -69,8 +69,8 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
   const owned = new Map<string, number>()
   const display = new Map<string, string>()
   for (const b of [...beads, ...findings]) {
-    if (!b.name) continue
-    const key = b.name.toLowerCase()
+    if (typeof b.name !== 'string' || !b.name.trim()) continue
+    const key = b.name.trim().toLowerCase()
     owned.set(key, (owned.get(key) ?? 0) + (Number(b.quantity) || 0))
     if (!display.has(key)) display.set(key, b.name)
   }
@@ -112,6 +112,21 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
   violations.push(...validateAssembly(design, beads, findings))
 
   return violations
+}
+
+// The minimum a reply needs before the Make and Build pages can render it.
+// validateDesign() treats a non-object as {} and so passes it, which let an
+// array, a bare string or an object with no steps through as a "design".
+function designShapeViolations(design: unknown): string[] {
+  if (!design || typeof design !== 'object' || Array.isArray(design)) {
+    return ['Your response must be a single JSON object in the schema above']
+  }
+  const d = design as Record<string, unknown>
+  const out: string[] = []
+  if (typeof d.title !== 'string' || !d.title.trim()) out.push('The design is missing a "title"')
+  if (!Array.isArray(d.components) || d.components.length === 0) out.push('The design is missing "components"')
+  if (!Array.isArray(d.steps) || d.steps.length === 0) out.push('The design is missing "steps"')
+  return out
 }
 
 export async function POST(req: NextRequest) {
@@ -202,7 +217,7 @@ export async function POST(req: NextRequest) {
 
   const stashSummary = [
     safeBeads.length > 0
-      ? `BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
+      ? `BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size || (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
       : 'No beads in stash.',
     safeFindings.length > 0
       ? `FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})${isStructuralFindingType(f.type) ? ' [structural — can be an assembly anchor]' : ''}`).join('\n')}`
@@ -314,20 +329,33 @@ Apply ONLY this requested change: "${(adjustment as string).trim()}"
 Produce a revised version of the SAME design that applies this change while keeping everything else as stable as possible — keep the title, overall structure, and any unaffected components and steps unchanged unless the change requires otherwise. Return the full revised design in the exact same JSON schema described above, ONLY valid JSON, no markdown, no backticks.`
   }
 
-  try {
+  // One model call, parsed and checked. Never throws: a truncated reply, a
+  // reply that is not JSON, and a reply that is JSON but not a design all come
+  // back as violations, so every failure mode feeds the same one-shot retry.
+  // (A parse failure used to throw straight past the retry to a 500.)
+  async function attempt(text: string): Promise<{ design: unknown; violations: string[] }> {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4500,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: text }],
     })
     if (response.stop_reason === 'max_tokens') {
-      console.error('make error: response truncated at max_tokens')
-      return NextResponse.json({ error: 'Design too long — try again' }, { status: 502 })
+      return { design: null, violations: ['Your response was cut off — keep the design more compact'] }
     }
-    const text = firstTextBlock(response)
-    let design = parseJsonLoose(text)
+    let design: unknown
+    try {
+      design = parseJsonLoose(firstTextBlock(response))
+    } catch {
+      return { design: null, violations: ['Your response was not valid JSON — return ONLY the JSON object'] }
+    }
+    const shape = designShapeViolations(design)
+    if (shape.length > 0) return { design: null, violations: shape }
+    return { design, violations: validateDesign(design, beads, findings) }
+  }
 
-    let violations = validateDesign(design, beads, findings)
+  try {
+    let { design, violations } = await attempt(prompt)
+
     if (violations.length > 0) {
       // Retry ONCE: hand the model the exact violations and ask it to fix only those.
       const retryPrompt = `${prompt}
@@ -336,29 +364,25 @@ Your previous design had these problems that must be corrected:
 ${violations.map((v) => `- ${v}`).join('\n')}
 Correct ONLY these issues while keeping everything else the same, and return the full corrected design in the exact same JSON schema, ONLY valid JSON, no markdown, no backticks.`
       try {
-        const retry = await client.messages.create({
-          model: MODEL,
-          max_tokens: 4500,
-          messages: [{ role: 'user', content: retryPrompt }],
-        })
-        if (retry.stop_reason !== 'max_tokens') {
-          const retryText = firstTextBlock(retry)
-          const retryDesign = parseJsonLoose(retryText)
-          const retryViolations = validateDesign(retryDesign, beads, findings)
-          if (retryViolations.length === 0) {
-            return NextResponse.json(retryDesign)
-          }
-          // Retry still invalid — prefer it and surface its remaining issues.
-          design = retryDesign
-          violations = retryViolations
+        const retry = await attempt(retryPrompt)
+        if (retry.design) {
+          // Prefer the retry whenever it produced a usable design, even one that
+          // still has stash issues — they are surfaced below.
+          design = retry.design
+          violations = retry.violations
         }
       } catch (retryErr) {
         console.error('make retry error:', retryErr)
-        // Keep the original design + violations and fall through to soft-fail.
+        // Keep the first attempt and fall through.
       }
 
-      // Never hard-fail on validation: return the design with an honest check.
-      if (design && typeof design === 'object') {
+      if (!design) {
+        console.error('make error: no usable design after retry:', violations)
+        return NextResponse.json({ error: 'The design came back incomplete — please try again' }, { status: 502 })
+      }
+
+      // Never hard-fail on stash validation: return the design with an honest check.
+      if (violations.length > 0) {
         ;(design as Record<string, unknown>).materialsCheck = {
           allAvailable: false,
           notes: `Automatic stash check found issues: ${violations.join('; ')}.`,

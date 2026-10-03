@@ -48,6 +48,8 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${f(0)}${f(8)}${f(4)}`
 }
 
+const HEX_RE = /^#[0-9a-fA-F]{6}$/
+
 const beadTypes: BeadItem['type'][] = ['gemstone','crystal','glass','seed','metal','pearl','resin','other']
 const findingTypes: FindingItem['type'][] = ['statement_component','ear_wire','head_pin','eye_pin','jump_ring','clasp','chain','wire','crimp','connector','other']
 const metals: FindingItem['metal'][] = ['silver','gold_filled','gold','copper','brass','oxidised','other']
@@ -72,7 +74,6 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState('')
   const [saveError, setSaveError] = useState('')
-  const [aiPrefilled, setAiPrefilled] = useState(false)
   const multiFileInputRef = useRef<HTMLInputElement>(null)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [quickAddSource, setQuickAddSource] = useState<'text' | 'photo'>('text')
@@ -101,10 +102,15 @@ export default function InventoryPage() {
         return
       }
       setSignedOut(false)
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not load your stash')
       setBeads(data.beads || [])
       setFindings(data.findings || [])
-    } catch { console.error('Failed to load') }
+    } catch (e: unknown) {
+      // Never fall through to an empty list: it reads as "you own nothing" and
+      // invites re-adding everything as duplicates once the outage clears.
+      setListError(`${getErrorMessage(e, 'Could not load your stash')} — refresh to try again.`)
+    }
     finally { setLoading(false) }
   }, [])
 
@@ -114,6 +120,7 @@ export default function InventoryPage() {
   async function saveItem() {
     const form = tab === 'beads' ? beadForm : findingForm
     if (!form.name?.trim()) { setSaveError('Name is required.'); return }
+    if (tab === 'beads' && !HEX_RE.test(beadForm.hex || '')) { setSaveError('Colour hex must look like #7a9ab8.'); return }
     setSaving(true); setSaveError('')
     try {
       const res = await fetch('/api/inventory', {
@@ -121,11 +128,10 @@ export default function InventoryPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, data: form }),
       })
-      const result = await res.json()
+      const result = await res.json().catch(() => ({}))
       if (!res.ok || result.error) throw new Error(result.error || `Save failed (${res.status})`)
       await load()
       setShowForm(false)
-      setAiPrefilled(false)
       setBeadForm({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
       setFindingForm({ type:'ear_wire', metal:'silver', quantity:2 })
     } catch (e: unknown) { setSaveError(getErrorMessage(e, 'Save failed')) }
@@ -137,8 +143,8 @@ export default function InventoryPage() {
     setDeletingId(id)
     setListError('')
     try {
-      const res = await fetch(`/api/inventory?table=${tab}&id=${id}`, { method: 'DELETE', headers: await getAuthHeaders() })
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Delete failed') }
+      const res = await fetch(`/api/inventory?table=${tab}&id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: await getAuthHeaders() })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Delete failed') }
       await load()
     } catch (e: unknown) { setListError(getErrorMessage(e, 'Failed to delete')) }
     finally { setDeletingId(null) }
@@ -152,7 +158,7 @@ export default function InventoryPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ table: tab, id, data: editForm }),
       })
-      const result = await res.json()
+      const result = await res.json().catch(() => ({}))
       if (!res.ok || result.error) throw new Error(result.error || 'Update failed')
       await load()
       setEditingId(null)
@@ -211,7 +217,7 @@ export default function InventoryPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ text: quickText }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok || data.error) throw new Error(data.error || `Parse failed (${res.status})`)
       const parsedBeads: BeadItem[] = data.beads || []
       const parsedFindings: FindingItem[] = data.findings || []
@@ -271,7 +277,7 @@ export default function InventoryPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{maxWidth:1100,margin:'0 auto',padding:'52px 40px 80px'}}>
+        <div className="page-pad" style={{maxWidth:1100,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Inventory</p>
             <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>My Stash</h1>
@@ -338,13 +344,13 @@ export default function InventoryPage() {
             <div style={{position:'relative',minWidth:160}}>
               <select className="select-base" value={filterType} onChange={e=>setFilterType(e.target.value)}>
                 <option value="">All types</option>
-                {(tab==='beads'?beadTypes:findingTypes).map(t => <option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                {(tab==='beads'?beadTypes:findingTypes).map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
               </select>
               {arrow}
             </div>
-            <button className="btn-silver" onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
-            <button className="btn-outline" onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
-            <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti} style={{gap:6}}>
+            <button className="btn-silver" disabled={signedOut} onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
+            <button className="btn-outline" disabled={signedOut} onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
+            <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti || signedOut} style={{gap:6}}>
               {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : 'Add from photo'}
             </button>
             <input
@@ -364,12 +370,9 @@ export default function InventoryPage() {
               <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
-                {aiPrefilled && (
-                  <span className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--madder)'}}>AI pre-filled — review &amp; adjust</span>
-                )}
               </div>
               {tab==='beads' ? (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+                <div className="form-grid-3" style={{gap:16}}>
                   <div style={{gridColumn:'1/-1'}}>
                     <label className="label">Name / Description</label>
                     <input className="input-base" placeholder="e.g. Labradorite teardrop briolette"
@@ -476,7 +479,7 @@ export default function InventoryPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16}}>
+                <div className="form-grid-3" style={{gap:16}}>
                   <div style={{gridColumn:'1/-1'}}>
                     <label className="label">Name / Description</label>
                     <input className="input-base" placeholder="e.g. 20mm silver hoop ear wire"
@@ -497,7 +500,7 @@ export default function InventoryPage() {
                   <div>
                     <label className="label">Metal</label>
                     <div style={{position:'relative'}}><select className="select-base" value={findingForm.metal} onChange={e=>setFindingForm(f=>({...f,metal:e.target.value as FindingItem['metal']}))}>
-                      {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
+                      {metals.map(m=><option key={m} value={m}>{m.replace(/_/g,' ')}</option>)}
                     </select>{arrow}</div>
                   </div>
                   <div>
@@ -522,7 +525,7 @@ export default function InventoryPage() {
                 <button className="btn-silver" onClick={saveItem} disabled={saving}>
                   {saving?<><span className="spinner"/>Saving…</>:'Save to Stash'}
                 </button>
-                <button className="btn-outline" onClick={()=>{setShowForm(false);setAiPrefilled(false);setSaveError('')}}>Cancel</button>
+                <button className="btn-outline" onClick={()=>{setShowForm(false);setSaveError('')}}>Cancel</button>
               </div>
             </div>
           )}
@@ -629,7 +632,7 @@ export default function InventoryPage() {
                   <div key={b.id} className="card stash-card" style={{position:'relative'}}>
                     {editingId === b.id ? (
                       <div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                        <div className="blueprint-grid" style={{gap:10,marginBottom:12}}>
                           <div style={{gridColumn:'1/-1'}}>
                             <label className="label">Name</label>
                             <input className="input-base" value={(editForm as Partial<BeadItem>).name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))} />
@@ -657,7 +660,7 @@ export default function InventoryPage() {
                           </div>
                           <div>
                             <label className="label">Quantity</label>
-                            <input className="input-base" type="number" min={1} value={(editForm as Partial<BeadItem>).quantity||1} onChange={e=>setEditForm(f=>({...f,quantity:Number(e.target.value)}))} />
+                            <input className="input-base" type="number" min={1} value={(editForm as Partial<BeadItem>).quantity ?? 0} onChange={e=>setEditForm(f=>({...f,quantity:Number(e.target.value)}))} />
                           </div>
                           <div style={{gridColumn:'1/-1'}}>
                             <label className="label">Notes</label>
@@ -735,7 +738,7 @@ export default function InventoryPage() {
                   <div key={f.id} className="card stash-card">
                     {editingId === f.id ? (
                       <div>
-                        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                        <div className="blueprint-grid" style={{gap:10,marginBottom:12}}>
                           <div style={{gridColumn:'1/-1'}}>
                             <label className="label">Name</label>
                             <input className="input-base" value={(editForm as Partial<FindingItem>).name||''} onChange={e=>setEditForm(fm=>({...fm,name:e.target.value}))} />
@@ -744,7 +747,7 @@ export default function InventoryPage() {
                             <label className="label">Type</label>
                             <div style={{position:'relative'}}>
                               <select className="select-base" value={(editForm as Partial<FindingItem>).type||''} onChange={e=>setEditForm(fm=>({...fm,type:e.target.value as FindingItem['type']}))}>
-                                {findingTypes.map(t=><option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                                {findingTypes.map(t=><option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
                               </select>
                               {arrow}
                             </div>
@@ -753,7 +756,7 @@ export default function InventoryPage() {
                             <label className="label">Metal</label>
                             <div style={{position:'relative'}}>
                               <select className="select-base" value={(editForm as Partial<FindingItem>).metal||''} onChange={e=>setEditForm(fm=>({...fm,metal:e.target.value as FindingItem['metal']}))}>
-                                {metals.map(m=><option key={m} value={m}>{m.replace('_',' ')}</option>)}
+                                {metals.map(m=><option key={m} value={m}>{m.replace(/_/g,' ')}</option>)}
                               </select>
                               {arrow}
                             </div>
@@ -764,7 +767,7 @@ export default function InventoryPage() {
                           </div>
                           <div>
                             <label className="label">Quantity</label>
-                            <input className="input-base" type="number" min={1} value={(editForm as Partial<FindingItem>).quantity||1} onChange={e=>setEditForm(fm=>({...fm,quantity:Number(e.target.value)}))} />
+                            <input className="input-base" type="number" min={1} value={(editForm as Partial<FindingItem>).quantity ?? 0} onChange={e=>setEditForm(fm=>({...fm,quantity:Number(e.target.value)}))} />
                           </div>
                           <div style={{gridColumn:'1/-1'}}>
                             <label className="label">Notes</label>
@@ -780,7 +783,7 @@ export default function InventoryPage() {
                       <>
                         <div style={{marginBottom:10}}>
                           <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)'}}>{f.name}</p>
-                          <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--steel2)',letterSpacing:'0.08em',marginTop:2}}>{f.type.replace('_',' ')} · {f.metal.replace('_',' ')}</p>
+                          <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--steel2)',letterSpacing:'0.08em',marginTop:2}}>{f.type.replace(/_/g,' ')} · {f.metal.replace(/_/g,' ')}</p>
                         </div>
                         <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
                           {f.size && <span className="tag">{f.size}</span>}

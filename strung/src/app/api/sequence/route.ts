@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests, clientIp } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock, truncStr } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, truncStr, parseBody } from '@/lib/apiRequest'
+import { normaliseSequenceResult } from '@/lib/sequenceResult'
 
 // Without an explicit key the SDK falls back to its own env lookup, which is
 // easy to break by renaming the variable and gives a confusing runtime error
@@ -36,14 +37,10 @@ export async function POST(request: Request) {
   const limit = rateLimit(`sequence:${clientIp(request)}`, RATE_LIMIT, RATE_WINDOW_MS)
   if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  const raw = body as Record<string, unknown>
+  // parseBody collapses a non-object body (`null`, an array) to {} — reading
+  // fields off a bare `null` used to throw and answer 500.
+  const raw = await parseBody(request)
+  if (!raw) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
   const harmonyType = VALID_HARMONY_TYPES.includes(String(raw.harmonyType ?? ''))
     ? String(raw.harmonyType)
@@ -160,8 +157,12 @@ Rules:
       return NextResponse.json({ error: 'Palette too long — try again' }, { status: 502 })
     }
     const text = firstTextBlock(msg)
-    const json = parseJsonLoose(text)
-    return NextResponse.json(json)
+    const result = normaliseSequenceResult(parseJsonLoose(text))
+    if (!result) {
+      console.error('sequence error: no usable palette in model output:', text.slice(0, 300))
+      return NextResponse.json({ error: 'Generation failed. Please try again.' }, { status: 502 })
+    }
+    return NextResponse.json(result)
   } catch (e: unknown) {
     console.error('Sequence API error:', e)
     return NextResponse.json({ error: 'Generation failed. Please try again.' }, { status: 500 })

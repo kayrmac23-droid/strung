@@ -2,7 +2,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, getToken, STREAM_ERROR_MARKER } from '@/lib/apiRequest'
+import { MODEL, getToken, parseBody, truncStr, streamTextResponse } from '@/lib/apiRequest'
+import { sanitiseChatMessages } from '@/lib/chatMessages'
 import {
   TECHNIQUE_LIST_TEXT,
   TECHNIQUE_GLOSSARY,
@@ -20,13 +21,6 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 const RATE_LIMIT = 30
 const RATE_WINDOW_MS = 60_000
 
-const MAX_IMAGES_PER_MESSAGE = 2
-const MAX_IMAGES_TOTAL = 6
-// Named for what it actually measures. This is compared against the length of
-// the base64 *string*, not the decoded byte count — base64 is ~4/3 the size of
-// the bytes it encodes, so the real ceiling here is roughly 1.1MB of image.
-const MAX_IMAGE_BASE64_CHARS = 1.5 * 1024 * 1024
-
 type StashBead = {
   name: string
   colour: string
@@ -43,8 +37,6 @@ type StashFinding = {
   quantity: number
 }
 
-type ChatMessage = Anthropic.MessageParam
-
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req)
   if (!user) return new Response('Unauthorized', { status: 401 })
@@ -52,58 +44,12 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`codesign:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
   if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-  let messages: ChatMessage[]
-  try {
-    ;({ messages } = await req.json())
-  } catch {
-    return new Response('Invalid request body', { status: 400 })
-  }
+  const body = await parseBody(req)
+  if (!body) return new Response('Invalid request body', { status: 400 })
+  const checked = sanitiseChatMessages(body.messages)
+  if (!checked.ok) return new Response(checked.error, { status: 400 })
+  const messages = checked.messages
 
-  if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
-    return new Response('Invalid messages', { status: 400 })
-  }
-  let totalImages = 0
-  for (const m of messages) {
-    if (!['user', 'assistant'].includes(m.role as string)) {
-      return new Response('Invalid message role', { status: 400 })
-    }
-    // content must be a string or an array of blocks. Anything else (a number,
-    // null, a bare object) used to fall into the else branch and throw on
-    // `for (const b of blocks)` — an uncaught TypeError surfacing as a 500 for
-    // what is plainly a malformed request.
-    if (typeof m.content !== 'string' && !Array.isArray(m.content)) {
-      return new Response('Invalid message content', { status: 400 })
-    }
-    let textOnly = ''
-    if (typeof m.content === 'string') {
-      textOnly = m.content
-    } else {
-      const blocks = m.content as Array<{ type: string; text?: string; source?: { type?: string; data?: string } }>
-      let imagesInMessage = 0
-      for (const b of blocks) {
-        if (b.type !== 'text' && b.type !== 'image') {
-          return new Response('Invalid content block', { status: 400 })
-        }
-        if (b.type === 'text') {
-          textOnly += b.text ?? ''
-        } else {
-          imagesInMessage++
-          if (imagesInMessage > MAX_IMAGES_PER_MESSAGE) {
-            return new Response('Too many images in message', { status: 400 })
-          }
-          const data = b.source?.type === 'base64' ? b.source.data ?? '' : ''
-          if (data.length > MAX_IMAGE_BASE64_CHARS) {
-            return new Response('Image too large', { status: 400 })
-          }
-        }
-      }
-      totalImages += imagesInMessage
-      if (totalImages > MAX_IMAGES_TOTAL) {
-        return new Response('Too many images', { status: 400 })
-      }
-    }
-    if (textOnly.length > 10000) return new Response('Message too long', { status: 400 })
-  }
   // Read the stash server-side rather than trusting a client-supplied copy.
   const supabase = getAuthenticatedClient(getToken(req))
   const [beadsRes, findingsRes] = await Promise.all([
@@ -116,13 +62,12 @@ export async function POST(req: NextRequest) {
   }
   const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
   const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
-  const trunc = (v: unknown, max: number) => typeof v === 'string' ? v.slice(0, max) : ''
-  const safeBeads = beads.map(b => ({ ...b, name: trunc(b.name, 200), colour: trunc(b.colour, 100), size: trunc(b.size, 50), shape: trunc(b.shape, 50) }))
-  const safeFindings = findings.map(f => ({ ...f, name: trunc(f.name, 200), type: trunc(f.type, 50), metal: trunc(f.metal, 50) }))
+  const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
+  const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50) }))
 
   const stashLines: string[] = []
   if (safeBeads?.length) {
-    stashLines.push(`BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size ?? (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
+    stashLines.push(`BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size || (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
   }
   if (safeFindings?.length) {
     stashLines.push(`FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
@@ -159,43 +104,11 @@ ${STYLE_OVERRIDE_RULE}
 
 Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 
-  let stream: Awaited<ReturnType<typeof client.messages.stream>>
-  try {
-    stream = await client.messages.stream({
-      model: MODEL,
-      max_tokens: 3000,
-      system,
-      messages,
-    })
-  } catch (e) {
-    console.error('Codesign stream init error:', e)
-    return new Response('AI service error. Please try again.', { status: 500 })
-  }
-
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            controller.enqueue(encoder.encode(chunk.delta.text))
-          }
-        }
-      } catch (e) {
-        // The status line went out with the first chunk, so an error status is
-        // no longer available. Without this marker a stream that dies halfway
-        // is indistinguishable from one that finished, and the reader renders a
-        // truncated answer as if it were complete.
-        console.error('Codesign stream chunk error:', e)
-        try {
-          controller.enqueue(encoder.encode(STREAM_ERROR_MARKER))
-        } catch {
-          // Controller already closed or errored — nothing useful left to do.
-        }
-      }
-      controller.close()
-    },
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 3000,
+    system,
+    messages,
   })
-
-  return new Response(readable, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+  return streamTextResponse(stream, 'Codesign')
 }

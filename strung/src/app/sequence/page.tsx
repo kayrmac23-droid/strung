@@ -5,43 +5,7 @@ import Nav from '@/components/Nav'
 import type { BeadItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 
-interface PaletteEntry {
-  role: string
-  name: string
-  hex: string
-  beadSuggestion: string
-  note: string
-}
-
-interface SequenceEntry {
-  label: string
-  colourName: string
-  hex: string
-  count: number
-  beadType: string
-}
-
-interface StashMatch {
-  beadName: string
-  colour: string
-  hex: string
-  role: string
-  note: string
-}
-
-interface SequenceResult {
-  title: string
-  colourStory: string
-  harmonyType: string
-  palette: PaletteEntry[]
-  sequence: SequenceEntry[]
-  sequencePattern: string
-  repeats: number
-  totalBeadsPerRepeat: number
-  stashMatches: StashMatch[]
-  tip: string
-  metalRecommendation: { name: string; hex: string; reason: string }
-}
+import type { PaletteEntry, SequenceEntry, SequenceResult } from '@/lib/sequenceResult'
 
 const HARMONY_TYPES = [
   { value: 'AI Picks', desc: 'Surprise me' },
@@ -151,8 +115,10 @@ export default function SequencePage() {
     ;(async () => {
       try {
         const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
-        const d = await res.json()
-        setBeads(d.beads || [])
+        if (res.ok) {
+          const d = await res.json()
+          setBeads(d.beads || [])
+        }
       } catch {
         // stash is optional
       } finally {
@@ -172,8 +138,8 @@ export default function SequencePage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ harmonyType, anchorFamily, pieceType, beads }),
       })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.error) throw new Error(data.error || 'Generation failed — please try again.')
       setResult(data)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed')
@@ -190,7 +156,7 @@ export default function SequencePage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '52px 40px 80px' }}>
+        <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
 
           <header style={{ marginBottom: 40 }}>
             <p className="section-eyebrow fade-up">Colour Studio</p>
@@ -386,9 +352,10 @@ export default function SequencePage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div className="blueprint-grid" style={{ marginBottom: 16 }}>
 
                 {/* Metal recommendation */}
+                {result.metalRecommendation && (
                 <div className="card" style={{ padding: 24 }}>
                   <h3 style={{
                     fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400,
@@ -412,6 +379,7 @@ export default function SequencePage() {
                     </div>
                   </div>
                 </div>
+                )}
 
                 {/* Colour theory tip */}
                 <div style={{

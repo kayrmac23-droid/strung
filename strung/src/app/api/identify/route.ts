@@ -4,9 +4,9 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding, itemConfidence } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL } from '@/lib/apiRequest'
+import { MODEL, parseBody } from '@/lib/apiRequest'
 
-const client = new Anthropic()
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // Per-user cap on vision identifications (each sends a full image to Claude).
 const RATE_LIMIT = 20
@@ -54,12 +54,10 @@ export async function POST(req: NextRequest) {
   const limit = rateLimit(`identify:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
   if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-  let body: Record<string, unknown>
-  try {
-    body = await req.json()
-  } catch {
-    return Response.json({ error: 'Invalid request body' }, { status: 400 })
-  }
+  // parseBody, not req.json(): a body of `null` parsed fine and then threw on
+  // `body.imageData`, surfacing a malformed request as a 500.
+  const body = await parseBody(req)
+  if (!body) return Response.json({ error: 'Invalid request body' }, { status: 400 })
   const imageData = body.imageData
   const mediaType = body.mediaType
 

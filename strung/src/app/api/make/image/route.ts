@@ -2,14 +2,36 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock } from '@/lib/apiRequest'
-import { buildFallbackImagePrompt, describeAssembly } from '@/lib/imagePrompt'
+import { MODEL, firstTextBlock, parseBody, truncStr } from '@/lib/apiRequest'
+import { buildFallbackImagePrompt, describeAssembly, IMAGE_PHOTO_SUFFIX } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // GPT Image 2 at high quality is the priciest upstream call in the app, so cap it tighter.
 const RATE_LIMIT = 10
 const RATE_WINDOW_MS = 60_000
+
+const MAX_ASSEMBLY_CHARS = 5_000
+
+function cleanComponents(v: unknown): { item: string; quantity: number; note: string }[] {
+  if (!Array.isArray(v)) return []
+  return v.slice(0, 50).flatMap((c) => {
+    if (!c || typeof c !== 'object') return []
+    const r = c as Record<string, unknown>
+    const item = truncStr(r.item, 200).trim()
+    if (!item) return []
+    const qty = Number(r.quantity)
+    return [{ item, quantity: Number.isFinite(qty) ? Math.max(0, Math.min(9999, Math.round(qty))) : 1, note: truncStr(r.note, 300) }]
+  })
+}
+
+function cleanSteps(v: unknown): string[] {
+  if (!Array.isArray(v)) return []
+  return v.slice(0, 50).flatMap((s) => {
+    const instruction = s && typeof s === 'object' ? truncStr((s as Record<string, unknown>).instruction, 500).trim() : ''
+    return instruction ? [instruction] : []
+  })
+}
 
 async function buildPrompt(design: Record<string, unknown>): Promise<string> {
   // The assembly describes what mounts at top vs what hangs below. Deriving it
@@ -24,7 +46,7 @@ async function buildPrompt(design: Record<string, unknown>): Promise<string> {
     colourStory: design.colourStory,
     components: design.components,
     ...(structure ? { structure } : {}),
-    steps: (design.steps as Array<{ instruction: string }>).map(s => s.instruction),
+    steps: design.steps,
   }
 
   const res = await anthropic.messages.create({
@@ -44,7 +66,7 @@ Write a single dense paragraph (under 850 characters) that describes EXACTLY wha
 - How elements connect (wrapped loops, jump rings, crimp beads, stringing pattern, etc.)
 - The overall silhouette and feel of the finished piece
 ${structure ? '- CRITICAL orientation: honour the "structure" field EXACTLY — the named anchor is mounted at the top and every strand hangs downward below it in the given order. Never invert it (do not put a hanging drop or cabochon at the top).\n' : ''}
-Then append exactly this sentence: "Macro product photography, flat lay on deep warm mocha-brown velvet, soft warm lamplight, shallow depth of field, colour-accurate, photorealistic, no hands, no text, no watermarks."
+Then append exactly this sentence: "${IMAGE_PHOTO_SUFFIX}"
 
 Output ONLY the prompt text, nothing else.`,
       },
@@ -75,18 +97,23 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const raw = await req.json()
-    if (!raw || typeof raw !== 'object') return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
+    const raw = await parseBody(req)
+    if (!raw) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
     const design: Record<string, unknown> = {
       title: typeof raw.title === 'string' ? raw.title.slice(0, 200) : '',
       description: typeof raw.description === 'string' ? raw.description.slice(0, 500) : '',
       pieceType: typeof raw.pieceType === 'string' ? raw.pieceType.slice(0, 50) : '',
       colourStory: typeof raw.colourStory === 'string' ? raw.colourStory.slice(0, 500) : '',
-      components: Array.isArray(raw.components) ? raw.components.slice(0, 50) : [],
-      steps: Array.isArray(raw.steps) ? raw.steps.slice(0, 50) : [],
-      // Carried through (not stripped) so the prompt can describe top-vs-hanging
-      // orientation. describeAssembly is fully defensive about the shape.
-      assembly: raw.assembly && typeof raw.assembly === 'object' ? raw.assembly : undefined,
+      // Rebuilt field by field rather than passed through: these are
+      // JSON.stringify'd into a paid prompt, so an unclamped component note or
+      // step was an unbounded lever on the bill, and a null step threw.
+      components: cleanComponents(raw.components),
+      steps: cleanSteps(raw.steps),
+      // Carried through so the prompt can describe top-vs-hanging orientation.
+      // describeAssembly is fully defensive about the shape, but cap its size.
+      assembly: raw.assembly && typeof raw.assembly === 'object' && JSON.stringify(raw.assembly).length <= MAX_ASSEMBLY_CHARS
+        ? raw.assembly
+        : undefined,
     }
     if (!design.title) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
     const prompt = await buildPrompt(design)

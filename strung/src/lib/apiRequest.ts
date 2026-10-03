@@ -26,7 +26,7 @@ export const MODEL = 'claude-sonnet-5-5'
  * resulting Supabase client simply has no rights.
  */
 export function getToken(req: Request): string {
-  return req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
+  return req.headers.get('Authorization')?.replace('Bearer ', '').trim() ?? ''
 }
 
 /**
@@ -91,3 +91,72 @@ export function truncStr(v: unknown, max: number): string {
  * tell the reader the text is incomplete.
  */
 export const STREAM_ERROR_MARKER = '\n\n[The response was cut short — please try again.]'
+
+// Structural, so the SDK's MessageStream (and a test double) both satisfy it.
+type StreamEvent = { type: string; delta?: unknown }
+
+/**
+ * Turn an Anthropic message stream into a `text/plain` streaming Response.
+ *
+ * `client.messages.stream()` does not throw when the request fails — a bad API
+ * key, an overloaded model or a rejected message list only surfaces on the
+ * first read. Both streaming routes used to build the Response straight away,
+ * so every upstream failure went out as a 200 whose entire body was the
+ * cut-short marker. Pulling the first event before answering moves those
+ * failures back onto the status line, where the client already handles them.
+ *
+ * Cancelling the response (the reader navigated away) is passed upstream so
+ * the model stops generating tokens nobody will read.
+ */
+export async function streamTextResponse(
+  events: AsyncIterable<StreamEvent>,
+  label: string,
+): Promise<Response> {
+  const iterator = events[Symbol.asyncIterator]()
+  let first: IteratorResult<StreamEvent>
+  try {
+    first = await iterator.next()
+  } catch (e) {
+    console.error(`${label} stream init error:`, e)
+    return new Response('AI service error. Please try again.', { status: 502 })
+  }
+
+  const encoder = new TextEncoder()
+  const textOf = (event: StreamEvent): string => {
+    if (event.type !== 'content_block_delta' || !event.delta || typeof event.delta !== 'object') return ''
+    const delta = event.delta as { type?: unknown; text?: unknown }
+    return delta.type === 'text_delta' && typeof delta.text === 'string' ? delta.text : ''
+  }
+
+  const readable = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        let result = first
+        while (!result.done) {
+          const text = textOf(result.value)
+          if (text) controller.enqueue(encoder.encode(text))
+          result = await iterator.next()
+        }
+      } catch (e) {
+        // Past the first chunk the status line is already sent, so the only
+        // way to tell the reader the answer is incomplete is in-band.
+        console.error(`${label} stream chunk error:`, e)
+        try {
+          controller.enqueue(encoder.encode(STREAM_ERROR_MARKER))
+        } catch {
+          // Controller already closed or cancelled — nothing useful left to do.
+        }
+      }
+      try {
+        controller.close()
+      } catch {
+        // Already closed by a cancel.
+      }
+    },
+    async cancel() {
+      await iterator.return?.()
+    },
+  })
+
+  return new Response(readable, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+}

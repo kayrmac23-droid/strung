@@ -55,29 +55,29 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 | `/make` | Make | AI design generator + refinement + GPT Image preview |
 | `/make/build/[id]` | — | Step-by-step build mode; optional stash decrement on completion |
 | `/sequence` | Palette | Colour palette + repeating bead sequence generator |
-| `/codesign` | — | Conversational AI co-designer |
+| `/codesign` | Co-Design | Conversational AI co-designer |
 | `/journal` | Journal | Saved and completed builds |
 | `/account` | Account | Sign in / sign up |
 | `/auth/callback` | — | Supabase OAuth callback |
 | `/guides` | Learn | Jewellery guides + streaming AI advisor scoped to the open guide section |
 | `/glossary` | — | Static glossary (active under Learn nav item) |
-| `/calculator` | — | Utility calculator |
+| `/calculator` | Calculator | Bead count, wire length and approximate weight (`src/lib/beadMath.ts`) |
 | `/not-found` | — | 404 |
 
-Nav has 5 primary items (Stash, Make, Palette, Learn, Journal) plus Account. Note the mismatch between route and label: `/sequence` is labelled **Palette**.
+Nav has 7 items (Stash, Make, Co-Design, Palette, Calculator, Learn, Journal) plus Account. Note the mismatch between route and label: `/sequence` is labelled **Palette**.
 
 ## API Routes
 
 | Route | Method(s) | Auth | What it does |
 |---|---|---|---|
-| `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables |
-| `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Validates `pieceType` and `style` against allowlists (`style` is the firm aesthetic constraint; `mood` stays optional free text underneath it). Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on parse failure |
+| `/api/inventory` | GET, POST, DELETE, PATCH | yes — 401 on all methods | CRUD for `beads` and `findings` tables. Writes go through `cleanStashInput()` in `src/lib/stashItems.ts` (enum, hex, quantity and length checks — rejects with 400 naming the field). GET answers 500 if either table read fails, never an empty stash |
+| `/api/make` | POST | yes — 401 | AI generates one design as structured JSON. Validates `pieceType` and `style` against allowlists (`style` is the firm aesthetic constraint; `mood` stays optional free text underneath it). Accepts `previousDesign` + `adjustment` for refinement, and `recentTitles` to avoid repeats. Retries once on a truncated, unparseable, wrongly shaped or stash-violating reply; 502 if neither attempt produced a design |
 | `/api/make/image` | POST | yes — 401 | Builds an image prompt via Claude, calls OpenAI GPT Image 2 (`gpt-image-2`) |
-| `/api/builds` | GET, POST, DELETE, PATCH | yes — bare `GET` returns `[]` without auth, `GET ?id=` and all other methods 401 | CRUD for `builds` table. `GET ?id=` returns a single build, 404, or 401 |
-| `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100 |
-| `/api/codesign` | POST | yes — 401 | Streaming co-design chat (Claude) |
+| `/api/builds` | GET, POST, DELETE, PATCH | yes — bare `GET` returns `[]` without auth, `GET ?id=` and all other methods 401 | CRUD for `builds` table. `GET ?id=` returns a single build, 404, or 401. Writes go through `cleanBuildInput()` in `src/lib/builds.ts`, which strips `design.imageUrl` and caps the design at 100KB |
+| `/api/sequence` | POST | **no** | Colour palette + bead sequence JSON. Validates `harmonyType` / `pieceType` against allowlists, sanitises `anchorFamily`, caps `beads` at 100. The model reply is shape-checked by `normaliseSequenceResult()` (`src/lib/sequenceResult.ts`) — 502 if no palette came back |
+| `/api/codesign` | POST | yes — 401 | Streaming co-design chat (Claude). The history is rebuilt by `sanitiseChatMessages()` (`src/lib/chatMessages.ts`): text and inline base64 images only, empty turns dropped, last turn must be the user's |
 | `/api/advice` | POST | yes — 401 | Streaming jewellery advice (Claude) |
-| `/api/identify` | POST | yes — 401 | Vision identification (Claude). Default: single bead (`kind: 'bead'`) or finding (`kind: 'finding'`). With `mode: 'multi'`: identifies every distinct bead/finding group in one photo, returns `{ beads: [], findings: [] }` with per-item `confidence` (`certain`/`likely`/`unsure`), normalised via `src/lib/stashItems.ts` |
+| `/api/identify` | POST | yes — 401 | Vision identification (Claude). Identifies every distinct bead/finding group in one photo and returns `{ beads: [], findings: [] }` with per-item `confidence` (`certain`/`likely`/`unsure`), normalised via `src/lib/stashItems.ts`. There is only this multi mode — the Stash page sends `mode: 'multi'`, but the route ignores the field |
 | `/api/parse-stash` | POST | yes — 401 | Parses a plain-text stash description into `{ beads: [], findings: [] }` for the review flow (Claude) |
 
 There is no `/api/designs` route.
@@ -88,13 +88,13 @@ Two patterns:
 
 1. **JSON** (`/api/make`, `/api/identify`, `/api/sequence`, `/api/parse-stash`): Uses `client.messages.create()`, strips markdown fences, then `JSON.parse()`. Prompts say "Return ONLY valid JSON, no markdown, no backticks". Parse failures return `{ error: '...' }` with status 500. Use the shared `stripJsonFences()` helper from `@/lib/colour` rather than re-inlining `.replace(/```json|```/g, '').trim()`. `/api/identify` additionally falls back to extracting the outermost `{...}` block, checks `stop_reason === 'max_tokens'` before parsing, and returns 502 (not 500) for AI-side failures; `/api/make` retries the call once before giving up. Images are downscaled client-side to 1568px JPEG via `src/lib/imagePrep.ts` before upload — never send raw camera files (Vercel caps request bodies at 4.5MB).
 
-2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
+2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()` and hands it to `streamTextResponse()` from `@/lib/apiRequest`, which awaits the first event before answering (so an upstream failure is a 502, not a 200 with an empty body), pipes text deltas into a `text/plain` `ReadableStream`, and cancels the upstream if the reader goes away. The client reads with `readTextStream()` from `@/lib/streamText` — never `decoder.decode(value)` without `{ stream: true }`, which corrupts multi-byte characters split across chunks.
 
 Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest.ts` (currently `claude-sonnet-5-5`). Import it rather than inlining the id — it was inlined at eight call sites, so a model change meant eight edits and a missed one left a route silently on the old model.
 
 ## Image Generation
 
-`/api/make/image`: Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `high` quality. GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set. (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
+`/api/make/image`: used by Make (automatically, after each design) and Co-design (on demand — a "Render preview" button, since every blueprint revision would otherwise be a paid render). The route rebuilds the design field by field with length caps before prompting. Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `high` quality. GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set. (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
 
 ## Shared Route Helpers
 
@@ -105,6 +105,7 @@ Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest
 - `firstTextBlock(msg)` — the first `type: 'text'` block of an Anthropic response, `''` if there is none. **Never read `content[0]` directly** — that assumes the first block is text, so a leading non-text block silently yields `''` and the route reports a parse failure for a good response.
 - `truncStr(v, max)` — clamp a prompt field; non-strings become `''` rather than being coerced, so an object's `toString` cannot smuggle text past the cap.
 - `STREAM_ERROR_MARKER` — appended in-band when a stream dies partway. Past the first chunk the status line is already sent, so this is the only way to tell the reader the text is incomplete.
+- `streamTextResponse(stream, label)` — the whole streaming response for `/api/advice` and `/api/codesign`; see AI Response Patterns.
 
 `src/lib/richText.ts` is the single HTML escaper and formatter for everything rendered through `dangerouslySetInnerHTML` (the guide body, the advisor answer, the co-design chat bubble). Call `formatRichText(text, PRESET)` with `GUIDE_PROSE`, `ADVISOR_ANSWER` or `CHAT_MESSAGE`. **Escaping runs over the raw text before any markdown replacement** — reversing that order would let markup in the source survive as live HTML. Do not add a fourth local escaper.
 
@@ -171,7 +172,7 @@ The Supabase database requires three tables:
 
 `src/lib/supabase.ts` exports only `BeadItem` and `FindingItem`. There is no `DesignItem` type and no `designs` table — saved designs are stored as the `design` jsonb column on `builds`.
 
-Only `beads` and `findings` are writable through `/api/inventory`; the allowlist lives in `ALLOWED_TABLES` / `isAllowedTable()` in `@/lib/colour`, and any new table reachable by a `?table=` param must be added there.
+Only `beads` and `findings` are writable through `/api/inventory`; the allowlist lives in `ALLOWED_TABLES` / `isAllowedTable()` in `@/lib/colour`, and any new table reachable by a `?table=` param must be added there — along with its field rules in `cleanStashInput()`.
 
 The canonical `CREATE TABLE` SQL — including the `user_id` column on every table, `user_id` indexes, and per-user RLS policies — lives in README.md → "Set up the database". All three tables are per-user: the API filters every query by `user_id` and RLS enforces it. A table created without `user_id`/RLS will not work with these routes, and a missing table surfaces as PostgREST error `PGRST205` (logged server-side; the UI shows the sanitized "Database error").
 
@@ -179,9 +180,9 @@ The canonical `CREATE TABLE` SQL — including the `user_id` column on every tab
 
 ## Build Completion & Stash Decrement
 
-When a build is marked complete, `/make/build/[id]` offers to subtract the materials used from the stash. It matches `design.components[].item` against bead and finding **names** using a trim + lowercase comparison, checking beads first, then findings. Unmatched components are skipped silently, and quantities floor at 0.
+When a build is marked complete, `/make/build/[id]` offers to subtract the materials used from the stash. It matches `design.components[].item` against bead and finding **names** using a trim + lowercase comparison, checking beads first, then findings. Unmatched components are skipped silently, and quantities are rounded to whole numbers and floor at 0.
 
-This is deliberately best-effort — completion has already been persisted by the time it runs, so failures are swallowed and surfaced only as a note in the UI. Because matching is name-based, a design component whose wording drifts from the stash entry will simply not decrement. Keep that in mind before relying on stash counts being exact.
+This is deliberately best-effort — completion has already been persisted by the time it runs, so failures never undo it. Each PATCH's response is checked, though (`fetch` resolves on a 4xx/5xx), and the note says how many rows were updated, or that none matched — it used to report success regardless. Because matching is name-based, a design component whose wording drifts from the stash entry will simply not decrement. Keep that in mind before relying on stash counts being exact.
 
 ## Styling Conventions
 
@@ -198,6 +199,8 @@ Fonts are **self-hosted** via `next/font/local` from `src/app/fonts/` (latin-sub
 
 **Text colour vs UI colour.** `--madder` (#C4564C) is 3.74:1 on `--mocha` cards — fine for borders, dots and focus rings (WCAG 1.4.11 asks 3:1 of non-text) but under the 4.5:1 AA floor for the 10–11px mono caps it was being used at. Small text on the accent uses `--madder-text` (#D17A72, 5.60:1); `--madder` itself is unchanged and stays for every non-text use. Likewise `--field-edge` (#6E6A66, 3.31:1 on `--roast`) is the input/select border — `--seam` was 1.62:1 there, an effectively invisible control boundary. Every token keeps R > G ≥ B per DESIGN Rule 1.
 
+**Responsive layout.** Horizontal page padding comes from `.page-pad` (40px, stepping down to 20px and 14px on phones) — set only `paddingTop`/`paddingBottom` inline, never `padding: '52px 40px …'`. Two- and three-column grids use `.blueprint-grid` / `.form-grid-3` / `.stats-grid-4`, which collapse on narrow screens; an inline `gridTemplateColumns` does not.
+
 **Page shell.** Every page renders `<main id="main" className="page-main">` rather than repeating `paddingTop: 60` / `minHeight: '100vh'` inline. `.page-main` carries both, and `id="main"` is the target of the `.skip-link` that `Nav` renders as the first focusable element on the page. Use `100dvh`, never `100vh` — mobile browser chrome makes `100vh` overflow the viewport.
 
 ## Path Alias
@@ -206,7 +209,6 @@ Fonts are **self-hosted** via `next/font/local` from `src/app/fonts/` (latin-sub
 
 ## Known Constraints
 
-- **Dead palette exports**: `colourFamilies`, `metalTones` and `harmonyScore` in `@/lib/colour` have no consumer anywhere in the app — nothing imports them outside the tests. They are covered and correct (the family-miscount bug is fixed and regression-tested), but they are shipped weight with no UI behind them. Either wire them into the Palette page or delete them; do not leave them drifting.
 - **Vercel**: Root directory must be set to `strung/`. Do not add a `vercel.json` with a `builds` key.
 - **Next.js 15**: Components that use event handlers or browser APIs must have `'use client'` at the top.
 - All pages are `'use client'` React components.

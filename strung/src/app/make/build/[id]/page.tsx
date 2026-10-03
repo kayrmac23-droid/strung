@@ -58,6 +58,7 @@ export default function BuildPage() {
   const [showStashPrompt, setShowStashPrompt] = useState(false)
   const [decrementing, setDecrementing] = useState(false)
   const [stashNote, setStashNote] = useState('')
+  const [signedOut, setSignedOut] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -68,10 +69,21 @@ export default function BuildPage() {
       setError('')
       try {
         const res = await fetch(`/api/builds?id=${encodeURIComponent(id)}`, { headers: await getAuthHeaders() })
-        const record = await res.json()
-        if (!res.ok || record?.error || !record?.id) throw new Error(record?.error || 'Build not found')
+        const record = await res.json().catch(() => null)
         if (cancelled) return
-        setBuild(record)
+        setSignedOut(res.status === 401)
+        if (!res.ok || record?.error || !record?.id) throw new Error(record?.error || 'Build not found')
+        // builds.design is jsonb: guard the two fields every render reads so an
+        // older or hand-edited row degrades to "no steps" instead of crashing.
+        const design = record.design && typeof record.design === 'object' ? record.design : {}
+        setBuild({
+          ...record,
+          design: {
+            ...design,
+            steps: Array.isArray(design.steps) ? design.steps : [],
+            components: Array.isArray(design.components) ? design.components : [],
+          },
+        })
         setNotes(record.notes || '')
         setRating(record.rating || '')
       } catch (e: unknown) {
@@ -109,9 +121,10 @@ export default function BuildPage() {
         headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ id: build.id, ...updates }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok || data.error) throw new Error(data.error || 'Failed to save')
-      setBuild(data)
+      // Keep the guarded design already in state — the PATCH never changes it.
+      setBuild(prev => (prev ? { ...data, design: prev.design } : data))
       if (typeof data.notes === 'string') setNotes(data.notes)
       if (typeof data.rating === 'string' || data.rating === null) setRating(data.rating || '')
       return data
@@ -141,14 +154,23 @@ export default function BuildPage() {
       // Aggregate per stash row first so components that reference the same item
       // subtract the correct total in a single PATCH (see planStashDecrements).
       const targets = planStashDecrements(build.design.components || [], beads, findings)
-      await Promise.all(targets.map(t =>
+      // fetch() only rejects on a network failure — a 429 or 500 resolves — so
+      // each response has to be checked, or a failed update reads as success.
+      const results = await Promise.all(targets.map(t =>
         fetch('/api/inventory', {
           method: 'PATCH',
           headers: authHeaders,
           body: JSON.stringify({ table: t.table, id: t.id, data: { quantity: t.quantity } }),
-        })
+        }).then(r => r.ok, () => false)
       ))
-      setStashNote('Stash updated — used materials subtracted.')
+      const updated = results.filter(Boolean).length
+      if (targets.length === 0) {
+        setStashNote('None of the materials matched a stash item by name, so nothing was subtracted.')
+      } else if (updated < targets.length) {
+        setStashNote(`Updated ${updated} of ${targets.length} stash items — the rest could not be saved. Check your stash.`)
+      } else {
+        setStashNote(`Stash updated — ${updated} item${updated === 1 ? '' : 's'} subtracted.`)
+      }
     } catch {
       setStashNote('Could not update your stash, but your finished build is saved.')
     } finally {
@@ -157,18 +179,15 @@ export default function BuildPage() {
     }
   }
 
-  async function startBuildIfDraft() {
-    if (!build || build.status !== 'draft') return
-    await patchBuild({
-      status: 'in_progress',
-      started_at: build.started_at || new Date().toISOString(),
-    })
-  }
-
   async function goToStep(stepIndex: number) {
     if (!build || build.status === 'completed') return
-    await startBuildIfDraft()
-    await patchBuild({ status: 'in_progress', current_step: stepIndex })
+    // One PATCH: starting a draft used to be a separate request ahead of the
+    // step change, which doubled the writes and could leave the step unsaved.
+    await patchBuild({
+      status: 'in_progress',
+      current_step: stepIndex,
+      ...(build.started_at ? {} : { started_at: new Date().toISOString() }),
+    })
   }
 
   async function completeBuild() {
@@ -203,7 +222,7 @@ export default function BuildPage() {
       <>
         <Nav />
         <main id="main" className="page-main">
-          <div style={{ maxWidth: 900, margin: '0 auto', padding: '60px 40px' }}>
+          <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 60, paddingBottom: 60 }}>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <span className="spinner-dark" />
             </div>
@@ -218,9 +237,10 @@ export default function BuildPage() {
       <>
         <Nav />
         <main id="main" className="page-main">
-          <div style={{ maxWidth: 900, margin: '0 auto', padding: '60px 40px' }}>
+          <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 60, paddingBottom: 60 }}>
             <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)' }}>{error || 'Build not found'}</p>
-            <div style={{ marginTop: 20 }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              {signedOut && <Link href="/account" className="btn-silver">Sign in</Link>}
               <Link href="/journal" className="btn-outline">Back to journal</Link>
             </div>
           </div>
@@ -233,7 +253,7 @@ export default function BuildPage() {
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '52px 40px 80px' }}>
+        <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
           <p className="section-eyebrow">Build mode</p>
           <h1 style={{
             fontSize: 40,

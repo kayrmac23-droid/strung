@@ -90,7 +90,9 @@ describe('controlled vocabulary', () => {
       for (const value of REFERENCE_VOCABULARY[field]) {
         const used = TAGGED_REFERENCES.some((r) => {
           const v = r[field as keyof TaggedReference]
-          return Array.isArray(v) ? v.includes(value) : v === value
+          // Widened to unknown[]: the union of list fields includes object
+          // arrays (materials), so .includes() on the narrow type rejects a string.
+          return Array.isArray(v) ? (v as unknown[]).includes(value) : v === value
         })
         expect(used, `${field}: "${value}" is in the vocabulary but tags nothing`).toBe(true)
       }
