@@ -4,7 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { firstTextBlock } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -59,7 +59,7 @@ Omit "shape" and "notes" when empty. Use an empty string for unknown "size". If 
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     })

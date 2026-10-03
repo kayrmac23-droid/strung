@@ -1,9 +1,21 @@
 // Shared plumbing for the API routes.
 //
-// Every route was re-implementing the same four things — pulling the bearer
-// token, parsing a JSON body defensively, reading text out of an Anthropic
-// response, and clamping a free-text field before it goes into a paid prompt.
-// Four copies meant four places to fix a bug, so they live here instead.
+// Every route was re-implementing the same handful of things — naming the
+// model, pulling the bearer token, parsing a JSON body defensively, reading
+// text out of an Anthropic response, and clamping a free-text field before it
+// goes into a paid prompt. Duplicate copies meant several places to fix a bug,
+// so they live here instead.
+
+/**
+ * The Claude model every AI route calls.
+ *
+ * This id was inlined at eight call sites across seven routes, so a model
+ * change meant eight edits and any one of them could be missed — leaving some
+ * routes on the old model with nothing to flag the mismatch. The routes have no
+ * reason to disagree about which model they use, so the id lives here and they
+ * import it.
+ */
+export const MODEL = 'claude-sonnet-5-5'
 
 /**
  * Bearer token from the Authorization header, or '' when absent.

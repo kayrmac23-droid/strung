@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { getToken, firstTextBlock, truncStr } from '@/lib/apiRequest'
+import { MODEL, getToken, firstTextBlock, truncStr } from '@/lib/apiRequest'
 import {
   ALLOWED_TECHNIQUES,
   TECHNIQUE_LIST_TEXT,
@@ -316,7 +316,7 @@ Produce a revised version of the SAME design that applies this change while keep
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 4500,
       messages: [{ role: 'user', content: prompt }],
     })
@@ -337,7 +337,7 @@ ${violations.map((v) => `- ${v}`).join('\n')}
 Correct ONLY these issues while keeping everything else the same, and return the full corrected design in the exact same JSON schema, ONLY valid JSON, no markdown, no backticks.`
       try {
         const retry = await client.messages.create({
-          model: 'claude-sonnet-4-6',
+          model: MODEL,
           max_tokens: 4500,
           messages: [{ role: 'user', content: retryPrompt }],
         })

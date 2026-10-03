@@ -90,7 +90,7 @@ Two patterns:
 
 2. **Streaming** (`/api/advice`, `/api/codesign`): Uses `client.messages.stream()`, pipes `content_block_delta` chunks into a `ReadableStream`, returns `text/plain`. The client reads with `res.body.getReader()`.
 
-Every AI route uses model `claude-sonnet-4-6`.
+Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest.ts` (currently `claude-sonnet-5-5`). Import it rather than inlining the id — it was inlined at eight call sites, so a model change meant eight edits and a missed one left a route silently on the old model.
 
 ## Image Generation
 
