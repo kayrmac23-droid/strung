@@ -4,7 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding, itemConfidence } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, parseBody } from '@/lib/apiRequest'
+import { MODEL, parseBody, withEffort, logUsage } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 3000,
-      temperature: 0.2,
+      ...withEffort('medium'),
       messages: [{
         role: 'user',
         content: [
@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
       }],
     })
 
+    logUsage('identify', response)
     if (response.stop_reason === 'max_tokens') {
       console.error('identify error: response truncated at max_tokens')
       return Response.json({ error: 'The response was cut off — try photographing fewer groups at once' }, { status: 502 })

@@ -159,6 +159,27 @@ create policy "builds_update_own"   on public.builds   for update using (auth.ui
 create policy "builds_delete_own"   on public.builds   for delete using (auth.uid() = user_id);
 ```
 
+#### Optional: daily image-render cap
+
+`/api/make/image` (the one expensive call) is limited to 25 renders per user per 24 hours, counted in a small table so the limit holds across serverless instances. Without this table the cap is simply not enforced (the route logs `daily cap read failed (allowing)` and carries on), so run it once:
+
+```sql
+create table public.usage_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade default auth.uid(),
+  kind text not null,
+  created_at timestamptz not null default now()
+);
+
+create index usage_events_user_kind_time_idx on public.usage_events (user_id, kind, created_at desc);
+
+alter table public.usage_events enable row level security;
+
+-- Select and insert only: a user must not be able to delete their own rows to reset the count.
+create policy "usage_events_select_own" on public.usage_events for select using (auth.uid() = user_id);
+create policy "usage_events_insert_own" on public.usage_events for insert with check (auth.uid() = user_id);
+```
+
 Notes for anyone upgrading from an earlier version of this README:
 
 - The old SQL had no `user_id` column and no RLS. The API filters every query by `user_id`, so tables created from it will not work — recreate them, or add the column and policies.

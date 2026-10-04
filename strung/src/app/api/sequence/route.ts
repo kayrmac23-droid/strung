@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests, clientIp } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock, truncStr, parseBody } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, truncStr, parseBody, withEffort, logUsage } from '@/lib/apiRequest'
 import { normaliseSequenceResult } from '@/lib/sequenceResult'
 
 // Without an explicit key the SDK falls back to its own env lookup, which is
@@ -150,8 +150,10 @@ Rules:
     const msg = await client.messages.create({
       model: MODEL,
       max_tokens: 3000,
+      ...withEffort('low'),
       messages: [{ role: 'user', content: prompt }],
     })
+    logUsage('sequence', msg)
     if (msg.stop_reason === 'max_tokens') {
       console.error('sequence error: response truncated at max_tokens')
       return NextResponse.json({ error: 'Palette too long — try again' }, { status: 502 })

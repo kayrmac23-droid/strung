@@ -94,7 +94,7 @@ Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest
 
 ## Image Generation
 
-`/api/make/image`: used by Make (automatically, after each design) and Co-design (on demand — a "Render preview" button, since every blueprint revision would otherwise be a paid render). The route rebuilds the design field by field with length caps before prompting. Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `high` quality. GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set. (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
+`/api/make/image`: used by Make and Co-design, both **on demand** via a "Render preview" button — never automatically, since every design or revision would otherwise be a paid render (Make rendered after every design and refine until it was changed). The route rebuilds the design field by field with length caps before prompting. Claude first generates an optimised image prompt (under 850 chars) from the design JSON, then calls OpenAI's `gpt-image-2` model at `1024x1024` / `medium` quality (`high` is ~4× the price for a reference picture). GPT image models always return base64 (`b64_json`) — the `url` response format DALL·E used isn't supported — so the route wraps it in a `data:image/png;base64,…` URI and returns `{ imageUrl }`. The route returns `501` if `OPENAI_API_KEY` is not set, and `429` once the user has used `IMAGE_DAILY_CAP` renders in 24h (`takeDailyAllowance()` in `src/lib/dailyCap.ts`, counted in the `usage_events` table; fails open and logs if the table is unreachable). (Note: OpenAI removed `dall-e-3` from the API on 2026-05-12; GPT image models also require organization verification to call.)
 
 ## Shared Route Helpers
 
@@ -106,6 +106,8 @@ Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest
 - `truncStr(v, max)` — clamp a prompt field; non-strings become `''` rather than being coerced, so an object's `toString` cannot smuggle text past the cap.
 - `STREAM_ERROR_MARKER` — appended in-band when a stream dies partway. Past the first chunk the status line is already sent, so this is the only way to tell the reader the text is incomplete.
 - `streamTextResponse(stream, label)` — the whole streaming response for `/api/advice` and `/api/codesign`; see AI Response Patterns.
+- `withEffort(level)` — spread into every non-streaming `messages.create()`. On `claude-sonnet-5-5`, omitting `output_config` runs adaptive thinking at default effort: those tokens bill as output and count against `max_tokens`. Levels in use: `medium` for `/api/make` and `/api/identify`, `low` for the image-prompt writer, `/api/parse-stash` and `/api/sequence`. Do not pass `temperature`/`top_p`/`top_k` — non-default sampling values are rejected on this model.
+- `logUsage(label, msg)` — one `ai-usage` JSON line (input/output/cache tokens, stop reason) per call; grep the runtime logs for it to see real cost and whether a reply was cut off by `max_tokens`.
 
 `src/lib/richText.ts` is the single HTML escaper and formatter for everything rendered through `dangerouslySetInnerHTML` (the guide body, the advisor answer, the co-design chat bubble). Call `formatRichText(text, PRESET)` with `GUIDE_PROSE`, `ADVISOR_ANSWER` or `CHAT_MESSAGE`. **Escaping runs over the raw text before any markdown replacement** — reversing that order would let markup in the source survive as live HTML. Do not add a fourth local escaper.
 
@@ -162,7 +164,7 @@ Do **not** use the singleton client from `src/lib/supabase.ts` in API routes —
 
 ### Database tables
 
-The Supabase database requires three tables:
+The Supabase database requires three tables (plus an optional fourth, `usage_events`, which backs the daily image cap — see README):
 
 | Table | Type exported from |
 |---|---|
