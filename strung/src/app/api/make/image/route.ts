@@ -1,13 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
-import { getUserFromRequest } from '@/lib/auth'
+import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock, parseBody, truncStr } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, getToken, parseBody, truncStr, withEffort, logUsage } from '@/lib/apiRequest'
+import { IMAGE_DAILY_CAP, takeDailyAllowance, dailyCapReached } from '@/lib/dailyCap'
 import { buildFallbackImagePrompt, describeAssembly, IMAGE_PHOTO_SUFFIX } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// GPT Image 2 at high quality is the priciest upstream call in the app, so cap it tighter.
+// GPT Image 2 is the priciest upstream call in the app, so cap it tighter. This
+// is the per-instance burst limit; the daily ceiling (IMAGE_DAILY_CAP) is persisted.
 const RATE_LIMIT = 10
 const RATE_WINDOW_MS = 60_000
 
@@ -52,6 +54,7 @@ async function buildPrompt(design: Record<string, unknown>): Promise<string> {
   const res = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 400,
+    ...withEffort('low'),
     messages: [
       {
         role: 'user',
@@ -73,6 +76,7 @@ Output ONLY the prompt text, nothing else.`,
     ],
   })
 
+  logUsage('make/image prompt', res)
   const text = firstTextBlock(res).trim()
   // The prompt-writer is non-critical: if it truncates at max_tokens or comes
   // back empty, fall back to a deterministic prompt so the preview still renders
@@ -116,6 +120,13 @@ export async function POST(req: NextRequest) {
         : undefined,
     }
     if (!design.title) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
+
+    // After validation and the config check, so a rejected or unconfigured
+    // request does not spend any of the user's allowance — and before the first
+    // paid call (the prompt-writer), so a capped user costs nothing.
+    const allowance = await takeDailyAllowance(getAuthenticatedClient(getToken(req)), user.id, 'image', IMAGE_DAILY_CAP)
+    if (!allowance.allowed) return dailyCapReached()
+
     const prompt = await buildPrompt(design)
 
     const res = await fetch('https://api.openai.com/v1/images/generations', {
@@ -129,7 +140,9 @@ export async function POST(req: NextRequest) {
         prompt,
         n: 1,
         size: '1024x1024',
-        quality: 'high',
+        // medium is ~1/4 the price of high; the render is a reference picture,
+        // not the deliverable.
+        quality: 'medium',
       }),
     })
 

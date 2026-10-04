@@ -82,6 +82,45 @@ export function truncStr(v: unknown, max: number): string {
 }
 
 /**
+ * Request fragment that pins how hard the model thinks: spread it into a
+ * `messages.create()` call.
+ *
+ * Leaving `output_config` out is not "no thinking" on this model — omitting it
+ * runs adaptive thinking at the default effort, and those thinking tokens bill
+ * as output *and* count against `max_tokens`. On the JSON routes that meant
+ * paying for reasoning nobody sees and, with a tight cap, a reply cut off
+ * before the JSON finished. Say the level out loud per route instead.
+ */
+export function withEffort(effort: 'low' | 'medium' | 'high') {
+  return { output_config: { effort } } as const
+}
+
+/**
+ * Log what one model call consumed, as a single greppable line.
+ *
+ * Nothing recorded token usage, so cost was a guess and a truncated reply
+ * could not be told apart from a thinking budget that ate the cap. One JSON
+ * line per call is enough to answer both from the runtime logs.
+ */
+export function logUsage(
+  label: string,
+  msg: { usage?: unknown; stop_reason?: unknown } | null | undefined,
+): void {
+  const u = (msg?.usage && typeof msg.usage === 'object' ? msg.usage : {}) as Record<string, unknown>
+  const n = (v: unknown) => (typeof v === 'number' ? v : 0)
+  console.log(
+    'ai-usage',
+    JSON.stringify({
+      route: label,
+      input: n(u.input_tokens),
+      output: n(u.output_tokens),
+      cacheRead: n(u.cache_read_input_tokens),
+      stop: typeof msg?.stop_reason === 'string' ? msg.stop_reason : null,
+    }),
+  )
+}
+
+/**
  * Appended to a stream that dies partway through.
  *
  * The streaming routes used to swallow a mid-stream error and close the

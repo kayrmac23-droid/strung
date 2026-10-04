@@ -4,7 +4,7 @@ import { getUserFromRequest } from '@/lib/auth'
 import { normaliseBead, normaliseFinding } from '@/lib/stashItems'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, firstTextBlock, parseBody } from '@/lib/apiRequest'
+import { MODEL, firstTextBlock, parseBody, withEffort, logUsage } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -58,8 +58,10 @@ Omit "shape" and "notes" when empty. Use an empty string for unknown "size". If 
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 3000,
+      ...withEffort('low'),
       messages: [{ role: 'user', content: prompt }],
     })
+    logUsage('parse-stash', response)
     if (response.stop_reason === 'max_tokens') {
       console.error('parse-stash error: response truncated at max_tokens')
       return NextResponse.json({ error: 'That description was too long to parse — try splitting it up' }, { status: 502 })

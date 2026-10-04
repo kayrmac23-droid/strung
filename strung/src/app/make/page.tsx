@@ -124,7 +124,8 @@ export default function MakePage() {
       if (typeof data.title === 'string' && data.title) {
         setRecentTitles(prev => [data.title, ...prev.filter(t => t !== data.title)].slice(0, 5))
       }
-      fetchImage(data)
+      // No automatic render: each preview is a paid image call, so it runs only
+      // when the maker asks for it ("Render preview").
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Generation failed')
     } finally {
@@ -153,7 +154,10 @@ export default function MakePage() {
       if (!res.ok || data.error) throw new Error(data.error || 'Adjustment failed — please try again.')
       setDesign(data)
       setAdjustment('')
-      fetchImage(data)
+      // The design changed, so a render still in flight belongs to the old one:
+      // invalidate it (refine used to do this by starting a new render itself).
+      imageRequest.current++
+      setImageLoading(false); setImageError('')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Adjustment failed')
     } finally {
@@ -183,7 +187,9 @@ export default function MakePage() {
       setImageError(
         res.status === 501
           ? 'Preview images aren’t configured on this deployment (missing OPENAI_API_KEY).'
-          : 'Couldn’t render a preview image — the design itself is ready to build.'
+          : res.status === 429
+            ? (typeof data.error === 'string' && data.error) || 'Too many previews in a row — wait a moment and try again.'
+            : 'Couldn’t render a preview image — the design itself is ready to build.'
       )
     } catch {
       if (current()) setImageError('Couldn’t render a preview image — the design itself is ready to build.')
@@ -192,6 +198,7 @@ export default function MakePage() {
     }
   }
 
+  // First render and retry are the same action now that nothing renders on its own.
   function retryImage() {
     if (design && !imageLoading) fetchImage(design)
   }
@@ -512,8 +519,10 @@ export default function MakePage() {
                       </button>
                     </div>
                   ) : (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em' }}>
-                      Preview will appear here.
+                    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                      <button className="btn-outline" onClick={retryImage} disabled={imageLoading}>
+                        Render preview
+                      </button>
                     </div>
                   )}
                 </div>

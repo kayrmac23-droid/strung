@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, getToken, firstTextBlock, truncStr } from '@/lib/apiRequest'
+import { MODEL, getToken, firstTextBlock, truncStr, withEffort, logUsage } from '@/lib/apiRequest'
 import {
   ALLOWED_TECHNIQUES,
   TECHNIQUE_LIST_TEXT,
@@ -337,8 +337,10 @@ Produce a revised version of the SAME design that applies this change while keep
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4500,
+      ...withEffort('medium'),
       messages: [{ role: 'user', content: text }],
     })
+    logUsage('make', response)
     if (response.stop_reason === 'max_tokens') {
       return { design: null, violations: ['Your response was cut off — keep the design more compact'] }
     }
