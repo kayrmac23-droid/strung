@@ -20,35 +20,62 @@ Check whether `strung/src/app/api/<name>/route.ts` already exists. If it does, s
 
 ## Step 3 — Write the file
 
+Every template below follows the rules in `CLAUDE.md` (Auth, AI Response Patterns, Shared Route Helpers). Do not drop any of these: the auth check, the rate limit, `parseBody`, `MODEL`, `withEffort`, `logUsage` / `streamTextResponse`, and `firstTextBlock` + `parseJsonLoose` (never `content[0]`, never a hand-inlined fence strip or stream loop).
+
+Pick `RATE_LIMIT` per minute to match the route's cost: 10 for the image route, 15–30 for Claude routes, 120 for plain database CRUD. Pick effort `low` for extraction / short answers, `medium` for design generation or vision.
+
 ### JSON route template
 
 ```ts
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
+import { parseJsonLoose } from '@/lib/colour'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { MODEL, firstTextBlock, parseBody, truncStr, withEffort, logUsage } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const RATE_LIMIT = 20
+const RATE_WINDOW_MS = 60_000
+
 export async function POST(req: NextRequest) {
+  const user = await getUserFromRequest(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const limit = rateLimit(`<name>:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
+
+  const body = await parseBody(req)
+  if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  // TODO: validate each field by type and length; answer 400 naming the field.
+  // Clamp anything interpolated into the prompt with truncStr().
+
+  const prompt = `TODO: prompt. Return ONLY valid JSON, no markdown, no backticks:
+{"TODO":"shape"}`
+
   try {
-    const body = await req.json()
-    // TODO: destructure what you need from body
-
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `TODO: write prompt using body data. Return ONLY valid JSON, no markdown, no backticks.`,
-        },
-      ],
+      model: MODEL,
+      max_tokens: 2000,
+      ...withEffort('low'),
+      messages: [{ role: 'user', content: prompt }],
     })
-
-    const raw = (response.content[0] as { type: 'text'; text: string }).text
-    const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim())
+    logUsage('<name>', response)
+    if (response.stop_reason === 'max_tokens') {
+      return NextResponse.json({ error: 'The response was cut short — try again' }, { status: 502 })
+    }
+    let parsed: unknown
+    try {
+      parsed = parseJsonLoose(firstTextBlock(response))
+    } catch {
+      return NextResponse.json({ error: 'Could not read the AI response — try again' }, { status: 502 })
+    }
+    // TODO: shape-check `parsed` before returning it; 502 if it is the wrong shape.
     return NextResponse.json(parsed)
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('<name> error:', e)
+    return NextResponse.json({ error: 'Request failed' }, { status: 500 })
   }
 }
 ```
@@ -58,44 +85,40 @@ export async function POST(req: NextRequest) {
 ```ts
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
+import { getUserFromRequest } from '@/lib/auth'
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
+import { MODEL, parseBody, streamTextResponse, withEffort } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
+const RATE_LIMIT = 30
+const RATE_WINDOW_MS = 60_000
+
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json()
-    // TODO: destructure what you need from body
+  const user = await getUserFromRequest(req)
+  if (!user) return new Response('Unauthorized', { status: 401 })
 
-    const stream = await client.messages.stream({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `TODO: write prompt using body data.`,
-        },
-      ],
-    })
+  const limit = rateLimit(`<name>:${user.id}`, RATE_LIMIT, RATE_WINDOW_MS)
+  if (!limit.allowed) return tooManyRequests(limit.retryAfter)
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-            controller.enqueue(new TextEncoder().encode(chunk.delta.text))
-          }
-        }
-        controller.close()
-      },
-    })
+  const body = await parseBody(req)
+  if (!body) return new Response('Invalid request body', { status: 400 })
+  // TODO: validate each field by type and length; answer 400 naming the field.
 
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
-  } catch (err) {
-    return new Response(String(err), { status: 500 })
-  }
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 2000,
+    ...withEffort('low'),
+    system: 'TODO: system prompt',
+    messages: [{ role: 'user', content: 'TODO' }],
+  })
+  // Awaits the first event (upstream failure → 502), pipes text deltas, appends
+  // STREAM_ERROR_MARKER on max_tokens, and logs usage.
+  return streamTextResponse(stream, '<name>')
 }
 ```
+
+If the route reads or writes user data, add `getAuthenticatedClient(token)` from `@/lib/auth` and filter every query by `user_id` (see CLAUDE.md → Supabase Access). Never use the singleton client from `@/lib/supabase` in a route.
 
 ## Step 4 — Fill in the TODO comments
 
@@ -105,5 +128,6 @@ Replace both TODO comments with real logic based on what the user said the route
 
 Tell the user:
 - The file path created
-- The response type and model used
-- What they need to wire up on the client side (fetch call pattern to use, whether to read with `res.json()` or `res.body.getReader()`)
+- The response type, effort level and rate limit chosen
+- What they need to wire up on the client side: send `getAuthHeaders()` from `@/lib/authClient`; read JSON with `res.json()`, or a stream with `readTextStream()` from `@/lib/streamText` (never a hand-rolled `decoder.decode(value)` without `{ stream: true }`)
+- That the route must be added to the API Routes tables in `CLAUDE.md` and `README.md`
