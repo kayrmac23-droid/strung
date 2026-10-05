@@ -95,8 +95,8 @@ export default function AccountPage() {
             </div>
           ) : sessionEmail ? (
             <div className="card fade-up" style={{ padding: 32 }}>
-              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 6 }}>SIGNED IN AS</p>
-              <p style={{ color: 'var(--cream)', fontSize: 17, marginBottom: 28 }}>{sessionEmail}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 6 }}>SIGNED IN AS</p>
+              <p style={{ color: 'var(--cream)', fontSize: 'var(--fs-lead)', marginBottom: 28 }}>{sessionEmail}</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <Link href="/bench" className="btn-primary btn-md">Go to your bench →</Link>
                 <button className="btn-outline" onClick={signOut}>Sign out</button>
@@ -104,7 +104,7 @@ export default function AccountPage() {
             </div>
           ) : (
             <form className="card fade-up" style={{ padding: 32 }} onSubmit={submit} noValidate>
-              <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
+              <p style={{ color: 'var(--text2)', fontSize: 'var(--fs-md)', marginBottom: 24, lineHeight: 1.6 }}>
                 {mode === 'signin'
                   ? 'Sign in to save and sync your stash, designs, and builds across devices.'
                   : 'Create an account to save your stash, designs, and builds.'}
@@ -115,7 +115,7 @@ export default function AccountPage() {
                 {(['signin', 'signup'] as Mode[]).map(m => (
                   <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); reset() }} style={{
                     flex: 1, padding: '9px 0',
-                    fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '0.12em', textTransform: 'uppercase',
                     background: mode === m ? 'var(--umber)' : 'var(--roast)',
                     border: `1px solid ${mode === m ? 'var(--cream)' : 'var(--seam)'}`,
                     color: mode === m ? 'var(--cream)' : 'var(--meta)',
@@ -159,7 +159,7 @@ export default function AccountPage() {
 
               {msg && (
                 <p role={isError ? 'alert' : 'status'} style={{
-                  marginTop: 16, fontSize: 14, lineHeight: 1.5,
+                  marginTop: 16, fontSize: 'var(--fs-sm)', lineHeight: 1.5,
                   fontFamily: isError ? 'var(--font-mono)' : 'var(--font-body)',
                   color: isError ? 'var(--rose)' : 'var(--sage)',
                 }}>

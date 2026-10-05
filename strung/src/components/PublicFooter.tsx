@@ -8,9 +8,9 @@ export default function PublicFooter() {
     <footer style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, flexWrap: 'wrap',
       padding: '24px 0 36px', borderTop: '1px solid var(--seam)',
-      fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--meta)',
+      fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--meta)',
     }}>
-      <Link href="/" style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 17, letterSpacing: '-.03em', textTransform: 'none', color: 'var(--cream)' }}>strung</Link>
+      <Link href="/" style={{ fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 'var(--fs-lead)', letterSpacing: '-.03em', textTransform: 'none', color: 'var(--cream)' }}>strung</Link>
       <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
         {links.map(([href, label]) => <Link key={href} href={href} style={{ color: 'var(--meta)' }}>{label}</Link>)}
       </div>

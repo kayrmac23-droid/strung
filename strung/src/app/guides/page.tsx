@@ -114,8 +114,8 @@ export default function GuidesPage() {
         <div className="page-pad" style={{maxWidth:1200,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Technique Library</p>
-            <h1 className="fade-up-1" style={{fontSize:36,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Guides</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:16}}>Practical techniques for the style of jewellery you actually want to make.</p>
+            <h1 className="fade-up-1" style={{fontSize:'var(--fs-heading-lg)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Guides</h1>
+            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:'var(--fs-base)'}}>Practical techniques for the style of jewellery you actually want to make.</p>
           </header>
 
           <div className="guides-grid">
@@ -129,9 +129,9 @@ export default function GuidesPage() {
                 }}>
                   <span style={{marginTop:2,flexShrink:0}}><BeadIcon shape={g.icon as BeadShape} size={16} stroke="var(--tan)" /></span>
                   <div>
-                    <p style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--muted2)'}}>{g.category}</p>
-                    <p style={{fontFamily:'var(--font-display)',fontSize:14,color:'var(--cream)',marginTop:2}}>{g.title}</p>
-                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3,fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted)'}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',letterSpacing:'0.14em',textTransform:'uppercase',color:'var(--muted2)'}}>{g.category}</p>
+                    <p style={{fontFamily:'var(--font-display)',fontSize:'var(--fs-sm)',color:'var(--cream)',marginTop:2}}>{g.title}</p>
+                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3,fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',color:'var(--muted)'}}>
                       <span style={{color:diffColor(g.difficulty),fontSize:7}}>⬤</span>
                       <span>{g.difficulty}</span><span>·</span><span>{g.time}</span>
                     </div>
@@ -146,14 +146,14 @@ export default function GuidesPage() {
                 <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
                   <span className="tag">{active.category}</span>
                   <span className="tag" style={{borderColor:diffColor(active.difficulty),color:diffColor(active.difficulty)}}>{active.difficulty}</span>
-                  <span className="mono muted" style={{fontSize:10}}>{active.time} read</span>
+                  <span className="mono muted" style={{fontSize:'var(--fs-3xs)'}}>{active.time} read</span>
                 </div>
-                <h2 style={{fontSize:25,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginBottom:8}}>{active.title}</h2>
-                <p style={{color:'var(--text2)',fontSize:15}}>{active.summary}</p>
+                <h2 style={{fontSize:'var(--fs-heading-sm)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginBottom:8}}>{active.title}</h2>
+                <p style={{color:'var(--text2)',fontSize:'var(--fs-md)'}}>{active.summary}</p>
                 <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:18,paddingTop:16,borderTop:'1px solid var(--border)'}}>
                   {active.sections.map((s,i) => (
                     <button key={i} onClick={()=>setSection(i)} style={{
-                      fontFamily:'var(--font-mono)',fontSize:10,letterSpacing:'0.08em',
+                      fontFamily:'var(--font-mono)',fontSize:'var(--fs-3xs)',letterSpacing:'0.08em',
                       padding:'6px 12px',background:'var(--bg2)',
                       border:`1px solid ${section===i?'var(--silver)':'var(--border)'}`,
                       color:section===i?'var(--silver2)':'var(--muted)',cursor:'pointer',transition:'all 0.15s'
@@ -163,7 +163,7 @@ export default function GuidesPage() {
               </div>
 
               <div className="card" style={{padding:30}}>
-                <h3 style={{fontFamily:'var(--font-display)',fontSize:24,fontWeight:400,color:'var(--silver2)',marginBottom:18}}>{active.sections[section].heading}</h3>
+                <h3 style={{fontFamily:'var(--font-display)',fontSize:'var(--fs-heading-sm)',fontWeight:400,color:'var(--silver2)',marginBottom:18}}>{active.sections[section].heading}</h3>
                 <div dangerouslySetInnerHTML={{__html:formatRichText(active.sections[section].body, GUIDE_PROSE)}}/>
                 <div style={{display:'flex',marginTop:22,paddingTop:18,borderTop:'1px solid var(--border)'}}>
                   {section>0&&<button className="btn-outline" onClick={()=>setSection(s=>s-1)}>← Previous</button>}
@@ -175,17 +175,17 @@ export default function GuidesPage() {
                 <div style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:14}}>
                   <div style={{width:8,height:8,borderRadius:'50%',background:'var(--madder)',marginTop:6,flexShrink:0}}/>
                   <div>
-                    <p className="mono" style={{fontSize:10,letterSpacing:'0.14em',color:'var(--muted)'}}>ASK ABOUT THIS</p>
-                    <p style={{fontSize:14,color:'var(--text2)',marginTop:2}}>Questions about <em>{active.sections[section].heading}</em>?</p>
+                    <p className="mono" style={{fontSize:'var(--fs-3xs)',letterSpacing:'0.14em',color:'var(--muted)'}}>ASK ABOUT THIS</p>
+                    <p style={{fontSize:'var(--fs-sm)',color:'var(--text2)',marginTop:2}}>Questions about <em>{active.sections[section].heading}</em>?</p>
                   </div>
                 </div>
                 {signedOut ? (
-                  <div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:'14px 18px',fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>
+                  <div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:'14px 18px',fontSize:'var(--fs-sm)',color:'var(--text2)',fontFamily:'var(--font-body)'}}>
                     <Link href="/account" style={{color:'var(--moonstone)',textDecoration:'underline'}}>Sign in</Link> to ask the advisor.
                   </div>
                 ) : (
                   <>
-                    {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:15,color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
+                    {aiA&&<div style={{background:'var(--bg2)',border:'1px solid var(--border)',padding:18,marginBottom:14,fontSize:'var(--fs-md)',color:'var(--text)',fontFamily:'var(--font-body)',lineHeight:1.7}}
                       dangerouslySetInnerHTML={{__html:formatRichText(aiA, ADVISOR_ANSWER)}}/>}
                     <div style={{display:'flex',gap:10}}>
                       <input type="text" className="input-base" style={{flex:1}}

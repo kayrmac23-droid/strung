@@ -81,7 +81,7 @@ function BeadDiagram({ count, beadMm }: { count: number; beadMm: number }) {
       {hasMore && (
         <span style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: 11,
+          fontSize: 'var(--fs-2xs)',
           color: 'var(--muted)',
           letterSpacing: '0.08em',
           marginLeft: 4,
@@ -157,7 +157,7 @@ export default function CalculatorPage() {
           <header style={{ marginBottom: 44 }}>
             <p className="section-eyebrow fade-up">Maker Tools</p>
             <h1 className="fade-up-1" style={{
-              fontSize: 36,
+              fontSize: 'var(--fs-heading-lg)',
               color: 'var(--cream)',
               fontFamily: 'var(--font-display)',
               fontWeight: 400,
@@ -165,7 +165,7 @@ export default function CalculatorPage() {
             }}>
               Bead Calculator
             </h1>
-            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 16, maxWidth: 560, lineHeight: 1.65 }}>
+            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 'var(--fs-base)', maxWidth: 560, lineHeight: 1.65 }}>
               Work out bead counts, wire lengths, and weight estimates before you string a single bead.
             </p>
           </header>
@@ -186,7 +186,7 @@ export default function CalculatorPage() {
                   className="input-base"
                   value={length}
                   onChange={e => setLength(e.target.value)}
-                  style={{ width: 110, fontSize: 16 }}
+                  style={{ width: 110, fontSize: 'var(--fs-base)' }}
                   placeholder="18"
                 />
                 <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -197,7 +197,7 @@ export default function CalculatorPage() {
                       style={{
                         padding: '8px 16px',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: 11,
+                        fontSize: 'var(--fs-2xs)',
                         letterSpacing: '0.1em',
                         background: unit === u ? 'var(--surface2)' : 'transparent',
                         color: unit === u ? 'var(--cream)' : 'var(--muted)',
@@ -223,14 +223,14 @@ export default function CalculatorPage() {
                   className="select-base"
                   value={beadSizeIdx}
                   onChange={e => { setBeadSizeIdx(Number(e.target.value)); setCustomMm('') }}
-                  style={{ minWidth: 180, fontSize: 15 }}
+                  style={{ minWidth: 180, fontSize: 'var(--fs-md)' }}
                 >
                   {BEAD_SIZES.map((b, i) => (
                     <option key={i} value={i}>{b.label}</option>
                   ))}
                 </select>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <label className="label" style={{ whiteSpace: 'nowrap', fontSize: 12 }}>or custom mm:</label>
+                  <label className="label" style={{ whiteSpace: 'nowrap', fontSize: 'var(--fs-xs)' }}>or custom mm:</label>
                   <input
                     type="number"
                     min={0.5}
@@ -239,7 +239,7 @@ export default function CalculatorPage() {
                     value={customMm}
                     onChange={e => setCustomMm(e.target.value)}
                     placeholder="e.g. 3"
-                    style={{ width: 80, fontSize: 15 }}
+                    style={{ width: 80, fontSize: 'var(--fs-md)' }}
                   />
                 </div>
               </div>
@@ -255,7 +255,7 @@ export default function CalculatorPage() {
                   className="select-base"
                   value={claspIdx}
                   onChange={e => setClaspIdx(Number(e.target.value))}
-                  style={{ minWidth: 200, fontSize: 15 }}
+                  style={{ minWidth: 200, fontSize: 'var(--fs-md)' }}
                 >
                   {CLASP_OPTIONS.map((c, i) => (
                     <option key={i} value={i}>{c.label} {c.mm > 0 ? `(${c.mm} mm)` : ''}</option>
@@ -263,7 +263,7 @@ export default function CalculatorPage() {
                 </select>
                 {isCustomClasp && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <label className="label" style={{ fontSize: 12 }}>mm:</label>
+                    <label className="label" style={{ fontSize: 'var(--fs-xs)' }}>mm:</label>
                     <input
                       type="number"
                       min={0}
@@ -271,7 +271,7 @@ export default function CalculatorPage() {
                       className="input-base"
                       value={customClaspMm}
                       onChange={e => setCustomClaspMm(e.target.value)}
-                      style={{ width: 80, fontSize: 15 }}
+                      style={{ width: 80, fontSize: 'var(--fs-md)' }}
                     />
                   </div>
                 )}
@@ -289,9 +289,9 @@ export default function CalculatorPage() {
                   onChange={e => setKnot(e.target.checked)}
                   style={{ width: 16, height: 16, accentColor: 'var(--moonstone)', cursor: 'pointer' }}
                 />
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text)' }}>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-base)', color: 'var(--text)' }}>
                   Knot between each bead
-                  <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em', marginTop: 1 }}>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', color: 'var(--muted)', letterSpacing: '0.08em', marginTop: 1 }}>
                     +2 mm per gap
                   </span>
                 </span>
@@ -308,7 +308,7 @@ export default function CalculatorPage() {
                       style={{
                         padding: '8px 20px',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: 13,
+                        fontSize: 'var(--fs-sm)',
                         background: strands === n ? 'var(--surface2)' : 'transparent',
                         color: strands === n ? 'var(--cream)' : 'var(--muted)',
                         border: 'none',
@@ -334,7 +334,7 @@ export default function CalculatorPage() {
                       style={{
                         padding: '8px 16px',
                         fontFamily: 'var(--font-mono)',
-                        fontSize: 11,
+                        fontSize: 'var(--fs-2xs)',
                         letterSpacing: '0.08em',
                         background: beadMaterial === m ? 'var(--surface2)' : 'transparent',
                         color: beadMaterial === m ? 'var(--cream)' : 'var(--muted)',
@@ -393,7 +393,7 @@ export default function CalculatorPage() {
                   <div key={i}>
                     <div style={{
                       fontFamily: 'var(--font-mono)',
-                      fontSize: 10,
+                      fontSize: 'var(--fs-3xs)',
                       letterSpacing: '0.14em',
                       textTransform: 'uppercase',
                       color: 'var(--muted)',
@@ -403,14 +403,14 @@ export default function CalculatorPage() {
                     </div>
                     <div style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 25,
+                      fontSize: 'var(--fs-heading-sm)',
                       color: 'var(--cream)',
                       lineHeight: 1.1,
                     }}>
                       {item!.value}
                     </div>
                     {item!.sub && (
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--moonstone)', marginTop: 2, letterSpacing: '0.06em' }}>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', color: 'var(--moonstone)', marginTop: 2, letterSpacing: '0.06em' }}>
                         {item!.sub}
                       </div>
                     )}
@@ -422,7 +422,7 @@ export default function CalculatorPage() {
               <div>
                 <p style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
+                  fontSize: 'var(--fs-3xs)',
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   color: 'var(--muted)',
@@ -437,7 +437,7 @@ export default function CalculatorPage() {
 
           {results && results.beadsPerStrand === 0 && (
             <div className="fade-up" style={{ maxWidth: 720, marginBottom: 40 }}>
-              <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.1em' }}>
+              <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', letterSpacing: '0.1em' }}>
                 No beads fit — try a shorter clasp or smaller bead size.
               </p>
             </div>
@@ -453,10 +453,10 @@ export default function CalculatorPage() {
 
             {/* Common lengths */}
             <div className="card fade-up-3" style={{ padding: '24px 28px' }}>
-              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
+              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 'var(--fs-3xs)' }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 17,
+                fontSize: 'var(--fs-lead)',
                 color: 'var(--cream)',
                 fontWeight: 400,
                 marginBottom: 16,
@@ -475,10 +475,10 @@ export default function CalculatorPage() {
                       borderBottom: i < COMMON_LENGTHS.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text)' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-md)', color: 'var(--text)' }}>
                       {row.name}
                     </span>
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--moonstone)', letterSpacing: '0.06em' }}>
+                    <span className="mono" style={{ fontSize: 'var(--fs-xs)', color: 'var(--moonstone)', letterSpacing: '0.06em' }}>
                       {row.length}
                     </span>
                   </div>
@@ -488,10 +488,10 @@ export default function CalculatorPage() {
 
             {/* Bead size guide */}
             <div className="card fade-up-3" style={{ padding: '24px 28px' }}>
-              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
+              <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 'var(--fs-3xs)' }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 17,
+                fontSize: 'var(--fs-lead)',
                 color: 'var(--cream)',
                 fontWeight: 400,
                 marginBottom: 16,
@@ -510,10 +510,10 @@ export default function CalculatorPage() {
                       borderBottom: i < BEAD_GUIDE.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'var(--text)' }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-md)', color: 'var(--text)' }}>
                       {row.size}
                     </span>
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--tan)', letterSpacing: '0.06em' }}>
+                    <span className="mono" style={{ fontSize: 'var(--fs-xs)', color: 'var(--tan)', letterSpacing: '0.06em' }}>
                       {row.range}
                     </span>
                   </div>

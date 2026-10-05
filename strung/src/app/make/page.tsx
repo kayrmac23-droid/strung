@@ -295,7 +295,7 @@ export default function MakePage() {
 
           {signedOut && (
             <div className="well" style={{ padding: '12px 18px' }}>
-              <span style={{ fontSize: 15 }}>
+              <span style={{ fontSize: 'var(--fs-md)' }}>
                 <Link href="/account" className="link-under">Sign in</Link>&nbsp; to load your stash and design from it.
               </span>
             </div>
@@ -305,7 +305,7 @@ export default function MakePage() {
             <section aria-labelledby="brief-h" style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
               <h1 id="brief-h" className="sr-only">Make something</h1>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <p className="display" style={{ fontSize: 'clamp(28px,4.4vw,64px)', lineHeight: 1.1, letterSpacing: '-.02em', color: 'var(--meta)', maxWidth: '20ch', textWrap: 'pretty' }}>
+                <p className="display" style={{ fontSize: 'var(--fs-display-md)', lineHeight: 1.1, letterSpacing: '-.02em', color: 'var(--meta)', maxWidth: '20ch', textWrap: 'pretty' }}>
                   Make me{' '}
                   <button type="button" className="brief-word" style={{ borderBottomWidth: 2 }} aria-label={`Piece: ${pieceTypes[pieceIdx].say}. Change`}
                     onClick={() => setPieceType(pieceTypes[cycle(pieceTypes, pieceIdx)].value)}>{pieceTypes[pieceIdx].say}</button>
@@ -338,13 +338,13 @@ export default function MakePage() {
                 </button>
                 {stashLoaded && !signedOut && (
                   stashError ? (
-                    <span role="alert" style={{ fontSize: 15, color: 'var(--madder-text)' }}>
+                    <span role="alert" style={{ fontSize: 'var(--fs-md)', color: 'var(--madder-text)' }}>
                       Couldn’t load your stash — designs may not reflect what you own. Refresh to try again.
                     </span>
                   ) : beads.length === 0 && findings.length === 0 ? (
-                    <span className="aside-line" style={{ fontSize: 16 }}>Your stash is empty — <Link href="/inventory" className="link-under">add beads</Link> for designs built from what you own, or design anyway for a general idea.</span>
+                    <span className="aside-line" style={{ fontSize: 'var(--fs-base)' }}>Your stash is empty — <Link href="/inventory" className="link-under">add beads</Link> for designs built from what you own, or design anyway for a general idea.</span>
                   ) : (
-                    <span className="aside-line" style={{ fontSize: 16 }}>Reads all {beads.length} bead type{beads.length === 1 ? '' : 's'} and {findings.length} finding{findings.length === 1 ? '' : 's'} before it draws anything.</span>
+                    <span className="aside-line" style={{ fontSize: 'var(--fs-base)' }}>Reads all {beads.length} bead type{beads.length === 1 ? '' : 's'} and {findings.length} finding{findings.length === 1 ? '' : 's'} before it draws anything.</span>
                   )
                 )}
               </div>
@@ -358,7 +358,7 @@ export default function MakePage() {
           )}
 
           {error && (
-            <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--madder-text)' }}>
+            <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', color: 'var(--madder-text)' }}>
               {error === 'Sign in to save your designs.'
                 ? <><Link href="/account" className="link-under">Sign in</Link>&nbsp; to save your designs.</>
                 : error}
@@ -377,8 +377,8 @@ export default function MakePage() {
                       ? <span className="tag" style={{ color: 'var(--sage)' }}>● All in stash</span>
                       : <span className="tag" style={{ color: 'var(--ochre)' }}>● Check materials</span>}
                   </div>
-                  <h2 id="design-h" className="display d-1" style={{ fontSize: 'clamp(44px,6.6vw,102px)', lineHeight: .9 }}>{design.title}</h2>
-                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'clamp(16px,1.6vw,20px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '50ch' }}>{design.description}</p>
+                  <h2 id="design-h" className="display d-1" style={{ fontSize: 'var(--fs-display-xl)', lineHeight: .9 }}>{design.title}</h2>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-intro)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '50ch' }}>{design.description}</p>
                 </div>
                 <button type="button" className="link-under" onClick={() => { setDesign(null); setError(''); imageRequest.current++; setImageLoading(false) }} disabled={saving || refining}>← Change the brief</button>
               </div>
@@ -387,7 +387,7 @@ export default function MakePage() {
                 <div className="panel">
                   <div role="tablist" aria-label="Design view" className="chip-row" style={{ padding: 10, background: 'var(--umber)', borderBottom: '1px solid var(--seam)' }}>
                     {([['schematic', 'Diagram'], ['visual', 'Render']] as const).map(([v, label]) => (
-                      <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '8px 14px', fontSize: 10 }} onClick={() => setView(v)}>{label}</button>
+                      <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '8px 14px', fontSize: 'var(--fs-3xs)' }} onClick={() => setView(v)}>{label}</button>
                     ))}
                   </div>
                   {view === 'schematic' ? (
@@ -407,7 +407,7 @@ export default function MakePage() {
                     </div>
                   ) : (
                     <div className="render-well" style={{ flexDirection: 'column', gap: 14, padding: 24, textAlign: 'center' }}>
-                      {imageError && <span style={{ fontSize: 15, color: 'var(--text2)', maxWidth: '40ch' }}>{imageError}</span>}
+                      {imageError && <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text2)', maxWidth: '40ch' }}>{imageError}</span>}
                       <button className="btn-outline" onClick={retryImage} disabled={imageLoading}>{imageError ? 'Retry preview' : 'Render preview'}</button>
                       <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>AI render · for reference only</span>
                     </div>
@@ -418,7 +418,7 @@ export default function MakePage() {
                   {design.colourStory && (
                     <div className="well" style={{ padding: '22px 24px' }}>
                       <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>Colour story</span>
-                      <p style={{ marginTop: 8, fontSize: 16, lineHeight: 1.6 }}>{design.colourStory}</p>
+                      <p style={{ marginTop: 8, fontSize: 'var(--fs-base)', lineHeight: 1.6 }}>{design.colourStory}</p>
                     </div>
                   )}
                   <div className="panel">
@@ -438,15 +438,15 @@ export default function MakePage() {
                               {bead && form ? <Bead hex={safeHex(bead.hex)} shape={form} size={nominalPx(form) * 1.8} /> : <OpenBead size={12} colour="var(--tan)" fill="transparent" />}
                             </div>
                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                              <span style={{ color: 'var(--cream)', fontSize: 15 }}>{c.item}</span>
+                              <span style={{ color: 'var(--cream)', fontSize: 'var(--fs-md)' }}>{c.item}</span>
                               {typeof have === 'number' && (
                                 <div style={{ height: 2, background: 'var(--roast)', maxWidth: 200 }}>
                                   <div style={{ height: 2, width: `${Math.min(100, have > 0 ? need / have * 100 : 100)}%`, background: ok ? 'var(--sage)' : 'var(--ochre)' }} />
                                 </div>
                               )}
-                              {c.note && <span style={{ fontSize: 13, color: 'var(--meta)' }}>{c.note}</span>}
+                              {c.note && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--meta)' }}>{c.note}</span>}
                             </div>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.06em', whiteSpace: 'nowrap', color: typeof have === 'number' && !ok ? 'var(--ochre)' : 'var(--text2)' }}>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', letterSpacing: '.06em', whiteSpace: 'nowrap', color: typeof have === 'number' && !ok ? 'var(--ochre)' : 'var(--text2)' }}>
                               {need}{typeof have === 'number' ? ` / ${have}` : ''}
                             </span>
                           </div>
@@ -457,7 +457,7 @@ export default function MakePage() {
                   {design.materialsCheck?.notes && (
                     <div className="well" style={{ padding: '14px 24px' }}>
                       <span className="eyebrow eyebrow--sm" style={{ color: allInStash ? 'var(--tan)' : 'var(--ochre)' }}>Materials note</span>
-                      <p style={{ marginTop: 6, fontSize: 15 }}>{design.materialsCheck.notes}</p>
+                      <p style={{ marginTop: 6, fontSize: 'var(--fs-md)' }}>{design.materialsCheck.notes}</p>
                     </div>
                   )}
                   <div style={{ padding: '20px 24px', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -486,7 +486,7 @@ export default function MakePage() {
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {ADJUST_HINTS.map(h => (
-                        <button key={h} type="button" className="chip" style={{ padding: '6px 10px', fontSize: 10, letterSpacing: '.08em' }} onClick={() => setAdjustment(h)} disabled={refining || loading}>{h}</button>
+                        <button key={h} type="button" className="chip" style={{ padding: '6px 10px', fontSize: 'var(--fs-3xs)', letterSpacing: '.08em' }} onClick={() => setAdjustment(h)} disabled={refining || loading}>{h}</button>
                       ))}
                     </div>
                   </div>
@@ -500,10 +500,10 @@ export default function MakePage() {
                     {design.steps.map((st, i) => (
                       <li key={st.id ?? i} style={{ padding: '18px 20px', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span className="numeral" style={{ fontSize: 25, lineHeight: 1, color: 'var(--saddle)' }}>{String(i + 1).padStart(2, '0')}</span>
+                          <span className="numeral" style={{ fontSize: 'var(--fs-heading-sm)', lineHeight: 1, color: 'var(--saddle)' }}>{String(i + 1).padStart(2, '0')}</span>
                           {colours[i] ? <Bead hex={colours[i]!} size={11} /> : <OpenBead size={8} colour="var(--tan)" fill="transparent" />}
                         </div>
-                        <span style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--cream)' }}>{st.instruction}</span>
+                        <span style={{ fontSize: 'var(--fs-md)', lineHeight: 1.45, color: 'var(--cream)' }}>{st.instruction}</span>
                         {st.technique && <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', letterSpacing: '.12em' }}>{st.technique}</span>}
                       </li>
                     ))}

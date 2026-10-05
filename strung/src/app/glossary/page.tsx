@@ -60,8 +60,8 @@ export default function GlossaryPage() {
         <div className="page-pad" style={{maxWidth:900,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Reference</p>
-            <h1 className="fade-up-1" style={{fontSize:36,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Glossary</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:16}}>Every term you&apos;ll encounter when buying beads and findings — defined plainly.</p>
+            <h1 className="fade-up-1" style={{fontSize:'var(--fs-heading-lg)',color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Glossary</h1>
+            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:'var(--fs-base)'}}>Every term you&apos;ll encounter when buying beads and findings — defined plainly.</p>
           </header>
 
           <div style={{display:'flex',gap:12,marginBottom:24,flexWrap:'wrap'}}>
@@ -69,7 +69,7 @@ export default function GlossaryPage() {
             <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
               {categories.map(c => (
                 <button key={c} onClick={()=>setCat(c)} style={{
-                  padding:'8px 14px',fontFamily:'var(--font-mono)',fontSize:10,
+                  padding:'8px 14px',fontFamily:'var(--font-mono)',fontSize:'var(--fs-3xs)',
                   letterSpacing:'0.1em',textTransform:'uppercase',
                   background:cat===c?'var(--surface2)':'var(--surface)',
                   border:`1px solid ${cat===c?'var(--silver)':'var(--border)'}`,
@@ -79,7 +79,7 @@ export default function GlossaryPage() {
             </div>
           </div>
 
-          <p className="mono" style={{fontSize:10,color:'var(--muted2)',marginBottom:16,letterSpacing:'0.1em'}}>{filtered.length} TERMS</p>
+          <p className="mono" style={{fontSize:'var(--fs-3xs)',color:'var(--muted2)',marginBottom:16,letterSpacing:'0.1em'}}>{filtered.length} TERMS</p>
 
           <div style={{display:'flex',flexDirection:'column',gap:2}}>
             {filtered.map(t => (
@@ -93,16 +93,16 @@ export default function GlossaryPage() {
                   padding:'16px 20px',background:'none',border:'none',cursor:'pointer',textAlign:'left'
                 }}>
                   <span style={{
-                    fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'0.1em',
+                    fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',letterSpacing:'0.1em',
                     textTransform:'uppercase',color:catColours[t.cat]||'var(--muted)',
                     flexShrink:0,minWidth:80
                   }}>{t.cat}</span>
-                  <span style={{fontFamily:'var(--font-display)',fontSize:17,color:'var(--cream)',flex:1}}>{t.term}</span>
-                  <span style={{color:'var(--muted)',fontSize:14,transform:expanded===t.term?'rotate(90deg)':'rotate(0)',transition:'transform 0.2s'}}>›</span>
+                  <span style={{fontFamily:'var(--font-display)',fontSize:'var(--fs-lead)',color:'var(--cream)',flex:1}}>{t.term}</span>
+                  <span style={{color:'var(--muted)',fontSize:'var(--fs-sm)',transform:expanded===t.term?'rotate(90deg)':'rotate(0)',transition:'transform 0.2s'}}>›</span>
                 </button>
                 {expanded===t.term && (
                   <div style={{padding:'0 20px 18px 114px'}}>
-                    <p style={{fontFamily:'var(--font-body)',fontSize:16,color:'var(--text2)',lineHeight:1.7}}>{t.def}</p>
+                    <p style={{fontFamily:'var(--font-body)',fontSize:'var(--fs-base)',color:'var(--text2)',lineHeight:1.7}}>{t.def}</p>
                   </div>
                 )}
               </div>

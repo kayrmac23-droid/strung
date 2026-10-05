@@ -302,7 +302,7 @@ const svgStyle = { display: 'block', background: 'var(--surface)', border: '1px 
 
 function Empty() {
   return (
-    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em' }}>
+    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', color: 'var(--muted)', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', letterSpacing: '0.08em' }}>
       No components to diagram yet.
     </div>
   )

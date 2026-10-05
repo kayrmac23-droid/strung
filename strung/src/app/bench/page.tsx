@@ -86,7 +86,7 @@ export default function BenchPage() {
         <div className="wrap ss-up" style={{ paddingTop: 'clamp(28px,5vw,64px)', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 'clamp(40px,5vw,64px)' }}>
           <header style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <p className="eyebrow eyebrow--lit">{today()} · the evening bench</p>
-            <h1 className="display" style={{ fontSize: 'clamp(38px,6.7vw,102px)', maxWidth: '13ch' }}>
+            <h1 className="display" style={{ fontSize: 'var(--fs-display-xl)', maxWidth: '13ch' }}>
               What will you <em>string</em> tonight?
             </h1>
           </header>
@@ -118,7 +118,7 @@ export default function BenchPage() {
                 </Link>
               ) : (
                 <div className="well" style={{ padding: 28, display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  <span className="aside-line" style={{ fontSize: 17 }}>Nothing strung yet — add your first bead and we&apos;ll begin.</span>
+                  <span className="aside-line" style={{ fontSize: 'var(--fs-lead)' }}>Nothing strung yet — add your first bead and we&apos;ll begin.</span>
                   <Link href="/inventory" className="btn-primary btn-md">Add beads →</Link>
                 </div>
               )}
@@ -134,7 +134,7 @@ export default function BenchPage() {
                     <OnBench build={onBench} beads={beads} />
                   ) : (
                     <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                      <p className="aside-line" style={{ fontSize: 17 }}>Nothing on the bench right now.</p>
+                      <p className="aside-line" style={{ fontSize: 'var(--fs-lead)' }}>Nothing on the bench right now.</p>
                       <div><Link href="/make" className="btn-primary btn-md">Make something →</Link></div>
                     </div>
                   )}
@@ -153,8 +153,8 @@ export default function BenchPage() {
                           return (
                             <div key={b.id ?? b.name} className="row-line" style={{ padding: '13px 0' }}>
                               <div style={{ width: 28, display: 'flex', justifyContent: 'center' }}><Bead hex={safeHex(b.hex)} shape={form} size={nominalPx(form) * 1.8} /></div>
-                              <span style={{ flex: 1, color: 'var(--cream)', fontSize: 15 }}>{b.name}</span>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.12em', color: 'var(--ochre)' }}>{b.quantity} LEFT</span>
+                              <span style={{ flex: 1, color: 'var(--cream)', fontSize: 'var(--fs-md)' }}>{b.name}</span>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', letterSpacing: '.12em', color: 'var(--ochre)' }}>{b.quantity} LEFT</span>
                             </div>
                           )
                         })}
@@ -184,7 +184,7 @@ export default function BenchPage() {
                         </div>
                         <div style={{ padding: '20px 22px 22px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
                           {meta && <span className="eyebrow" style={{ color: 'var(--tan)', letterSpacing: '.14em' }}>{meta}</span>}
-                          <span className="display" style={{ fontSize: 25, lineHeight: 1.05, letterSpacing: '-.02em' }}>{d.title}</span>
+                          <span className="display" style={{ fontSize: 'var(--fs-heading-sm)', lineHeight: 1.05, letterSpacing: '-.02em' }}>{d.title}</span>
                           {d.design?.description && <span className="aside-line" style={{ color: 'var(--text2)', flex: 1 }}>{d.design.description}</span>}
                           <span className="eyebrow" style={{ marginTop: 8, color: 'var(--cream)', letterSpacing: '.14em' }}>Start building →</span>
                         </div>
@@ -193,7 +193,7 @@ export default function BenchPage() {
                   })}
                   <Link href="/make" className="tray-btn" style={{ justifyContent: 'center', padding: '28px 22px', gap: 10, minHeight: 160 }}>
                     <span className="eyebrow" style={{ color: 'var(--tan)', letterSpacing: '.14em' }}>From what you own</span>
-                    <span className="display" style={{ fontSize: 25, lineHeight: 1.05, letterSpacing: '-.02em' }}>Draft something new</span>
+                    <span className="display" style={{ fontSize: 'var(--fs-heading-sm)', lineHeight: 1.05, letterSpacing: '-.02em' }}>Draft something new</span>
                     <span className="eyebrow" style={{ marginTop: 8, color: 'var(--cream)', letterSpacing: '.14em' }}>Open Make →</span>
                   </Link>
                 </div>
@@ -214,12 +214,12 @@ function OnBench({ build, beads }: { build: Build; beads: BeadItem[] }) {
   const instruction = steps[cur]?.instruction
   return (
     <div className="panel-body" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <h3 className="display" style={{ fontSize: 'clamp(30px,3.8vw,52px)', lineHeight: 1, letterSpacing: '-.02em' }}>{build.title}</h3>
+      <h3 className="display" style={{ fontSize: 'var(--fs-display-md)', lineHeight: 1, letterSpacing: '-.02em' }}>{build.title}</h3>
       {steps.length > 0 && (
         <div style={{ maxWidth: 520 }}><StepStrand colours={colours} current={cur} total={total} /></div>
       )}
       {typeof instruction === 'string' && instruction && (
-        <p style={{ fontSize: 18, lineHeight: 1.5, color: 'var(--cream)', maxWidth: '46ch' }}>{instruction}</p>
+        <p style={{ fontSize: 'var(--fs-lead)', lineHeight: 1.5, color: 'var(--cream)', maxWidth: '46ch' }}>{instruction}</p>
       )}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Link href={`/make/build/${build.id}`} className="btn-primary btn-md">Continue at step {cur + 1} →</Link>
