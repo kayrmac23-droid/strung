@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 //    account avatar on the right. On phones the four destinations move to a
 //    bottom tab bar (.tabbar) so they stay one thumb away.
 //  - public: the landing and How it works pages — How it works, Sign in and
-//    Start free. A signed-in visitor gets a single "Open studio" instead.
+//    Start free, always — signed in, both lead to the bench.
 // Make covers its three tools (Generate /make, Co-design /codesign, Palette
 // /sequence); MakeTabs switches between them.
 
@@ -79,14 +79,10 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
             <Link href="/" aria-label="strung — home"><Wordmark size={22} /></Link>
             <div className="public-nav-links">
               <Link href="/how-it-works" className="quiet hide-xs" aria-current={path === '/how-it-works' ? 'page' : undefined}>How it works</Link>
-              {email ? (
-                <Link href="/bench" className="btn-primary" style={{ padding: '11px 18px 10px' }}>Open studio</Link>
-              ) : (
-                <>
-                  <Link href="/account" className="quiet">Sign in</Link>
-                  <Link href="/account?mode=signup" className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
-                </>
-              )}
+              {/* Always the handoff's pair, signed in or not; a signed-in
+                  visitor is sent straight to their bench by either. */}
+              <Link href={email ? '/bench' : '/account'} className="quiet">Sign in</Link>
+              <Link href={email ? '/bench' : '/account?mode=signup'} className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
             </div>
           </div>
         </nav>

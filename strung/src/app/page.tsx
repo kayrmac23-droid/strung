@@ -52,7 +52,7 @@ export default function Home() {
                 strung reads the beads you actually have and designs something you can make tonight — then stays with you at the bench until it&apos;s done.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <Link href={start} className="btn-primary btn-lg">{signedIn ? 'Open your bench →' : 'Start your stash →'}</Link>
+                <Link href={start} className="btn-primary btn-lg">Start your stash →</Link>
                 <a href="#make" className="btn-outline btn-lg" style={{ padding: '17px 26px' }}>Try a brief</a>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function Home() {
 
           <section aria-labelledby="close-h" style={{ padding: 'clamp(96px,12vw,180px) 0 clamp(64px,8vw,120px)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 32 }}>
             <h2 id="close-h" className="display" style={{ fontSize: 'clamp(48px,7.4vw,124px)', lineHeight: .92, maxWidth: '12ch' }}>Start with one bead.</h2>
-            <Link href={start} className="btn-primary btn-lg">{signedIn ? 'Open your bench →' : 'Start your stash →'}</Link>
+            <Link href={start} className="btn-primary btn-lg">Start your stash →</Link>
             <span style={{ fontSize: 15, color: 'var(--meta)' }}>Free to start. Your stash stays yours.</span>
           </section>
 
