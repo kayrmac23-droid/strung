@@ -112,7 +112,7 @@ export function formatRichText(text: string, options: RichTextOptions): string {
 
 /** Guide section body — full prose measure, hard line breaks preserved. */
 export const GUIDE_PROSE: RichTextOptions = {
-  paragraphStyle: 'margin-bottom:13px;color:var(--text);font-family:var(--font-body);font-size:17px;line-height:1.8',
+  paragraphStyle: 'margin-bottom:13px;color:var(--text);font-family:var(--font-body);font-size:var(--fs-base);line-height:1.8',
   strongColour: 'var(--silver3)',
   lineBreaks: true,
 }

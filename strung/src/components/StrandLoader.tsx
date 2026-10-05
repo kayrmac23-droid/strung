@@ -7,7 +7,7 @@ export default function StrandLoader({ label }: { label?: string }) {
         <i></i><i></i><i></i>
       </div>
       {label && (
-        <span className="mono" style={{ fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--meta)' }}>
+        <span className="mono" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--meta)' }}>
           {label}
         </span>
       )}

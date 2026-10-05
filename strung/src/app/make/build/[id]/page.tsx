@@ -288,12 +288,12 @@ export default function BuildPage() {
       <main id="main" className="page-main page-main--bare" style={{ display: 'flex', flexDirection: 'column' }}>
         {/* Build mode drops the studio nav: one bar, one way out. */}
         <div className="build-bar">
-          <Link href="/bench" className="link-quiet" style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' }}>× Leave the bench</Link>
+          <Link href="/bench" className="link-quiet" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '.14em', textTransform: 'uppercase' }}>× Leave the bench</Link>
           <span style={{ color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{build.title}</span>
           <span style={{ color: 'var(--tan)' }}>{done ? 'Finished' : totalSteps ? `${pad2(activeStepIndex + 1)} / ${pad2(totalSteps)}` : '—'}</span>
         </div>
 
-        {error && <p role="alert" className="wrap" style={{ color: 'var(--madder-text)', fontFamily: 'var(--font-mono)', fontSize: 12, paddingTop: 16 }}>{error}</p>}
+        {error && <p role="alert" className="wrap" style={{ color: 'var(--madder-text)', fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', paddingTop: 16 }}>{error}</p>}
 
         {!done ? (
           <>
@@ -309,7 +309,7 @@ export default function BuildPage() {
                         <span style={{ height: 44, display: 'flex', alignItems: 'center' }}>
                           {cur ? <CurrentBead size={28} /> : i < activeStepIndex ? <Bead hex={colours[i] || '#9C8070'} size={20} /> : <OpenBead size={14} fill="var(--mocha)" />}
                         </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.1em', color: cur ? 'var(--cream)' : 'var(--meta)' }}>{pad2(i + 1)}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '.1em', color: cur ? 'var(--cream)' : 'var(--meta)' }}>{pad2(i + 1)}</span>
                       </button>
                     )
                   })}
@@ -320,10 +320,10 @@ export default function BuildPage() {
                 <div key={activeStepIndex} className="split" style={{ ['--min' as string]: '380px', gap: 'clamp(24px,4vw,56px)', alignItems: 'start', animation: 'ss-up .35s ease both' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-                      <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(96px,14vw,200px)', lineHeight: .8, letterSpacing: '-.04em', color: 'var(--seam)' }}>{pad2(activeStepIndex + 1)}</span>
+                      <span className="numeral" aria-hidden="true" style={{ fontSize: 'var(--fs-display-hero)', lineHeight: .8, letterSpacing: '-.04em', color: 'var(--seam)' }}>{pad2(activeStepIndex + 1)}</span>
                       {activeStep.technique && <span className="eyebrow eyebrow--lit" style={{ letterSpacing: '.14em' }}>{activeStep.technique}</span>}
                     </div>
-                    <h1 className="display" style={{ fontSize: 'clamp(30px,3.8vw,52px)', lineHeight: 1.1, letterSpacing: '-.015em', textWrap: 'pretty' }}>{activeStep.instruction}</h1>
+                    <h1 className="display" style={{ fontSize: 'var(--fs-display-sm)', lineHeight: 1.1, letterSpacing: '-.015em', textWrap: 'pretty' }}>{activeStep.instruction}</h1>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                     {boardLabel && (
@@ -334,7 +334,7 @@ export default function BuildPage() {
                             <div style={{ width: 24, display: 'flex', justifyContent: 'center' }}>
                               {materialBead ? <Bead hex={safeHex(materialBead.hex)} shape={beadFormFor(materialBead)} size={nominalPx(beadFormFor(materialBead)) * 1.8} /> : <OpenBead size={12} colour="var(--tan)" fill="transparent" />}
                             </div>
-                            <span style={{ flex: 1, color: 'var(--cream)', fontSize: 15 }}>{boardLabel}</span>
+                            <span style={{ flex: 1, color: 'var(--cream)', fontSize: 'var(--fs-md)' }}>{boardLabel}</span>
                           </div>
                         </div>
                       </div>
@@ -342,7 +342,7 @@ export default function BuildPage() {
                     {activeStep.tip && (
                       <div className="well" style={{ padding: '20px 22px' }}>
                         <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>From the margin</span>
-                        <p style={{ marginTop: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18, lineHeight: 1.45 }}>{activeStep.tip}</p>
+                        <p style={{ marginTop: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-lead)', lineHeight: 1.45 }}>{activeStep.tip}</p>
                       </div>
                     )}
                     {activeStep.technique && (
@@ -351,19 +351,19 @@ export default function BuildPage() {
                   </div>
                 </div>
               ) : (
-                <p className="aside-line" style={{ fontSize: 18 }}>No steps found for this design.</p>
+                <p className="aside-line" style={{ fontSize: 'var(--fs-lead)' }}>No steps found for this design.</p>
               )}
             </div>
 
             <div className="build-controls">
-              <button className="btn-outline" style={{ flex: '0 1 200px', padding: 20, fontSize: 12 }}
+              <button className="btn-outline" style={{ flex: '0 1 200px', padding: 20, fontSize: 'var(--fs-xs)' }}
                 disabled={saving || activeStepIndex <= 0} onClick={() => goToStep(activeStepIndex - 1)}>← Back</button>
               {isLast ? (
-                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 12 }} disabled={saving} onClick={completeBuild}>
+                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 'var(--fs-xs)' }} disabled={saving} onClick={completeBuild}>
                   {saving ? 'Saving…' : 'Mark it finished'}
                 </button>
               ) : (
-                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 12 }} disabled={saving} onClick={() => goToStep(activeStepIndex + 1)}>
+                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 'var(--fs-xs)' }} disabled={saving} onClick={() => goToStep(activeStepIndex + 1)}>
                   Next · step {pad2(activeStepIndex + 2)} →
                 </button>
               )}
@@ -378,8 +378,8 @@ export default function BuildPage() {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h1 className="display" style={{ fontSize: 'clamp(64px,10vw,148px)', lineHeight: .88, letterSpacing: '-.035em' }}>Strung.</h1>
-              <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 22, color: 'var(--tan)' }}>
+              <h1 className="display" style={{ fontSize: 'var(--fs-display-xl)', lineHeight: .88, letterSpacing: '-.035em' }}>Strung.</h1>
+              <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-lg)', color: 'var(--tan)' }}>
                 {build.title}{typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 ? ` · ${build.time_taken_minutes} minute${build.time_taken_minutes === 1 ? '' : 's'} at the bench.` : '.'}
               </p>
             </div>
@@ -399,7 +399,7 @@ export default function BuildPage() {
               onChange={(e) => setNotes(e.target.value)}
               maxLength={MAX_NOTES_CHARS}
               placeholder="What worked, what you'd tweak next time..."
-              style={{ minHeight: 120, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18 }}
+              style={{ minHeight: 120, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-lead)' }}
             />
 
             {showStashPrompt && (
@@ -407,12 +407,12 @@ export default function BuildPage() {
                 <div className="panel-head"><span>Take these out of your stash?</span></div>
                 <div style={{ padding: '6px 22px 18px' }}>
                   {(build.design.components || []).map((c, i) => (
-                    <div key={i} className="row-line" style={{ justifyContent: 'space-between', fontSize: 15 }}>
+                    <div key={i} className="row-line" style={{ justifyContent: 'space-between', fontSize: 'var(--fs-md)' }}>
                       <span style={{ color: 'var(--cream)' }}>{c.item}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--tan)' }}>−{c.quantity}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--tan)' }}>−{c.quantity}</span>
                     </div>
                   ))}
-                  <p className="aside-line" style={{ fontSize: 14, margin: '12px 0 14px' }}>Matched to your stash by name — anything worded differently is left alone.</p>
+                  <p className="aside-line" style={{ fontSize: 'var(--fs-sm)', margin: '12px 0 14px' }}>Matched to your stash by name — anything worded differently is left alone.</p>
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     <button className="btn-primary btn-md" disabled={decrementing} onClick={decrementStash}>
                       {decrementing ? <><span className="spinner" />Updating…</> : 'Yes, subtract'}
@@ -422,10 +422,10 @@ export default function BuildPage() {
                 </div>
               </div>
             )}
-            {stashNote && <p role="status" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>{stashNote}</p>}
+            {stashNote && <p role="status" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-xs)', letterSpacing: '0.06em' }}>{stashNote}</p>}
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button className="btn-primary" style={{ flex: '1 1 240px', padding: '18px 24px 17px', fontSize: 12 }} disabled={saving}
+              <button className="btn-primary" style={{ flex: '1 1 240px', padding: '18px 24px 17px', fontSize: 'var(--fs-xs)' }} disabled={saving}
                 onClick={async () => { if (await patchBuild({ notes: notes.trim() || null, rating: rating || null })) router.push('/journal') }}>
                 {saving ? 'Saving…' : 'Into the journal →'}
               </button>

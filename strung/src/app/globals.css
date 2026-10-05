@@ -88,6 +88,35 @@
   --font-body: var(--font-instrument), system-ui, sans-serif;
   --font-mono: var(--font-dm-mono), monospace;
   --font-serif: var(--font-newsreader), Georgia, serif;  /* marginalia only (Rule 2) */
+
+  /* Type scale — every font size in the app comes from here.
+     Two knobs: --text-scale for UI and reading text, --display-scale for the
+     Gloock headings and step numerals. "Make the type smaller" is one of these
+     two lines. Mind the floors: the 10–11px mono caps are already the smallest
+     legible size, and form fields are pinned at 16px outside the scale because
+     iOS zooms any input under 16px on focus. */
+  --text-scale: 1;
+  --display-scale: 1;
+
+  --fs-3xs: calc(10px * var(--text-scale));   /* mono micro labels, tags */
+  --fs-2xs: calc(11px * var(--text-scale));   /* mono caps: eyebrows, nav, buttons */
+  --fs-xs: calc(12px * var(--text-scale));    /* mono meta, large buttons */
+  --fs-sm: calc(14px * var(--text-scale));    /* notes, secondary prose */
+  --fs-md: calc(15px * var(--text-scale));    /* list rows, card body */
+  --fs-base: calc(16px * var(--text-scale));  /* body, prose */
+  --fs-lead: calc(17px * var(--text-scale));  /* lead lines, marginalia */
+  --fs-lg: calc(20px * var(--text-scale));    /* small headings */
+  --fs-intro: calc(clamp(17px, 1.6vw, 22px) * var(--text-scale));  /* fluid intro paragraph */
+
+  --fs-heading-sm: calc(24px * var(--display-scale));  /* card titles, .d-card */
+  --fs-heading: calc(30px * var(--display-scale));     /* panel titles */
+  --fs-heading-lg: calc(36px * var(--display-scale));  /* Learn page titles, stats */
+  --fs-display-xs: calc(clamp(23px, 2.5vw, 33px) * var(--display-scale));   /* .d-3 */
+  --fs-display-sm: calc(clamp(25px, 3vw, 43px) * var(--display-scale));     /* long headings: build step, palette title */
+  --fs-display-md: calc(clamp(30px, 3.9vw, 60px) * var(--display-scale));   /* .d-2, section headings */
+  --fs-display-lg: calc(clamp(36px, 5vw, 78px) * var(--display-scale));
+  --fs-display-xl: calc(clamp(42px, 6.6vw, 100px) * var(--display-scale)); /* .d-1, page headlines */
+  --fs-display-hero: calc(clamp(49px, 9.5vw, 160px) * var(--display-scale)); /* .d-hero, step numerals */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -98,7 +127,7 @@ body {
   color: var(--text2);
   font-family: var(--font-body);
   font-weight: 400;
-  font-size: 17px;
+  font-size: var(--fs-base);
   line-height: 1.65;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -146,7 +175,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   padding: 11px 20px 10px;
   background: var(--button-accent); color: var(--cream);
   border: none; border-radius: 2px;
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
   letter-spacing: 0.14em; text-transform: uppercase;
   position: relative; cursor: pointer; transition: background 0.2s, color 0.2s;
 }
@@ -163,7 +192,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   padding: 10px 20px;
   background: transparent; color: var(--cream);
   border: 1px solid var(--saddle); border-radius: 2px;
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
   letter-spacing: 0.14em; text-transform: uppercase;
   transition: border-color 0.2s;
 }
@@ -174,7 +203,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   padding: 7px 14px;
   background: transparent; color: var(--meta);
   border: 1px solid var(--seam); border-radius: 2px;
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
   letter-spacing: 0.1em; text-transform: uppercase;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -184,7 +213,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
 .btn-text {
   background: none; border: none; padding: 0;
   color: var(--madder-text); border-bottom: 1px solid var(--madder-deep);
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
   letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
 }
 
@@ -220,7 +249,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   border: 1px solid var(--madder);
   border-radius: 2px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
@@ -253,7 +282,7 @@ html[data-kbd] .skip-link:focus {
 .input-base {
   width: 100%; background: var(--roast);
   border: 1px solid var(--field-edge); border-radius: 2px; color: var(--cream);
-  font-family: var(--font-body); font-size: 16px;
+  font-family: var(--font-body); font-size: 16px;  /* literal: iOS zooms inputs under 16px */
   padding: 11px 14px; outline: none; transition: border-color 0.2s;
 }
 .input-base:focus { border-color: var(--madder); }
@@ -263,7 +292,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .select-base {
   width: 100%; background: var(--roast);
   border: 1px solid var(--field-edge); border-radius: 2px; color: var(--cream);
-  font-family: var(--font-mono); font-size: 11px;
+  font-family: var(--font-mono); font-size: var(--fs-2xs);
   letter-spacing: 0.06em; padding: 10px 14px;
   outline: none; appearance: none; cursor: pointer;
   transition: border-color 0.2s;
@@ -276,7 +305,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 
 .label {
   display: block; font-family: var(--font-mono);
-  font-size: 10px; letter-spacing: 0.16em;
+  font-size: var(--fs-3xs); letter-spacing: 0.16em;
   text-transform: uppercase; color: var(--muted);
   margin-bottom: 7px;
 }
@@ -285,7 +314,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .tag {
   display: inline-block; padding: 3px 10px;
   background: var(--umber); border: 1px solid var(--seam);
-  font-family: var(--font-mono); font-size: 10px;
+  font-family: var(--font-mono); font-size: var(--fs-3xs);
   letter-spacing: 0.1em; color: var(--tan);
 }
 
@@ -316,12 +345,12 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 /* Marginalia — the hand in the margin (Newsreader italic, DESIGN Rule 2) */
 .empty-line {
   font-family: var(--font-serif); font-style: italic;
-  font-size: 17px; color: var(--tan); line-height: 1.5;
+  font-size: var(--fs-base); color: var(--tan); line-height: 1.5;
 }
 
 /* Prose */
-.prose { color: var(--text2); font-family: var(--font-body); font-size: 17px; line-height: 1.8; }
-.prose h3 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; letter-spacing: -0.02em; font-size: 20px; color: var(--cream); margin: 22px 0 8px; }
+.prose { color: var(--text2); font-family: var(--font-body); font-size: var(--fs-base); line-height: 1.8; }
+.prose h3 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; letter-spacing: -0.02em; font-size: var(--fs-lg); color: var(--cream); margin: 22px 0 8px; }
 .prose p { margin-bottom: 12px; }
 .prose strong { color: var(--cream); }
 .prose ul { margin: 10px 0 12px 18px; }
@@ -345,7 +374,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 
 /* Section header */
 .section-eyebrow {
-  font-family: var(--font-mono); font-size: 10px;
+  font-family: var(--font-mono); font-size: var(--fs-3xs);
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--madder-text); margin-bottom: 8px;
 }
@@ -447,32 +476,32 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 }
 .display .soft { color: var(--deemph); }
 .display em, .display .aside { font-family: var(--font-serif); font-style: italic; letter-spacing: -.01em; }
-.d-hero  { font-size: clamp(60px, 11.6vw, 196px); line-height: .88; }
-.d-1     { font-size: clamp(52px, 8vw, 120px); line-height: .92; letter-spacing: -.03em; }
-.d-2     { font-size: clamp(38px, 4.8vw, 76px); line-height: .98; }
-.d-3     { font-size: clamp(28px, 3.2vw, 40px); line-height: 1.05; letter-spacing: -.02em; }
-.d-card  { font-size: 28px; line-height: 1.05; letter-spacing: -.02em; }
+.d-hero  { font-size: var(--fs-display-hero); line-height: .88; }
+.d-1     { font-size: var(--fs-display-xl); line-height: .92; letter-spacing: -.03em; }
+.d-2     { font-size: var(--fs-display-md); line-height: .98; }
+.d-3     { font-size: var(--fs-display-xs); line-height: 1.05; letter-spacing: -.02em; }
+.d-card  { font-size: var(--fs-heading-sm); line-height: 1.05; letter-spacing: -.02em; }
 .numeral { font-family: var(--font-display); font-weight: 400; color: var(--numeral); letter-spacing: -.03em; line-height: .75; }
 
 /* Labels — DM Mono caps. .eyebrow is the quiet one, .eyebrow--lit the screen title. */
 .eyebrow {
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .16em;
   text-transform: uppercase; color: var(--meta);
 }
 .eyebrow--lit { color: var(--cream); letter-spacing: .18em; }
-.eyebrow--sm { font-size: 10px; letter-spacing: .14em; }
-.aside-line { font-family: var(--font-serif); font-style: italic; font-size: 16px; line-height: 1.45; color: var(--tan); }
+.eyebrow--sm { font-size: var(--fs-3xs); letter-spacing: .14em; }
+.aside-line { font-family: var(--font-serif); font-style: italic; font-size: var(--fs-base); line-height: 1.45; color: var(--tan); }
 
 /* Mono-caps link with the oxblood underline ("Open stash →"). */
 .link-under {
   background: none; border: none; padding: 0; cursor: pointer;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .14em; text-transform: uppercase;
   color: var(--cream); border-bottom: 1px solid var(--button-accent);
 }
 .link-under:hover { border-bottom-color: var(--cream); }
 
 /* Large primary / outline sizes for hero and screen-level actions. */
-.btn-lg { padding: 18px 32px 17px; font-size: 12px; }
+.btn-lg { padding: 18px 32px 17px; font-size: var(--fs-xs); }
 .btn-primary.btn-md, .btn-outline.btn-md { padding: 14px 24px 13px; }
 
 /* Trays. .panel is a card without padding; .panel-head is its umber rim. */
@@ -480,7 +509,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .panel-head {
   display: flex; justify-content: space-between; align-items: center; gap: 12px;
   padding: 12px 22px; background: var(--umber); border-bottom: 1px solid var(--seam);
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
 }
 .panel-body { padding: clamp(20px, 3vw, 32px); }
 .well { background: var(--roast); border: 1px solid var(--seam); }
@@ -495,7 +524,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 /* Chips — option toggles. Use aria-pressed so state is announced. */
 .chip {
   padding: 10px 16px; border-radius: 2px; cursor: pointer;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .12em; text-transform: uppercase;
   background: var(--roast); border: 1px solid var(--seam); color: var(--meta);
   transition: color .15s, border-color .15s, background .15s;
 }
@@ -524,7 +553,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 .studio-nav-links { display: flex; gap: 4px; align-items: center; list-style: none; }
 .studio-nav-link {
   display: inline-block; padding: 8px 14px;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .16em; text-transform: uppercase;
   color: var(--meta); transition: color .2s;
 }
 .studio-nav-link:hover { color: var(--cream); }
@@ -533,7 +562,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   width: 30px; height: 30px; border-radius: 50%; flex: none;
   background: var(--umber); border: 1px solid var(--saddle);
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-mono); font-size: 11px; color: var(--cream); text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--cream); text-transform: uppercase;
 }
 .tabbar { display: none; }
 @media (max-width: 640px) {
@@ -546,13 +575,13 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   }
   .tabbar a {
     display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; min-height: 52px;
-    font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
+    font-family: var(--font-mono); font-size: var(--fs-3xs); letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
   }
   .tabbar a[aria-current="page"] { color: var(--cream); }
   .tabbar .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--tan); }
   .tabbar a[aria-current="page"] .dot { background: var(--button-accent-hover); border-color: var(--button-accent-hover); }
 }
-.public-nav-links { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 28px); font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.public-nav-links { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 28px); font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .14em; text-transform: uppercase; }
 .public-nav-links a.quiet { color: var(--meta); transition: color .2s; }
 .public-nav-links a.quiet:hover { color: var(--cream); }
 .public-nav-links a.quiet[aria-current="page"] { color: var(--cream); border-bottom: 1px solid var(--button-accent-hover); padding-bottom: 2px; }
@@ -583,18 +612,18 @@ li:last-child > .ledger-row { border-bottom: none; }
 @media (max-width: 640px) { .stash-aside { position: static; flex-basis: 100%; } }
 .spec-grid {
   display: grid; grid-template-columns: auto 1fr; gap: 6px 18px;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .12em; text-transform: uppercase;
 }
 .spec-grid dt { color: var(--meta); }
 .spec-grid dd { color: var(--cream); margin: 0; overflow-wrap: anywhere; }
 .qty-btn {
   width: 40px; height: 40px; background: none; border: 1px solid var(--saddle); border-radius: 2px;
-  color: var(--cream); font-size: 18px; cursor: pointer;
+  color: var(--cream); font-size: var(--fs-lead); cursor: pointer;
 }
 .qty-btn:disabled { opacity: .4; cursor: not-allowed; }
 .link-quiet {
   background: none; border: none; padding: 0; cursor: pointer;
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted2); transition: color .15s;
+  font-family: var(--font-mono); font-size: var(--fs-xs); letter-spacing: .08em; color: var(--muted2); transition: color .15s;
 }
 .link-quiet:hover { color: var(--cream); }
 .link-quiet--danger:hover { color: var(--madder-text); }
@@ -627,7 +656,7 @@ li:last-child > .ledger-row { border-bottom: none; }
 .proof-toggle {
   display: flex; align-items: center; gap: 10px; background: none; cursor: pointer;
   border: 1px solid var(--saddle); border-radius: 2px; padding: 10px 14px;
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--cream);
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .14em; text-transform: uppercase; color: var(--cream);
 }
 .proof-switch { width: 28px; height: 14px; border-radius: 7px; background: var(--roast); border: 1px solid var(--saddle); box-shadow: inset 14px 0 0 var(--saddle); transition: all .2s; }
 .proof-switch.is-on { background: var(--calico); box-shadow: inset -14px 0 0 var(--button-accent-hover); }
@@ -639,7 +668,7 @@ li:last-child > .ledger-row { border-bottom: none; }
   padding: 16px clamp(18px, 4vw, 44px);
   background: color-mix(in srgb, var(--bean) 92%, transparent); backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--seam);
-  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--fs-2xs); letter-spacing: .14em; text-transform: uppercase;
 }
 .build-strand { position: relative; display: flex; justify-content: space-between; align-items: flex-start; min-height: 64px; overflow-x: auto; gap: 4px; }
 .build-strand-thread { position: absolute; left: 14px; right: 14px; top: 22px; height: 1px; background: var(--saddle); }

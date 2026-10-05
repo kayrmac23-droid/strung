@@ -295,7 +295,7 @@ export default function InventoryPage() {
   })
 
 
-  const arrow = <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none' as const,fontSize:11}}>▾</span>
+  const arrow = <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none' as const,fontSize:'var(--fs-2xs)'}}>▾</span>
 
   const LOW = 10
   const famOf = (b: BeadItem) => colourFamily(safeHex(b.hex))
@@ -329,7 +329,7 @@ export default function InventoryPage() {
 
   const confirmRow = (id: string) => confirmingId === id ? (
     <span style={{display:'inline-flex',alignItems:'center',gap:12}}>
-      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
+      <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
       <button className="link-quiet" style={{color:'var(--madder-text)'}} onClick={()=>deleteItem(id)} disabled={deletingId===id}>{deletingId===id?'removing…':'yes'}</button>
       <button className="link-quiet" onClick={()=>setConfirmingId(null)} disabled={deletingId===id}>cancel</button>
     </span>
@@ -373,26 +373,26 @@ export default function InventoryPage() {
 
           {listError && (
             <div role="alert" className="well" style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 18px',borderColor:'var(--rose)'}}>
-              <span style={{flex:1,fontSize:14,color:'var(--text2)'}}>{listError}</span>
+              <span style={{flex:1,fontSize:'var(--fs-sm)',color:'var(--text2)'}}>{listError}</span>
               <button onClick={() => setListError('')} aria-label="Dismiss error" className="btn-ghost" style={{padding:'2px 8px'}}>Dismiss</button>
             </div>
           )}
 
           {signedOut && (
             <div className="well" style={{padding:'12px 18px'}}>
-              <span style={{fontSize:15,color:'var(--text2)'}}>
-                <Link href="/account" className="link-under" style={{fontSize:11}}>Sign in</Link>&nbsp; to load your stash.
+              <span style={{fontSize:'var(--fs-md)',color:'var(--text2)'}}>
+                <Link href="/account" className="link-under" style={{fontSize:'var(--fs-2xs)'}}>Sign in</Link>&nbsp; to load your stash.
               </span>
             </div>
           )}
-          {identifyMultiError && <p role="alert" style={{color:'var(--madder-text)',fontFamily:'var(--font-mono)',fontSize:12,letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
+          {identifyMultiError && <p role="alert" style={{color:'var(--madder-text)',fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
 
           {/* Add form */}
           {showForm && (
             <div className="card fade-up stash-modal">
-              <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
+              <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:'var(--fs-lead)',cursor:'pointer'}}>×</button>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
-                <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
+                <h3 style={{fontFamily:'var(--font-display)',fontSize:'var(--fs-lg)',color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
               </div>
               {tab==='beads' ? (
                 <div className="form-grid-3" style={{gap:16}}>
@@ -423,7 +423,7 @@ export default function InventoryPage() {
                     <label className="label">Hex</label>
                     <div style={{display:'flex',gap:8,alignItems:'center'}}>
                       <div style={{width:36,height:36,borderRadius:3,background:beadForm.hex||'#7a9ab8',border:'1px solid var(--border)',flexShrink:0}}/>
-                      <input className="input-base" style={{fontFamily:'var(--font-mono)',fontSize:12,padding:'6px 10px'}}
+                      <input className="input-base" style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',padding:'6px 10px'}}
                         value={beadForm.hex||''} placeholder="#000000"
                         onChange={e=>setBeadForm(f=>({...f,hex:e.target.value}))} />
                     </div>
@@ -455,8 +455,8 @@ export default function InventoryPage() {
                           {sliders.map(sl=>(
                             <div key={sl.label}>
                               <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-                                <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase'}}>{sl.label}</span>
-                                <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--muted2)'}}>{sl.value}{sl.unit}</span>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',color:'var(--muted)',letterSpacing:'0.12em',textTransform:'uppercase'}}>{sl.label}</span>
+                                <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',color:'var(--muted2)'}}>{sl.value}{sl.unit}</span>
                               </div>
                               <div style={{position:'relative',height:18}}>
                                 <div style={{position:'absolute',top:7,left:0,right:0,height:4,borderRadius:2,background:sl.bg}}/>
@@ -480,7 +480,7 @@ export default function InventoryPage() {
                         />
                       ))}
                     </div>
-                    <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--muted2)',letterSpacing:'0.06em',minHeight:14}}>
+                    <p style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-3xs)',color:'var(--muted2)',letterSpacing:'0.06em',minHeight:14}}>
                       {beadColours.find(c=>c.hex===beadForm.hex)?.name||''}
                     </p>
                   </div>
@@ -515,8 +515,8 @@ export default function InventoryPage() {
                     </select>{arrow}</div>
                     {findingForm.type === 'statement_component' && (
                       <div style={{marginTop:8,padding:'10px 14px',background:'var(--roast)',border:'1px solid var(--seam)'}}>
-                        <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--madder)',letterSpacing:'0.1em',marginBottom:4}}>FOCAL PIECE</p>
-                        <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.5}}>Chandelier frames, earring hoops, pendant bails, large connectors — the AI will build designs around these.</p>
+                        <p style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-3xs)',color:'var(--madder)',letterSpacing:'0.1em',marginBottom:4}}>FOCAL PIECE</p>
+                        <p style={{fontSize:'var(--fs-sm)',color:'var(--text2)',lineHeight:1.5}}>Chandelier frames, earring hoops, pendant bails, large connectors — the AI will build designs around these.</p>
                       </div>
                     )}
                   </div>
@@ -543,7 +543,7 @@ export default function InventoryPage() {
                   </div>
                 </div>
               )}
-              {saveError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:16,letterSpacing:'0.06em'}}>{saveError}</p>}
+              {saveError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',marginTop:16,letterSpacing:'0.06em'}}>{saveError}</p>}
               <div style={{display:'flex',gap:10,marginTop:12}}>
                 <button className="btn-primary" onClick={saveItem} disabled={saving}>
                   {saving?<><span className="spinner"/>Saving…</>:'Save to Stash'}
@@ -556,13 +556,13 @@ export default function InventoryPage() {
           {/* Quick add */}
           {showQuickAdd && (
             <div className="card fade-up stash-modal">
-              <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
-              <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>{quickAddSource==='photo'?'Identify from photo':'Quick add'}</h3>
+              <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:'var(--fs-lead)',cursor:'pointer'}}>×</button>
+              <h3 style={{fontFamily:'var(--font-display)',fontSize:'var(--fs-lg)',color:'var(--cream)',marginBottom:6}}>{quickAddSource==='photo'?'Identify from photo':'Quick add'}</h3>
               {quickAddSource==='photo' ? (
-                <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Read from your photo — check each item, adjust quantities, and save. Distinct groups spread on a plain background identify best.</p>
+                <p style={{color:'var(--text2)',fontSize:'var(--fs-md)',marginBottom:16,lineHeight:1.5}}>Read from your photo — check each item, adjust quantities, and save. Distinct groups spread on a plain background identify best.</p>
               ) : (
                 <>
-                  <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Describe your stash in plain words — the AI turns it into beads and findings for you to review before saving.</p>
+                  <p style={{color:'var(--text2)',fontSize:'var(--fs-md)',marginBottom:16,lineHeight:1.5}}>Describe your stash in plain words — the AI turns it into beads and findings for you to review before saving.</p>
                   <textarea
                     className="input-base"
                     rows={4}
@@ -579,11 +579,11 @@ export default function InventoryPage() {
                   </div>
                 </>
               )}
-              {parseError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:14,letterSpacing:'0.06em'}}>{parseError}</p>}
+              {parseError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',marginTop:14,letterSpacing:'0.06em'}}>{parseError}</p>}
 
               {(reviewBeads.length>0 || reviewFindings.length>0) && (
                 <div style={{marginTop:24,borderTop:'1px solid var(--border)',paddingTop:20}}>
-                  <p className="mono" style={{fontSize:10,letterSpacing:'0.12em',color:'var(--madder)',textTransform:'uppercase',marginBottom:16}}>
+                  <p className="mono" style={{fontSize:'var(--fs-3xs)',letterSpacing:'0.12em',color:'var(--madder)',textTransform:'uppercase',marginBottom:16}}>
                     Review — {reviewBeads.length} bead{reviewBeads.length===1?'':'s'}, {reviewFindings.length} finding{reviewFindings.length===1?'':'s'}
                   </p>
                   {reviewBeads.length>0 && (
@@ -593,17 +593,17 @@ export default function InventoryPage() {
                         {reviewBeads.map((b,i)=>(
                           <div key={i} className="stash-row">
                             <div style={{width:22,height:22,borderRadius:'50%',background:b.hex||'#7a9ab8',border:'1px solid rgba(255,255,255,0.12)',flexShrink:0}}/>
-                            <span style={{flex:1,minWidth:120,fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            <span style={{flex:1,minWidth:120,fontSize:'var(--fs-md)',color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                             {b.confidence && b.confidence!=='certain' && (
                               <span className="tag" style={b.confidence==='unsure'?{color:'var(--rose)',borderColor:'var(--rose)'}:undefined}>
                                 {b.confidence==='unsure'?'? unsure':'~ likely'}
                               </span>
                             )}
-                            <input className="input-base" style={{width:130,padding:'6px 10px',fontSize:13}} placeholder="Colour"
+                            <input className="input-base" style={{width:130,padding:'6px 10px',fontSize:'var(--fs-sm)'}} placeholder="Colour"
                               value={b.colour||''} onChange={e=>updateReviewBead(i,{colour:e.target.value})}/>
-                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
+                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:'var(--fs-sm)'}}
                               value={b.quantity ?? 1} onChange={e=>updateReviewBead(i,{quantity:Number(e.target.value)})}/>
-                            <button onClick={()=>removeReviewBead(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
+                            <button onClick={()=>removeReviewBead(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',cursor:'pointer',letterSpacing:'0.08em'}}
                               onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
                           </div>
                         ))}
@@ -616,7 +616,7 @@ export default function InventoryPage() {
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
                         {reviewFindings.map((f,i)=>(
                           <div key={i} className="stash-row">
-                            <span style={{flex:1,minWidth:120,fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
+                            <span style={{flex:1,minWidth:120,fontSize:'var(--fs-md)',color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
                             {f.type && <span className="tag">{f.type.replace(/_/g,' ')}</span>}
                             {f.metal && <span className="tag">{f.metal.replace(/_/g,' ')}</span>}
                             {f.confidence && f.confidence!=='certain' && (
@@ -624,9 +624,9 @@ export default function InventoryPage() {
                                 {f.confidence==='unsure'?'? unsure':'~ likely'}
                               </span>
                             )}
-                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
+                            <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:'var(--fs-sm)'}}
                               value={f.quantity ?? 1} onChange={e=>updateReviewFinding(i,{quantity:Number(e.target.value)})}/>
-                            <button onClick={()=>removeReviewFinding(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
+                            <button onClick={()=>removeReviewFinding(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:'var(--fs-xs)',cursor:'pointer',letterSpacing:'0.08em'}}
                               onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
                           </div>
                         ))}
@@ -697,11 +697,11 @@ export default function InventoryPage() {
                           onClick={()=>{ setSelId(on ? null : b.id ?? null); setEditingId(null); setConfirmingId(null) }}>
                           <span style={{width:40,display:'flex',justifyContent:'center',flex:'none'}}><Bead hex={safeHex(b.hex)} shape={form} size={Math.min(nominalPx(form) * 2.4, 26)} /></span>
                           <span style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',textAlign:'left'}}>
-                            <span style={{color:'var(--cream)',fontSize:16,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            <span style={{color:'var(--cream)',fontSize:'var(--fs-base)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                             <span className="eyebrow eyebrow--sm" style={{letterSpacing:'.12em'}}>{b.type}{b.size?` · ${b.size}`:''}{b.colour?` · ${b.colour}`:''}</span>
                           </span>
                           <span className="ledger-bar" aria-hidden="true"><span style={{width:`${Math.min(100, Math.log10(q + 1) / maxLog * 100)}%`,background: low ? 'var(--ochre)' : safeHex(b.hex)}} /></span>
-                          <span style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'.1em',textTransform:'uppercase',minWidth:70,textAlign:'right',color: low ? 'var(--ochre)' : 'var(--cream)'}}>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',letterSpacing:'.1em',textTransform:'uppercase',minWidth:70,textAlign:'right',color: low ? 'var(--ochre)' : 'var(--cream)'}}>
                             {low ? `${q} · low` : q.toLocaleString('en-AU')}
                           </span>
                         </button>
@@ -715,7 +715,7 @@ export default function InventoryPage() {
                     <div className="well" style={{height:180,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',border:'none',borderBottom:'1px solid var(--seam)'}}>
                       <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:'50%',height:1,background:'var(--saddle)'}} />
                       <Bead hex={safeHex(sel.hex)} shape={beadFormFor(sel)} size={Math.min(70, 8 * nominalPx(beadFormFor(sel)))} />
-                      <button type="button" onClick={()=>{setSelId(null);setEditingId(null)}} aria-label="Close details" style={{position:'absolute',top:10,right:12,background:'none',border:'none',color:'var(--meta)',fontSize:20,cursor:'pointer'}}>×</button>
+                      <button type="button" onClick={()=>{setSelId(null);setEditingId(null)}} aria-label="Close details" style={{position:'absolute',top:10,right:12,background:'none',border:'none',color:'var(--meta)',fontSize:'var(--fs-lg)',cursor:'pointer'}}>×</button>
                     </div>
                     <div style={{padding:22,display:'flex',flexDirection:'column',gap:18}}>
                       {editingId === sel.id ? (
@@ -734,7 +734,7 @@ export default function InventoryPage() {
                             <div style={{display:'flex',gap:6,alignItems:'center'}}>
                               <input type="color" value={(editForm as Partial<BeadItem>).hex||'#7a9ab8'} onChange={e=>setEditForm(f=>({...f,hex:e.target.value}))}
                                 style={{width:38,height:32,border:'1px solid var(--border)',background:'none',cursor:'pointer',padding:2}} />
-                              <span className="mono" style={{fontSize:10,color:'var(--muted)'}}>{(editForm as Partial<BeadItem>).hex}</span>
+                              <span className="mono" style={{fontSize:'var(--fs-3xs)',color:'var(--muted)'}}>{(editForm as Partial<BeadItem>).hex}</span>
                             </div>
                           </div>
                           <div>
@@ -756,13 +756,13 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         <div style={{display:'flex',gap:8}}>
-                          <button className="btn-primary" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(sel.id!)}>Save</button>
-                          <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
+                          <button className="btn-primary" style={{fontSize:'var(--fs-xs)',padding:'6px 14px'}} onClick={()=>editItem(sel.id!)}>Save</button>
+                          <button className="btn-outline" style={{fontSize:'var(--fs-xs)',padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
                         </div>
                         </div>
                       ) : (
                         <>
-                          <h2 className="display" style={{fontSize:34,lineHeight:1,letterSpacing:'-.02em'}}>{sel.name}</h2>
+                          <h2 className="display" style={{fontSize:'var(--fs-heading)',lineHeight:1,letterSpacing:'-.02em'}}>{sel.name}</h2>
                           <dl className="spec-grid">
                             <dt>Type</dt><dd>{sel.type}</dd>
                             {sel.size && <><dt>Size</dt><dd>{sel.size}</dd></>}
@@ -773,7 +773,7 @@ export default function InventoryPage() {
                           <div className="well" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px'}}>
                             <button type="button" className="qty-btn" aria-label="One fewer" onClick={()=>stepQty(sel,-1)} disabled={qtyBusy || sel.quantity <= 0}>−</button>
                             <div style={{display:'flex',flexDirection:'column',alignItems:'center'}} aria-live="polite">
-                              <span className="display" style={{fontSize:34,lineHeight:1}}>{sel.quantity}</span>
+                              <span className="display" style={{fontSize:'var(--fs-heading)',lineHeight:1}}>{sel.quantity}</span>
                               <span className="eyebrow eyebrow--sm">In stash</span>
                             </div>
                             <button type="button" className="qty-btn" aria-label="One more" onClick={()=>stepQty(sel,1)} disabled={qtyBusy}>+</button>
@@ -840,20 +840,20 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         <div style={{display:'flex',gap:8}}>
-                          <button className="btn-primary" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(f.id!)}>Save</button>
-                          <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
+                          <button className="btn-primary" style={{fontSize:'var(--fs-xs)',padding:'6px 14px'}} onClick={()=>editItem(f.id!)}>Save</button>
+                          <button className="btn-outline" style={{fontSize:'var(--fs-xs)',padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
                           <div style={{display:'flex',flexDirection:'column',minWidth:0}}>
-                            <span style={{color:'var(--cream)',fontSize:15}}>{f.name}</span>
+                            <span style={{color:'var(--cream)',fontSize:'var(--fs-md)'}}>{f.name}</span>
                             <span className="eyebrow eyebrow--sm" style={{letterSpacing:'.12em'}}>{f.type.replace(/_/g,' ')} · {f.metal.replace(/_/g,' ')}{f.size?` · ${f.size}`:''}</span>
                           </div>
-                          <span style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'.1em',color: f.quantity < LOW ? 'var(--ochre)' : 'var(--cream)'}}>{f.quantity}</span>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:'var(--fs-2xs)',letterSpacing:'.1em',color: f.quantity < LOW ? 'var(--ochre)' : 'var(--cream)'}}>{f.quantity}</span>
                         </div>
-                        {f.notes && <p className="aside-line" style={{fontSize:14}}>{f.notes}</p>}
+                        {f.notes && <p className="aside-line" style={{fontSize:'var(--fs-sm)'}}>{f.notes}</p>}
                         <div style={{display:'flex',alignItems:'center',gap:16}}>
                           <button className="link-quiet" onClick={() => { setEditingId(f.id!); setEditForm(f) }}>✎ edit</button>
                           {confirmRow(f.id!)}

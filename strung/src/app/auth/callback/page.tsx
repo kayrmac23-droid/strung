@@ -66,7 +66,7 @@ export default function AuthCallback() {
     }}>
       {failed ? (
         <>
-          <p role="alert" style={{ fontFamily: 'var(--font-body)', fontSize: 16, color: 'var(--text2)', maxWidth: 420 }}>
+          <p role="alert" style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--fs-base)', color: 'var(--text2)', maxWidth: 420 }}>
             {failed}
           </p>
           <Link href="/account" className="btn-outline">Go to sign in</Link>
@@ -74,7 +74,7 @@ export default function AuthCallback() {
       ) : (
         <>
           <span className="spinner-dark" />
-          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--muted)', letterSpacing: '0.12em' }}>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--muted)', letterSpacing: '0.12em' }}>
             {status.toUpperCase()}
           </p>
         </>

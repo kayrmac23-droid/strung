@@ -347,7 +347,7 @@ export default function CoDesignPage() {
 
           {signedOut && (
             <div className="well" style={{ padding: '12px 18px' }}>
-              <span style={{ fontSize: 15 }}>
+              <span style={{ fontSize: 'var(--fs-md)' }}>
                 <Link href="/account" className="link-under">Sign in</Link>&nbsp; to chat with the co-designer — it designs from your stash.
               </span>
             </div>
@@ -361,11 +361,11 @@ export default function CoDesignPage() {
               <div style={{ flex: 1, padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
                 {messages.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <p className="aside-line" style={{ fontSize: 19, color: 'var(--text2)' }}>Describe what you have in mind — or start from one of these.</p>
+                    <p className="aside-line" style={{ fontSize: 'var(--fs-lead)', color: 'var(--text2)' }}>Describe what you have in mind — or start from one of these.</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {starters.map(st => (
                         <button key={st} type="button" className="tray-btn" onClick={() => send(st)} disabled={signedOut}
-                          style={{ padding: '12px 16px', fontSize: 15, boxShadow: 'none', background: 'var(--roast)' }}>{st}</button>
+                          style={{ padding: '12px 16px', fontSize: 'var(--fs-md)', boxShadow: 'none', background: 'var(--roast)' }}>{st}</button>
                       ))}
                     </div>
                   </div>
@@ -377,8 +377,8 @@ export default function CoDesignPage() {
                         <div key={i} className="ss-up" style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
                           <span className="eyebrow eyebrow--sm" style={{ color: me ? 'var(--meta)' : 'var(--cream)' }}>{me ? 'You' : 'strung'}</span>
                           <div style={me
-                            ? { maxWidth: '80%', padding: '12px 16px', background: 'var(--umber)', border: '1px solid var(--seam)', borderRadius: 2, fontSize: 16, lineHeight: 1.5, color: 'var(--cream)' }
-                            : { maxWidth: '92%', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: 'var(--cream)' }}>
+                            ? { maxWidth: '80%', padding: '12px 16px', background: 'var(--umber)', border: '1px solid var(--seam)', borderRadius: 2, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--cream)' }
+                            : { maxWidth: '92%', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-lead)', lineHeight: 1.45, color: 'var(--cream)' }}>
                             {msg.imageDataUrl && (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -409,9 +409,9 @@ export default function CoDesignPage() {
                     <img src={pendingImage.dataUrl} alt="attachment preview" style={{ height: 60, maxWidth: 100, objectFit: 'cover', border: '1px solid var(--seam)' }} />
                     <div style={{ flex: 1 }}>
                       <p className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', marginBottom: 4 }}>Image attached</p>
-                      <p style={{ fontSize: 13, color: 'var(--meta)' }}>Add a message or send as-is</p>
+                      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--meta)' }}>Add a message or send as-is</p>
                     </div>
-                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--meta)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--meta)', fontSize: 'var(--fs-lead)', cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
@@ -434,7 +434,7 @@ export default function CoDesignPage() {
                   </button>
                 </div>
                 {attachError && (
-                  <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', marginTop: 6, letterSpacing: '0.06em' }}>{attachError}</p>
+                  <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--madder-text)', marginTop: 6, letterSpacing: '0.06em' }}>{attachError}</p>
                 )}
                 <p className="eyebrow eyebrow--sm" style={{ marginTop: 8, color: 'var(--muted2)', textTransform: 'none', letterSpacing: '.08em' }}>⌘/Ctrl + Enter to send · + to attach a photo</p>
               </div>
@@ -453,7 +453,7 @@ export default function CoDesignPage() {
                   <div style={{ background: 'var(--roast)', borderBottom: '1px solid var(--seam)' }}>
                     <div role="tablist" aria-label="Blueprint view" className="chip-row" style={{ padding: 10 }}>
                       {([['schematic', 'Diagram'], ['visual', 'Render']] as const).map(([v, label]) => (
-                        <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '6px 12px', fontSize: 10 }} onClick={() => setView(v)}>{label}</button>
+                        <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '6px 12px', fontSize: 'var(--fs-3xs)' }} onClick={() => setView(v)}>{label}</button>
                       ))}
                     </div>
                     <div style={{ padding: '0 12px 12px' }}>
@@ -468,7 +468,7 @@ export default function CoDesignPage() {
                         </div>
                       ) : (
                         <div className="render-well" style={{ minHeight: 220, flexDirection: 'column', gap: 12, padding: 20, textAlign: 'center' }}>
-                          {imageError && <span style={{ fontSize: 14, color: 'var(--text2)' }}>{imageError}</span>}
+                          {imageError && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text2)' }}>{imageError}</span>}
                           <button className="btn-outline" onClick={renderPreview}>{imageError ? 'Retry preview' : 'Render preview'}</button>
                         </div>
                       )}
@@ -479,7 +479,7 @@ export default function CoDesignPage() {
                   </div>
 
                   <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <h2 className="display" style={{ fontSize: 40, lineHeight: 1, letterSpacing: '-.02em' }}>{blueprint.title}</h2>
+                    <h2 className="display" style={{ fontSize: 'var(--fs-heading)', lineHeight: 1, letterSpacing: '-.02em' }}>{blueprint.title}</h2>
                     <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', letterSpacing: '.12em' }}>
                       {[blueprint.pieceType, blueprint.difficulty, blueprint.estimatedTime].filter(Boolean).join(' · ')}
                       {blueprint.materialsCheck && !blueprint.materialsCheck.allAvailable && <span style={{ color: 'var(--ochre)' }}> · Check materials</span>}
@@ -488,20 +488,20 @@ export default function CoDesignPage() {
                     {blueprint.colourStory && (
                       <div className="well" style={{ padding: '12px 14px' }}>
                         <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>Colour story</span>
-                        <p style={{ fontSize: 14, marginTop: 4, lineHeight: 1.6 }}>{blueprint.colourStory}</p>
+                        <p style={{ fontSize: 'var(--fs-sm)', marginTop: 4, lineHeight: 1.6 }}>{blueprint.colourStory}</p>
                       </div>
                     )}
                     {blueprint.materialsCheck?.notes && (
                       <div className="well" style={{ padding: '12px 14px' }}>
                         <span className="eyebrow eyebrow--sm" style={{ color: 'var(--ochre)' }}>Materials note</span>
-                        <p style={{ fontSize: 14, marginTop: 4 }}>{blueprint.materialsCheck.notes}</p>
+                        <p style={{ fontSize: 'var(--fs-sm)', marginTop: 4 }}>{blueprint.materialsCheck.notes}</p>
                       </div>
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {(blueprint.components ?? []).map((c, i) => (
-                        <div key={i} className="row-line" style={{ padding: '9px 0', fontSize: 15, justifyContent: 'space-between', alignItems: 'baseline' }}>
-                          <span style={{ color: 'var(--cream)' }}>{c.item}{c.note && <span style={{ display: 'block', fontSize: 12, color: 'var(--meta)' }}>{c.note}</span>}</span>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--tan)' }}>×{c.quantity}</span>
+                        <div key={i} className="row-line" style={{ padding: '9px 0', fontSize: 'var(--fs-md)', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ color: 'var(--cream)' }}>{c.item}{c.note && <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--meta)' }}>{c.note}</span>}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--tan)' }}>×{c.quantity}</span>
                         </div>
                       ))}
                     </div>
@@ -511,11 +511,11 @@ export default function CoDesignPage() {
                         <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                           {(blueprint.steps ?? []).map((st, i) => (
                             <li key={st.id ?? i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                              <span className="numeral" style={{ fontSize: 22, lineHeight: 1.1, color: 'var(--saddle)', minWidth: 26 }}>{String(i + 1).padStart(2, '0')}</span>
+                              <span className="numeral" style={{ fontSize: 'var(--fs-lg)', lineHeight: 1.1, color: 'var(--saddle)', minWidth: 26 }}>{String(i + 1).padStart(2, '0')}</span>
                               <div>
-                                <p style={{ fontSize: 14, lineHeight: 1.5 }}>{st.instruction}</p>
+                                <p style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>{st.instruction}</p>
                                 {st.technique && <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', display: 'block', marginTop: 3 }}>{st.technique}</span>}
-                                {st.tip && <p className="aside-line" style={{ fontSize: 14, marginTop: 3 }}>{st.tip}</p>}
+                                {st.tip && <p className="aside-line" style={{ fontSize: 'var(--fs-sm)', marginTop: 3 }}>{st.tip}</p>}
                               </div>
                             </li>
                           ))}
@@ -531,7 +531,7 @@ export default function CoDesignPage() {
                       {saved ? '✓ Saved to journal' : saving ? 'Saving…' : 'Save to journal'}
                     </button>
                     {saveError && (
-                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', letterSpacing: '0.06em' }}>{saveError}</p>
+                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--madder-text)', letterSpacing: '0.06em' }}>{saveError}</p>
                     )}
                   </div>
                 </>
