@@ -114,8 +114,8 @@ export default function GuidesPage() {
         <div className="page-pad" style={{maxWidth:1200,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Technique Library</p>
-            <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Guides</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Practical techniques for the style of jewellery you actually want to make.</p>
+            <h1 className="fade-up-1" style={{fontSize:36,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Guides</h1>
+            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:16}}>Practical techniques for the style of jewellery you actually want to make.</p>
           </header>
 
           <div className="guides-grid">
@@ -148,7 +148,7 @@ export default function GuidesPage() {
                   <span className="tag" style={{borderColor:diffColor(active.difficulty),color:diffColor(active.difficulty)}}>{active.difficulty}</span>
                   <span className="mono muted" style={{fontSize:10}}>{active.time} read</span>
                 </div>
-                <h2 style={{fontSize:30,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginBottom:8}}>{active.title}</h2>
+                <h2 style={{fontSize:25,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,marginBottom:8}}>{active.title}</h2>
                 <p style={{color:'var(--text2)',fontSize:15}}>{active.summary}</p>
                 <div style={{display:'flex',flexWrap:'wrap',gap:5,marginTop:18,paddingTop:16,borderTop:'1px solid var(--border)'}}>
                   {active.sections.map((s,i) => (

@@ -48,7 +48,7 @@ export default function Home() {
           <section aria-labelledby="hero-h" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(40px,5vw,72px)', padding: 'clamp(64px,10vw,160px) 0 clamp(56px,7vw,104px)' }}>
             <h1 id="hero-h" className="display d-hero ss-up">You already own your <span className="soft">next piece.</span></h1>
             <div className="ss-up-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,380px),1fr))', gap: '28px clamp(32px,5vw,80px)', alignItems: 'end', paddingTop: 28, borderTop: '1px solid var(--seam)' }}>
-              <p style={{ fontSize: 'clamp(19px,1.8vw,26px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '34ch' }}>
+              <p style={{ fontSize: 'clamp(17px,1.6vw,23px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '34ch' }}>
                 strung reads the beads you actually have and designs something you can make tonight — then stays with you at the bench until it&apos;s done.
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -94,7 +94,7 @@ export default function Home() {
 
           <section id="make" aria-labelledby="make-h" style={{ padding: 'clamp(80px,10vw,160px) 0 0', display: 'flex', flexDirection: 'column', gap: 'clamp(32px,4vw,48px)', scrollMarginTop: 'calc(var(--nav-h-public) + 16px)' }}>
             <span className="eyebrow" id="make-h">Make · tap the underlined words</span>
-            <p className="display" style={{ fontSize: 'clamp(40px,6.4vw,108px)', lineHeight: 1.14, color: 'var(--deemph)' }}>
+            <p className="display" style={{ fontSize: 'clamp(33px,5.2vw,89px)', lineHeight: 1.14, color: 'var(--deemph)' }}>
               Make me a{' '}
               <button type="button" className="brief-word" onClick={() => setPi(i => (i + 1) % PIECES.length)} aria-label={`Piece: ${PIECES[pi]}. Change`}>{PIECES[pi]}</button>
               {' '}that feels{' '}
@@ -108,7 +108,7 @@ export default function Home() {
               </div>
               <div style={{ padding: 'clamp(22px,3vw,36px)', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
                 <span className="eyebrow eyebrow--sm" style={{ color: 'var(--sage)' }}>● All from your stash</span>
-                <span className="display" style={{ fontSize: 'clamp(28px,2.8vw,42px)', lineHeight: 1 }}>{pv.title}</span>
+                <span className="display" style={{ fontSize: 'clamp(23px,2.3vw,34px)', lineHeight: 1 }}>{pv.title}</span>
                 <span style={{ fontSize: 16 }}>{pv.line}</span>
               </div>
             </div>
@@ -118,7 +118,7 @@ export default function Home() {
             <div className="split panel" style={{ ['--min' as string]: '400px', gap: 'clamp(24px,4vw,64px)', alignItems: 'center', padding: 'clamp(28px,4vw,56px)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <span className="eyebrow">Build</span>
-                <h2 id="build-h" className="display" style={{ fontSize: 'clamp(36px,4.4vw,68px)', lineHeight: .98 }}>Readable from across the bench.</h2>
+                <h2 id="build-h" className="display" style={{ fontSize: 'clamp(30px,3.6vw,56px)', lineHeight: .98 }}>Readable from across the bench.</h2>
                 <p style={{ maxWidth: '42ch' }}>One step at a time, big enough to follow with your phone propped up. When you finish, it offers to take what you used out of your stash.</p>
               </div>
               <BuildStepDemo />
@@ -139,7 +139,7 @@ export default function Home() {
           </section>
 
           <section aria-labelledby="close-h" style={{ padding: 'clamp(96px,12vw,180px) 0 clamp(64px,8vw,120px)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 32 }}>
-            <h2 id="close-h" className="display" style={{ fontSize: 'clamp(48px,7.4vw,124px)', lineHeight: .92, maxWidth: '12ch' }}>Start with one bead.</h2>
+            <h2 id="close-h" className="display" style={{ fontSize: 'clamp(39px,6.1vw,102px)', lineHeight: .92, maxWidth: '12ch' }}>Start with one bead.</h2>
             <Link href={start} className="btn-primary btn-lg">Start your stash →</Link>
             <span style={{ fontSize: 15, color: 'var(--meta)' }}>Free to start. Your stash stays yours.</span>
           </section>

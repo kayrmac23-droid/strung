@@ -60,8 +60,8 @@ export default function GlossaryPage() {
         <div className="page-pad" style={{maxWidth:900,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
           <header style={{marginBottom:40}}>
             <p className="section-eyebrow fade-up">Reference</p>
-            <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Glossary</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Every term you&apos;ll encounter when buying beads and findings — defined plainly.</p>
+            <h1 className="fade-up-1" style={{fontSize:36,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>Glossary</h1>
+            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:16}}>Every term you&apos;ll encounter when buying beads and findings — defined plainly.</p>
           </header>
 
           <div style={{display:'flex',gap:12,marginBottom:24,flexWrap:'wrap'}}>
@@ -97,7 +97,7 @@ export default function GlossaryPage() {
                     textTransform:'uppercase',color:catColours[t.cat]||'var(--muted)',
                     flexShrink:0,minWidth:80
                   }}>{t.cat}</span>
-                  <span style={{fontFamily:'var(--font-display)',fontSize:18,color:'var(--cream)',flex:1}}>{t.term}</span>
+                  <span style={{fontFamily:'var(--font-display)',fontSize:17,color:'var(--cream)',flex:1}}>{t.term}</span>
                   <span style={{color:'var(--muted)',fontSize:14,transform:expanded===t.term?'rotate(90deg)':'rotate(0)',transition:'transform 0.2s'}}>›</span>
                 </button>
                 {expanded===t.term && (

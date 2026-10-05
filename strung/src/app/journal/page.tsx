@@ -136,7 +136,7 @@ export default function JournalPage() {
                 {([['Finished', counts.completed], ['On the bench', counts.in_progress], ['Ideas', counts.draft]] as const).map(([l, v]) => (
                   <div key={l} style={{ display: 'flex', flexDirection: 'column-reverse' }}>
                     <dt className="eyebrow eyebrow--sm">{l}</dt>
-                    <dd className="display" style={{ fontSize: 44, lineHeight: 1, margin: 0 }}>{v}</dd>
+                    <dd className="display" style={{ fontSize: 36, lineHeight: 1, margin: 0 }}>{v}</dd>
                   </div>
                 ))}
               </dl>

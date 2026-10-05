@@ -157,7 +157,7 @@ export default function CalculatorPage() {
           <header style={{ marginBottom: 44 }}>
             <p className="section-eyebrow fade-up">Maker Tools</p>
             <h1 className="fade-up-1" style={{
-              fontSize: 44,
+              fontSize: 36,
               color: 'var(--cream)',
               fontFamily: 'var(--font-display)',
               fontWeight: 400,
@@ -165,7 +165,7 @@ export default function CalculatorPage() {
             }}>
               Bead Calculator
             </h1>
-            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17, maxWidth: 560, lineHeight: 1.65 }}>
+            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 16, maxWidth: 560, lineHeight: 1.65 }}>
               Work out bead counts, wire lengths, and weight estimates before you string a single bead.
             </p>
           </header>
@@ -403,7 +403,7 @@ export default function CalculatorPage() {
                     </div>
                     <div style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 30,
+                      fontSize: 25,
                       color: 'var(--cream)',
                       lineHeight: 1.1,
                     }}>
@@ -456,7 +456,7 @@ export default function CalculatorPage() {
               <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 18,
+                fontSize: 17,
                 color: 'var(--cream)',
                 fontWeight: 400,
                 marginBottom: 16,
@@ -491,7 +491,7 @@ export default function CalculatorPage() {
               <p className="section-eyebrow" style={{ marginBottom: 16, fontSize: 10 }}>Reference</p>
               <h3 style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 18,
+                fontSize: 17,
                 color: 'var(--cream)',
                 fontWeight: 400,
                 marginBottom: 16,

@@ -9,10 +9,10 @@ export function BuildStepDemo() {
   return (
     <div className="well" style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: 'clamp(22px,3vw,32px)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 14 }}>
-        <span className="numeral" style={{ fontSize: 'clamp(64px,7vw,104px)', lineHeight: .8, color: 'var(--seam)' }}>04</span>
+        <span className="numeral" style={{ fontSize: 'clamp(52px,5.7vw,85px)', lineHeight: .8, color: 'var(--seam)' }}>04</span>
         <span className="eyebrow eyebrow--sm">of 08 · Stringing</span>
       </div>
-      <p style={{ margin: 0, fontSize: 'clamp(20px,1.9vw,28px)', lineHeight: 1.3, color: 'var(--cream)' }}>Add a pearl between the third and fourth repeats to start the gather.</p>
+      <p style={{ margin: 0, fontSize: 'clamp(18px,1.7vw,25px)', lineHeight: 1.3, color: 'var(--cream)' }}>Add a pearl between the third and fourth repeats to start the gather.</p>
       <StepStrand colours={BUILD_DEMO_COLOURS} current={3} total={8} beadSize={14} height={24} />
     </div>
   )

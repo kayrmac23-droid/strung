@@ -390,7 +390,7 @@ export default function InventoryPage() {
           {/* Add form */}
           {showForm && (
             <div className="card fade-up stash-modal">
-              <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
+              <button onClick={()=>setShowForm(false)} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:17,cursor:'pointer'}}>×</button>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
                 <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)'}}>Add {tab==='beads'?'Bead':'Finding'}</h3>
               </div>
@@ -556,7 +556,7 @@ export default function InventoryPage() {
           {/* Quick add */}
           {showQuickAdd && (
             <div className="card fade-up stash-modal">
-              <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:18,cursor:'pointer'}}>×</button>
+              <button onClick={closeQuickAdd} style={{position:'absolute',top:16,right:16,background:'none',border:'none',color:'var(--muted)',fontSize:17,cursor:'pointer'}}>×</button>
               <h3 style={{fontFamily:'var(--font-display)',fontSize:20,color:'var(--cream)',marginBottom:6}}>{quickAddSource==='photo'?'Identify from photo':'Quick add'}</h3>
               {quickAddSource==='photo' ? (
                 <p style={{color:'var(--text2)',fontSize:15,marginBottom:16,lineHeight:1.5}}>Read from your photo — check each item, adjust quantities, and save. Distinct groups spread on a plain background identify best.</p>
@@ -762,7 +762,7 @@ export default function InventoryPage() {
                         </div>
                       ) : (
                         <>
-                          <h2 className="display" style={{fontSize:34,lineHeight:1,letterSpacing:'-.02em'}}>{sel.name}</h2>
+                          <h2 className="display" style={{fontSize:28,lineHeight:1,letterSpacing:'-.02em'}}>{sel.name}</h2>
                           <dl className="spec-grid">
                             <dt>Type</dt><dd>{sel.type}</dd>
                             {sel.size && <><dt>Size</dt><dd>{sel.size}</dd></>}
@@ -773,7 +773,7 @@ export default function InventoryPage() {
                           <div className="well" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px'}}>
                             <button type="button" className="qty-btn" aria-label="One fewer" onClick={()=>stepQty(sel,-1)} disabled={qtyBusy || sel.quantity <= 0}>−</button>
                             <div style={{display:'flex',flexDirection:'column',alignItems:'center'}} aria-live="polite">
-                              <span className="display" style={{fontSize:34,lineHeight:1}}>{sel.quantity}</span>
+                              <span className="display" style={{fontSize:28,lineHeight:1}}>{sel.quantity}</span>
                               <span className="eyebrow eyebrow--sm">In stash</span>
                             </div>
                             <button type="button" className="qty-btn" aria-label="One more" onClick={()=>stepQty(sel,1)} disabled={qtyBusy}>+</button>

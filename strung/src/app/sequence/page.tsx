@@ -127,7 +127,7 @@ export default function SequencePage() {
         <MakeTabs />
         <div className="wrap ss-up" style={{ paddingTop: 'clamp(28px,4vw,48px)', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
-            <h1 className="display" style={{ fontSize: 'clamp(44px,6vw,92px)', lineHeight: .95, maxWidth: '12ch' }}>Find the colour <em>first.</em></h1>
+            <h1 className="display" style={{ fontSize: 'clamp(36px,4.9vw,75px)', lineHeight: .95, maxWidth: '12ch' }}>Find the colour <em>first.</em></h1>
             {result && (
               <button type="button" aria-pressed={proof} onClick={() => setProof(p => !p)} className="proof-toggle">
                 <span aria-hidden="true" className={`proof-switch${proof ? ' is-on' : ''}`} />Daylight proof
@@ -135,7 +135,7 @@ export default function SequencePage() {
             )}
           </div>
 
-          <p className="aside-line" style={{ fontSize: 18, maxWidth: '52ch' }}>
+          <p className="aside-line" style={{ fontSize: 17, maxWidth: '52ch' }}>
             {!stashLoaded ? 'Checking your stash…'
               : beads.length > 0 ? `Pick a harmony and an anchor — it matches the palette against your ${beads.length} bead type${beads.length === 1 ? '' : 's'} where it can.`
               : 'Pick a harmony and an anchor. Works signed out; with a stash, it matches the palette to beads you own.'}
@@ -200,7 +200,7 @@ export default function SequencePage() {
               <div style={{ padding: 'clamp(20px,3vw,32px)', display: 'flex', flexDirection: 'column', gap: 26 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span className="eyebrow eyebrow--sm" style={{ color: metaC }}>{result.harmonyType} · {pieceType} · {result.repeats} repeats · {totalBeads} beads</span>
-                  <h2 id="palette-h" className="display" style={{ fontSize: 'clamp(32px,3.6vw,52px)', lineHeight: 1, color: ink }}>{result.title}</h2>
+                  <h2 id="palette-h" className="display" style={{ fontSize: 'clamp(26px,3vw,43px)', lineHeight: 1, color: ink }}>{result.title}</h2>
                   <p style={{ fontSize: 16, lineHeight: 1.6, color: body, maxWidth: '60ch' }}>{result.colourStory}</p>
                 </div>
 
@@ -240,7 +240,7 @@ export default function SequencePage() {
                 </div>
 
                 {result.tip && (
-                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 17, lineHeight: 1.5, color: proof ? 'var(--calico-meta)' : 'var(--tan)', paddingTop: 18, borderTop: `1px solid ${proof ? 'var(--calico-edge)' : 'var(--seam)'}` }}>{result.tip}</p>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.5, color: proof ? 'var(--calico-meta)' : 'var(--tan)', paddingTop: 18, borderTop: `1px solid ${proof ? 'var(--calico-edge)' : 'var(--seam)'}` }}>{result.tip}</p>
                 )}
               </div>
             </section>

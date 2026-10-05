@@ -361,7 +361,7 @@ export default function CoDesignPage() {
               <div style={{ flex: 1, padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
                 {messages.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <p className="aside-line" style={{ fontSize: 19, color: 'var(--text2)' }}>Describe what you have in mind — or start from one of these.</p>
+                    <p className="aside-line" style={{ fontSize: 18, color: 'var(--text2)' }}>Describe what you have in mind — or start from one of these.</p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {starters.map(st => (
                         <button key={st} type="button" className="tray-btn" onClick={() => send(st)} disabled={signedOut}
@@ -378,7 +378,7 @@ export default function CoDesignPage() {
                           <span className="eyebrow eyebrow--sm" style={{ color: me ? 'var(--meta)' : 'var(--cream)' }}>{me ? 'You' : 'strung'}</span>
                           <div style={me
                             ? { maxWidth: '80%', padding: '12px 16px', background: 'var(--umber)', border: '1px solid var(--seam)', borderRadius: 2, fontSize: 16, lineHeight: 1.5, color: 'var(--cream)' }
-                            : { maxWidth: '92%', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: 'var(--cream)' }}>
+                            : { maxWidth: '92%', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18, lineHeight: 1.45, color: 'var(--cream)' }}>
                             {msg.imageDataUrl && (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -411,7 +411,7 @@ export default function CoDesignPage() {
                       <p className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', marginBottom: 4 }}>Image attached</p>
                       <p style={{ fontSize: 13, color: 'var(--meta)' }}>Add a message or send as-is</p>
                     </div>
-                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--meta)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--meta)', fontSize: 17, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
@@ -479,7 +479,7 @@ export default function CoDesignPage() {
                   </div>
 
                   <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <h2 className="display" style={{ fontSize: 40, lineHeight: 1, letterSpacing: '-.02em' }}>{blueprint.title}</h2>
+                    <h2 className="display" style={{ fontSize: 33, lineHeight: 1, letterSpacing: '-.02em' }}>{blueprint.title}</h2>
                     <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', letterSpacing: '.12em' }}>
                       {[blueprint.pieceType, blueprint.difficulty, blueprint.estimatedTime].filter(Boolean).join(' · ')}
                       {blueprint.materialsCheck && !blueprint.materialsCheck.allAvailable && <span style={{ color: 'var(--ochre)' }}> · Check materials</span>}
@@ -511,7 +511,7 @@ export default function CoDesignPage() {
                         <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                           {(blueprint.steps ?? []).map((st, i) => (
                             <li key={st.id ?? i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                              <span className="numeral" style={{ fontSize: 22, lineHeight: 1.1, color: 'var(--saddle)', minWidth: 26 }}>{String(i + 1).padStart(2, '0')}</span>
+                              <span className="numeral" style={{ fontSize: 20, lineHeight: 1.1, color: 'var(--saddle)', minWidth: 26 }}>{String(i + 1).padStart(2, '0')}</span>
                               <div>
                                 <p style={{ fontSize: 14, lineHeight: 1.5 }}>{st.instruction}</p>
                                 {st.technique && <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', display: 'block', marginTop: 3 }}>{st.technique}</span>}

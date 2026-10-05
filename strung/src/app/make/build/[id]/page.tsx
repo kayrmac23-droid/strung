@@ -320,10 +320,10 @@ export default function BuildPage() {
                 <div key={activeStepIndex} className="split" style={{ ['--min' as string]: '380px', gap: 'clamp(24px,4vw,56px)', alignItems: 'start', animation: 'ss-up .35s ease both' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
-                      <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(96px,14vw,200px)', lineHeight: .8, letterSpacing: '-.04em', color: 'var(--seam)' }}>{pad2(activeStepIndex + 1)}</span>
+                      <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(79px,11.5vw,164px)', lineHeight: .8, letterSpacing: '-.04em', color: 'var(--seam)' }}>{pad2(activeStepIndex + 1)}</span>
                       {activeStep.technique && <span className="eyebrow eyebrow--lit" style={{ letterSpacing: '.14em' }}>{activeStep.technique}</span>}
                     </div>
-                    <h1 className="display" style={{ fontSize: 'clamp(30px,3.8vw,52px)', lineHeight: 1.1, letterSpacing: '-.015em', textWrap: 'pretty' }}>{activeStep.instruction}</h1>
+                    <h1 className="display" style={{ fontSize: 'clamp(25px,3.1vw,43px)', lineHeight: 1.1, letterSpacing: '-.015em', textWrap: 'pretty' }}>{activeStep.instruction}</h1>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
                     {boardLabel && (
@@ -342,7 +342,7 @@ export default function BuildPage() {
                     {activeStep.tip && (
                       <div className="well" style={{ padding: '20px 22px' }}>
                         <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>From the margin</span>
-                        <p style={{ marginTop: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18, lineHeight: 1.45 }}>{activeStep.tip}</p>
+                        <p style={{ marginTop: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 17, lineHeight: 1.45 }}>{activeStep.tip}</p>
                       </div>
                     )}
                     {activeStep.technique && (
@@ -351,7 +351,7 @@ export default function BuildPage() {
                   </div>
                 </div>
               ) : (
-                <p className="aside-line" style={{ fontSize: 18 }}>No steps found for this design.</p>
+                <p className="aside-line" style={{ fontSize: 17 }}>No steps found for this design.</p>
               )}
             </div>
 
@@ -378,8 +378,8 @@ export default function BuildPage() {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <h1 className="display" style={{ fontSize: 'clamp(64px,10vw,148px)', lineHeight: .88, letterSpacing: '-.035em' }}>Strung.</h1>
-              <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 22, color: 'var(--tan)' }}>
+              <h1 className="display" style={{ fontSize: 'clamp(52px,8.2vw,121px)', lineHeight: .88, letterSpacing: '-.035em' }}>Strung.</h1>
+              <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 20, color: 'var(--tan)' }}>
                 {build.title}{typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 ? ` · ${build.time_taken_minutes} minute${build.time_taken_minutes === 1 ? '' : 's'} at the bench.` : '.'}
               </p>
             </div>
@@ -399,7 +399,7 @@ export default function BuildPage() {
               onChange={(e) => setNotes(e.target.value)}
               maxLength={MAX_NOTES_CHARS}
               placeholder="What worked, what you'd tweak next time..."
-              style={{ minHeight: 120, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18 }}
+              style={{ minHeight: 120, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 17 }}
             />
 
             {showStashPrompt && (

@@ -305,7 +305,7 @@ export default function MakePage() {
             <section aria-labelledby="brief-h" style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
               <h1 id="brief-h" className="sr-only">Make something</h1>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <p className="display" style={{ fontSize: 'clamp(34px,5.4vw,78px)', lineHeight: 1.1, letterSpacing: '-.02em', color: 'var(--meta)', maxWidth: '20ch', textWrap: 'pretty' }}>
+                <p className="display" style={{ fontSize: 'clamp(28px,4.4vw,64px)', lineHeight: 1.1, letterSpacing: '-.02em', color: 'var(--meta)', maxWidth: '20ch', textWrap: 'pretty' }}>
                   Make me{' '}
                   <button type="button" className="brief-word" style={{ borderBottomWidth: 2 }} aria-label={`Piece: ${pieceTypes[pieceIdx].say}. Change`}
                     onClick={() => setPieceType(pieceTypes[cycle(pieceTypes, pieceIdx)].value)}>{pieceTypes[pieceIdx].say}</button>
@@ -342,9 +342,9 @@ export default function MakePage() {
                       Couldn’t load your stash — designs may not reflect what you own. Refresh to try again.
                     </span>
                   ) : beads.length === 0 && findings.length === 0 ? (
-                    <span className="aside-line" style={{ fontSize: 17 }}>Your stash is empty — <Link href="/inventory" className="link-under">add beads</Link> for designs built from what you own, or design anyway for a general idea.</span>
+                    <span className="aside-line" style={{ fontSize: 16 }}>Your stash is empty — <Link href="/inventory" className="link-under">add beads</Link> for designs built from what you own, or design anyway for a general idea.</span>
                   ) : (
-                    <span className="aside-line" style={{ fontSize: 17 }}>Reads all {beads.length} bead type{beads.length === 1 ? '' : 's'} and {findings.length} finding{findings.length === 1 ? '' : 's'} before it draws anything.</span>
+                    <span className="aside-line" style={{ fontSize: 16 }}>Reads all {beads.length} bead type{beads.length === 1 ? '' : 's'} and {findings.length} finding{findings.length === 1 ? '' : 's'} before it draws anything.</span>
                   )
                 )}
               </div>
@@ -377,8 +377,8 @@ export default function MakePage() {
                       ? <span className="tag" style={{ color: 'var(--sage)' }}>● All in stash</span>
                       : <span className="tag" style={{ color: 'var(--ochre)' }}>● Check materials</span>}
                   </div>
-                  <h2 id="design-h" className="display d-1" style={{ fontSize: 'clamp(54px,8vw,124px)', lineHeight: .9 }}>{design.title}</h2>
-                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'clamp(18px,1.8vw,22px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '50ch' }}>{design.description}</p>
+                  <h2 id="design-h" className="display d-1" style={{ fontSize: 'clamp(44px,6.6vw,102px)', lineHeight: .9 }}>{design.title}</h2>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'clamp(16px,1.6vw,20px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '50ch' }}>{design.description}</p>
                 </div>
                 <button type="button" className="link-under" onClick={() => { setDesign(null); setError(''); imageRequest.current++; setImageLoading(false) }} disabled={saving || refining}>← Change the brief</button>
               </div>
@@ -500,7 +500,7 @@ export default function MakePage() {
                     {design.steps.map((st, i) => (
                       <li key={st.id ?? i} style={{ padding: '18px 20px', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span className="numeral" style={{ fontSize: 30, lineHeight: 1, color: 'var(--saddle)' }}>{String(i + 1).padStart(2, '0')}</span>
+                          <span className="numeral" style={{ fontSize: 25, lineHeight: 1, color: 'var(--saddle)' }}>{String(i + 1).padStart(2, '0')}</span>
                           {colours[i] ? <Bead hex={colours[i]!} size={11} /> : <OpenBead size={8} colour="var(--tan)" fill="transparent" />}
                         </div>
                         <span style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--cream)' }}>{st.instruction}</span>

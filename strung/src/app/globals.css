@@ -98,7 +98,7 @@ body {
   color: var(--text2);
   font-family: var(--font-body);
   font-weight: 400;
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.65;
   min-height: 100dvh;
   overflow-x: hidden;
@@ -316,11 +316,11 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 /* Marginalia — the hand in the margin (Newsreader italic, DESIGN Rule 2) */
 .empty-line {
   font-family: var(--font-serif); font-style: italic;
-  font-size: 17px; color: var(--tan); line-height: 1.5;
+  font-size: 16px; color: var(--tan); line-height: 1.5;
 }
 
 /* Prose */
-.prose { color: var(--text2); font-family: var(--font-body); font-size: 17px; line-height: 1.8; }
+.prose { color: var(--text2); font-family: var(--font-body); font-size: 16px; line-height: 1.8; }
 .prose h3 { font-family: var(--font-display); font-weight: 400; font-synthesis: none; letter-spacing: -0.02em; font-size: 20px; color: var(--cream); margin: 22px 0 8px; }
 .prose p { margin-bottom: 12px; }
 .prose strong { color: var(--cream); }
@@ -447,11 +447,11 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 }
 .display .soft { color: var(--deemph); }
 .display em, .display .aside { font-family: var(--font-serif); font-style: italic; letter-spacing: -.01em; }
-.d-hero  { font-size: clamp(60px, 11.6vw, 196px); line-height: .88; }
-.d-1     { font-size: clamp(52px, 8vw, 120px); line-height: .92; letter-spacing: -.03em; }
-.d-2     { font-size: clamp(38px, 4.8vw, 76px); line-height: .98; }
-.d-3     { font-size: clamp(28px, 3.2vw, 40px); line-height: 1.05; letter-spacing: -.02em; }
-.d-card  { font-size: 28px; line-height: 1.05; letter-spacing: -.02em; }
+.d-hero  { font-size: clamp(49px, 9.5vw, 161px); line-height: .88; }
+.d-1     { font-size: clamp(43px, 6.6vw, 98px); line-height: .92; letter-spacing: -.03em; }
+.d-2     { font-size: clamp(31px, 3.9vw, 62px); line-height: .98; }
+.d-3     { font-size: clamp(23px, 2.6vw, 33px); line-height: 1.05; letter-spacing: -.02em; }
+.d-card  { font-size: 24px; line-height: 1.05; letter-spacing: -.02em; }
 .numeral { font-family: var(--font-display); font-weight: 400; color: var(--numeral); letter-spacing: -.03em; line-height: .75; }
 
 /* Labels — DM Mono caps. .eyebrow is the quiet one, .eyebrow--lit the screen title. */

@@ -96,7 +96,7 @@ export default function AccountPage() {
           ) : sessionEmail ? (
             <div className="card fade-up" style={{ padding: 32 }}>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 6 }}>SIGNED IN AS</p>
-              <p style={{ color: 'var(--cream)', fontSize: 18, marginBottom: 28 }}>{sessionEmail}</p>
+              <p style={{ color: 'var(--cream)', fontSize: 17, marginBottom: 28 }}>{sessionEmail}</p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <Link href="/bench" className="btn-primary btn-md">Go to your bench →</Link>
                 <button className="btn-outline" onClick={signOut}>Sign out</button>

@@ -40,8 +40,8 @@ function Step({ id, n, title, children, visual, last }: { id: string; n: string;
   return (
     <section id={id} aria-labelledby={`${id}-h`} className="split" style={{ padding: 'clamp(64px,8vw,128px) 0', borderBottom: last ? 'none' : '1px solid var(--seam)', alignItems: 'start', scrollMarginTop: 'var(--nav-h-public)' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(88px,11vw,180px)' }}>{n}</span>
-        <h2 id={`${id}-h`} className="display" style={{ fontSize: 'clamp(36px,4.4vw,68px)', lineHeight: .98 }}>{title}</h2>
+        <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(72px,9vw,148px)' }}>{n}</span>
+        <h2 id={`${id}-h`} className="display" style={{ fontSize: 'clamp(30px,3.6vw,56px)', lineHeight: .98 }}>{title}</h2>
         {children}
       </div>
       {visual}
@@ -59,13 +59,13 @@ export default function HowItWorksPage() {
           <section aria-labelledby="hiw-h" className="split" style={{ padding: 'clamp(56px,8vw,128px) 0 clamp(48px,6vw,88px)', gap: '28px clamp(32px,5vw,80px)', alignItems: 'end', borderBottom: '1px solid var(--seam)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <span className="eyebrow">How it works</span>
-              <h1 id="hiw-h" className="display ss-up" style={{ fontSize: 'clamp(52px,8vw,136px)', lineHeight: .9 }}>Tray to wrist in <span className="soft">five steps.</span></h1>
+              <h1 id="hiw-h" className="display ss-up" style={{ fontSize: 'clamp(43px,6.6vw,112px)', lineHeight: .9 }}>Tray to wrist in <span className="soft">five steps.</span></h1>
             </div>
             <nav aria-label="Steps" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {TOC.map(([n, title, time]) => (
                 <a key={n} href={`#s${Number(n)}`} className="toc-row">
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.14em', color: 'var(--madder-text)' }}>{n}</span>
-                  <span style={{ fontSize: 19, flex: 1 }}>{title}</span>
+                  <span style={{ fontSize: 18, flex: 1 }}>{title}</span>
                   <span className="eyebrow" style={{ letterSpacing: '.12em' }}>{time}</span>
                 </a>
               ))}
@@ -94,7 +94,7 @@ export default function HowItWorksPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {BRIEFS.map(b => (
                 <div key={b.text} style={{ padding: 'clamp(22px,2.6vw,32px)', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <span className="display" style={{ fontSize: 'clamp(24px,2.4vw,34px)', lineHeight: 1.15, letterSpacing: '-.02em' }}>“{b.text}”</span>
+                  <span className="display" style={{ fontSize: 'clamp(22px,2.2vw,31px)', lineHeight: 1.15, letterSpacing: '-.02em' }}>“{b.text}”</span>
                   <span className="eyebrow eyebrow--sm">{b.read}</span>
                 </div>
               ))}
@@ -139,7 +139,7 @@ export default function HowItWorksPage() {
           </Step>
 
           <section aria-labelledby="hiw-close" style={{ padding: 'clamp(80px,10vw,160px) 0 clamp(64px,8vw,120px)', borderTop: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 32 }}>
-            <h2 id="hiw-close" className="display" style={{ fontSize: 'clamp(48px,7vw,116px)', lineHeight: .92, maxWidth: '12ch' }}>Start with step one.</h2>
+            <h2 id="hiw-close" className="display" style={{ fontSize: 'clamp(39px,5.7vw,95px)', lineHeight: .92, maxWidth: '12ch' }}>Start with step one.</h2>
             <Link href="/account?mode=signup" className="btn-primary btn-lg">Start your stash →</Link>
           </section>
 
