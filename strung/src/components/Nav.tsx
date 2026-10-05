@@ -7,7 +7,8 @@ import { supabase } from '@/lib/supabase'
 // Two navs (2026-10 redesign):
 //  - studio (default): Bench · Stash · Make · Journal, with Learn and the
 //    account avatar on the right. On phones the four destinations move to a
-//    bottom tab bar (.tabbar) so they stay one thumb away.
+//    bottom tab bar (.tabbar) so they stay one thumb away. Signed in only —
+//    signed out, the bar shows the public links instead.
 //  - public: the landing and How it works pages — How it works, Sign in and
 //    Start free, always — signed in, both lead to the bench.
 // Make covers its three tools (Generate /make, Co-design /codesign, Palette
@@ -86,6 +87,16 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
   const email = useSessionEmail()
   useKeyboardFlag()
 
+  // How it works · Sign in · Start free. Always the handoff's pair, signed in
+  // or not; a signed-in visitor is sent straight to their bench by either.
+  const publicLinks = (
+    <div className="public-nav-links">
+      <Link href="/how-it-works" className="quiet hide-xs" aria-current={path === '/how-it-works' ? 'page' : undefined}>How it works</Link>
+      <Link href={email ? '/bench' : '/account'} className="quiet" aria-current={path === '/account' ? 'page' : undefined}>Sign in</Link>
+      <Link href={email ? '/bench' : '/account?mode=signup'} className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
+    </div>
+  )
+
   if (variant === 'public') {
     return (
       <>
@@ -93,13 +104,24 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
         <nav aria-label="Main" style={barStyle('var(--nav-h-public)')}>
           <div className="wrap wrap--wide" style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <Link href="/" aria-label="strung — home"><Wordmark size={22} /></Link>
-            <div className="public-nav-links">
-              <Link href="/how-it-works" className="quiet hide-xs" aria-current={path === '/how-it-works' ? 'page' : undefined}>How it works</Link>
-              {/* Always the handoff's pair, signed in or not; a signed-in
-                  visitor is sent straight to their bench by either. */}
-              <Link href={email ? '/bench' : '/account'} className="quiet">Sign in</Link>
-              <Link href={email ? '/bench' : '/account?mode=signup'} className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
-            </div>
+            {publicLinks}
+          </div>
+        </nav>
+      </>
+    )
+  }
+
+  // The studio destinations exist only for a signed-in maker. Signed out, the
+  // studio bar carries the public links instead; while the session check is
+  // pending it shows the wordmark alone, so neither set flashes.
+  if (email !== undefined && !email) {
+    return (
+      <>
+        <a href="#main" className="skip-link">Skip to content</a>
+        <nav aria-label="Main" style={barStyle('var(--nav-h)')}>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 clamp(16px, 4vw, 44px)' }}>
+            <Link href="/" aria-label="strung — home"><Wordmark /></Link>
+            {publicLinks}
           </div>
         </nav>
       </>
@@ -113,33 +135,29 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
       <a href="#main" className="skip-link">Skip to content</a>
       <nav aria-label="Studio" style={barStyle('var(--nav-h)')}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 clamp(16px, 4vw, 44px)' }}>
-          <Link href={email === null ? '/' : '/bench'} aria-label={email === null ? 'strung — home' : 'strung — your bench'}><Wordmark /></Link>
-          <ul className="studio-nav-links">
+          <Link href="/bench" aria-label="strung — your bench"><Wordmark /></Link>
+          {email && <ul className="studio-nav-links">
             {studioLinks.map(l => (
               <li key={l.href}>
                 <Link href={l.href} className="studio-nav-link" aria-current={isActive(l.href, path) ? 'page' : undefined}>{l.label}</Link>
               </li>
             ))}
-          </ul>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <Link href="/guides" className="studio-nav-link studio-nav-learn" aria-current={learnOn ? 'page' : undefined} style={{ padding: 0 }}>Learn</Link>
-            {email ? (
+          </ul>}
+          {email && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+              <Link href="/guides" className="studio-nav-link studio-nav-learn" aria-current={learnOn ? 'page' : undefined} style={{ padding: 0 }}>Learn</Link>
               <Link href="/account" className="avatar" aria-label={`Account — ${email}`} title={email}>{email.trim().charAt(0) || '·'}</Link>
-            ) : email === null ? (
-              <Link href="/account" className="studio-nav-link" style={{ padding: 0, color: path === '/account' ? 'var(--cream)' : undefined }}>Sign in</Link>
-            ) : (
-              <span className="avatar" aria-hidden="true" style={{ opacity: .4 }} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </nav>
-      <nav className="tabbar" aria-label="Studio — tabs">
+      {email && <nav className="tabbar" aria-label="Studio — tabs">
         {studioLinks.map(l => (
           <Link key={l.href} href={l.href} aria-current={isActive(l.href, path) ? 'page' : undefined}>
             <span className="dot" aria-hidden="true" />{l.label}
           </Link>
         ))}
-      </nav>
+      </nav>}
     </>
   )
 }
