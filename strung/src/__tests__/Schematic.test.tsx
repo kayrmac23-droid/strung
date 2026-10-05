@@ -155,3 +155,77 @@ describe('Schematic — join glyphs from technique', () => {
     expect(container.querySelectorAll('.join-wrapped')).toHaveLength(2)
   })
 })
+
+describe('Schematic — bead size', () => {
+  const sized = (size: unknown) =>
+    [{ id: 's', name: 'Garnet rounds', colour: 'garnet', hex: '#7a1f2b', shape: 'round', quantity: 9, ...(size === undefined ? {} : { size }) }] as unknown as BeadItem[]
+  const blueprint = { components: [{ item: 'Garnet rounds', quantity: 4 }, { item: 'Garnet rounds', quantity: 4 }] }
+  const radius = (container: HTMLElement) => Number(container.querySelector('circle')!.getAttribute('r'))
+  const height = (container: HTMLElement) => svgOf(container).getAttribute('viewBox')!.split(' ').map(Number)[3]
+
+  it('renders a bead with no size at the default radius, identical to a medium bead', () => {
+    const none = render(<Schematic blueprint={blueprint} beads={sized(undefined)} />).container
+    const empty = render(<Schematic blueprint={blueprint} beads={sized('')} />).container
+    const medium = render(<Schematic blueprint={blueprint} beads={sized('medium')} />).container
+    expect(radius(none)).toBe(15)
+    expect(empty.innerHTML).toBe(none.innerHTML)
+    expect(medium.innerHTML).toBe(none.innerHTML)
+  })
+
+  it('scales the glyph radius with the stash size', () => {
+    const seed = radius(render(<Schematic blueprint={blueprint} beads={sized('seed')} />).container)
+    const statement = radius(render(<Schematic blueprint={blueprint} beads={sized('statement')} />).container)
+    expect(seed).toBeLessThan(15)
+    expect(statement).toBeGreaterThan(15)
+  })
+
+  it('opens the row spacing for oversized beads only', () => {
+    const base = height(render(<Schematic blueprint={blueprint} beads={sized('medium')} />).container)
+    const seed = height(render(<Schematic blueprint={blueprint} beads={sized('seed')} />).container)
+    const statement = height(render(<Schematic blueprint={blueprint} beads={sized('statement')} />).container)
+    expect(seed).toBe(base)
+    expect(statement).toBeGreaterThan(base)
+  })
+
+  it('does not scale findings by their size field', () => {
+    const sizedFinding = [{ ...findings[0], size: '40mm' }] as unknown as FindingItem[]
+    const { container } = render(<Schematic blueprint={{ components: [{ item: 'Brass hoop' }] }} findings={sizedFinding} />)
+    expect(radius(container)).toBe(15)
+  })
+})
+
+describe('Schematic — stash matching', () => {
+  const fillOf = (blueprint: object, beads: BeadItem[], findings: FindingItem[] = []) => {
+    const { container } = render(<Schematic blueprint={blueprint} beads={beads} findings={findings} />)
+    return container.querySelector('circle, ellipse, rect, polygon, path')!.getAttribute('fill')
+  }
+  const one = (item: string) => ({ components: [{ item }] })
+
+  it('prefers a bead named by the element over an earlier bead that only shares its colour', () => {
+    const stash = [
+      { name: 'Hematite rounds', colour: 'silver', hex: '#111111', shape: 'round', quantity: 9 },
+      { name: 'Silver-lined crystal', colour: 'clear', hex: '#222222', shape: 'round', quantity: 9 },
+    ] as unknown as BeadItem[]
+    expect(fillOf(one('Silver-lined crystal'), stash)).toBe('#222222')
+  })
+
+  it('prefers a finding named by the element over a bead that only shares its colour', () => {
+    const stash = [{ name: 'Hematite rounds', colour: 'silver', hex: '#111111', shape: 'round', quantity: 9 }] as unknown as BeadItem[]
+    const kit = [{ name: 'Jump rings', type: 'jump_ring', metal: 'silver', quantity: 50 }] as unknown as FindingItem[]
+    expect(fillOf(one('Silver jump rings'), stash, kit)).not.toBe('#111111')
+  })
+
+  it('still falls back to a colour match when nothing is named', () => {
+    const stash = [{ name: 'Baltic beads', colour: 'amber', hex: '#c8860a', shape: 'round', quantity: 9 }] as unknown as BeadItem[]
+    expect(fillOf(one('6mm amber rounds'), stash)).toBe('#c8860a')
+  })
+
+  it('matches a colour only as a whole word', () => {
+    const stash = [
+      { name: 'Glass rounds', colour: 'red', hex: '#aa0000', shape: 'round', quantity: 9 },
+      { name: 'Tiger eye', colour: 'tan', hex: '#c0a070', shape: 'round', quantity: 9 },
+    ] as unknown as BeadItem[]
+    expect(fillOf(one('Threaded titanium spacer'), stash)).toBe('var(--muted)')
+    expect(fillOf(one('Deep red accent'), stash)).toBe('#aa0000')
+  })
+})
