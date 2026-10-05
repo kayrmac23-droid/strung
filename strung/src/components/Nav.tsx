@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 //    account avatar on the right. On phones the four destinations move to a
 //    bottom tab bar (.tabbar) so they stay one thumb away.
 //  - public: the landing and How it works pages — How it works, Sign in and
-//    Start free. A signed-in visitor gets a single "Open studio" instead.
+//    Start free, always — signed in, both lead to the bench.
 // Make covers its three tools (Generate /make, Co-design /codesign, Palette
 // /sequence); MakeTabs switches between them.
 
@@ -46,6 +46,21 @@ function useSessionEmail(): string | null | undefined {
   return email
 }
 
+// Marks <html data-kbd> while the maker is navigating by keyboard, so the skip
+// link only appears for Tab users. :focus-visible alone wasn't enough: Chrome
+// counts some programmatic focus (route changes) as visible, and the link sat
+// over the wordmark for mouse users.
+function useKeyboardFlag() {
+  useEffect(() => {
+    const root = document.documentElement
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Tab') root.dataset.kbd = '' }
+    const onPointer = () => { delete root.dataset.kbd }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onPointer)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onPointer) }
+  }, [])
+}
+
 export function Wordmark({ size = 21 }: { size?: number }) {
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -69,6 +84,7 @@ const barStyle = (height: string): React.CSSProperties => ({
 export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'public' }) {
   const path = usePathname() ?? ''
   const email = useSessionEmail()
+  useKeyboardFlag()
 
   if (variant === 'public') {
     return (
@@ -79,14 +95,10 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
             <Link href="/" aria-label="strung — home"><Wordmark size={22} /></Link>
             <div className="public-nav-links">
               <Link href="/how-it-works" className="quiet hide-xs" aria-current={path === '/how-it-works' ? 'page' : undefined}>How it works</Link>
-              {email ? (
-                <Link href="/bench" className="btn-primary" style={{ padding: '11px 18px 10px' }}>Open studio</Link>
-              ) : (
-                <>
-                  <Link href="/account" className="quiet">Sign in</Link>
-                  <Link href="/account?mode=signup" className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
-                </>
-              )}
+              {/* Always the handoff's pair, signed in or not; a signed-in
+                  visitor is sent straight to their bench by either. */}
+              <Link href={email ? '/bench' : '/account'} className="quiet">Sign in</Link>
+              <Link href={email ? '/bench' : '/account?mode=signup'} className="btn-primary" style={{ padding: '11px 18px 10px' }}>Start free</Link>
             </div>
           </div>
         </nav>
@@ -101,7 +113,7 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
       <a href="#main" className="skip-link">Skip to content</a>
       <nav aria-label="Studio" style={barStyle('var(--nav-h)')}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 clamp(16px, 4vw, 44px)' }}>
-          <Link href="/bench" aria-label="strung — your bench"><Wordmark /></Link>
+          <Link href={email === null ? '/' : '/bench'} aria-label={email === null ? 'strung — home' : 'strung — your bench'}><Wordmark /></Link>
           <ul className="studio-nav-links">
             {studioLinks.map(l => (
               <li key={l.href}>

@@ -53,7 +53,7 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 |---|---|---|
 | `/` | — | Public landing (public nav: How it works · Sign in · Start free) |
 | `/how-it-works` | How it works | Public five-step explainer |
-| `/bench` | Bench | Signed-in home — built only from the maker's own stash and builds |
+| `/bench` | Bench | Signed-in home — built only from the maker's own stash and builds. Redirects to `/` when signed out |
 | `/inventory` | Stash | Bead + findings ledger with colour-spectrum filter and detail panel (± quantity), photo identification, bulk text stash parsing |
 | `/make` | Make | AI design generator + refinement + GPT Image preview |
 | `/make/build/[id]` | — | Step-by-step build mode (no nav — its own bar and sticky Back/Next); optional stash decrement on completion |
@@ -67,7 +67,7 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 | `/calculator` | — | Bead count, wire length and approximate weight (`src/lib/beadMath.ts`). Under Learn; linked from the footer as "Bead math" |
 | `/not-found` | — | 404 |
 
-`Nav` has two variants. **Studio** (default): Bench · Stash · Make · Journal, with Learn (`/guides`, `/glossary`, `/calculator`) and the account avatar on the right; on phones the four destinations move to a fixed bottom tab bar. **Public** (`<Nav variant="public" />`, landing and How it works): How it works · Sign in · Start free (`/account?mode=signup`), or "Open studio" when signed in. Make covers three tools switched by `MakeTabs` (from `@/components/Nav`): Generate `/make`, Co-design `/codesign`, Palette `/sequence` — note `/sequence` is labelled **Palette**. Build mode renders no `Nav`; its `<main>` uses `page-main page-main--bare`.
+`Nav` has two variants. **Studio** (default): Bench · Stash · Make · Journal, with Learn (`/guides`, `/glossary`, `/calculator`) and the account avatar on the right; on phones the four destinations move to a fixed bottom tab bar. **Public** (`<Nav variant="public" />`, landing and How it works): How it works · Sign in · Start free (`/account?mode=signup`). The labels never change; signed in, both link to `/bench`. Make covers three tools switched by `MakeTabs` (from `@/components/Nav`): Generate `/make`, Co-design `/codesign`, Palette `/sequence` — note `/sequence` is labelled **Palette**. Build mode renders no `Nav`; its `<main>` uses `page-main page-main--bare`.
 
 ## API Routes
 
