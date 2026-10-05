@@ -29,6 +29,18 @@ export function getToken(req: Request): string {
   return req.headers.get('Authorization')?.replace('Bearer ', '').trim() ?? ''
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * True for a well-formed row id. Every table keys on a uuid, and Postgres
+ * rejects a malformed one with a cast error (22P02) — which the routes reported
+ * as a 500 "Database error", so /make/build/abc said the database was broken
+ * rather than that there was no such build. Check the shape first instead.
+ */
+export function isUuid(v: unknown): v is string {
+  return typeof v === 'string' && UUID_RE.test(v)
+}
+
 /**
  * Parse a JSON request body.
  *
@@ -132,7 +144,10 @@ export function logUsage(
 export const STREAM_ERROR_MARKER = '\n\n[The response was cut short — please try again.]'
 
 // Structural, so the SDK's MessageStream (and a test double) both satisfy it.
-type StreamEvent = { type: string; delta?: unknown }
+type StreamEvent = { type: string; delta?: unknown; message?: unknown; usage?: unknown }
+
+const asRecord = (v: unknown): Record<string, unknown> =>
+  v && typeof v === 'object' ? (v as Record<string, unknown>) : {}
 
 /**
  * Turn an Anthropic message stream into a `text/plain` streaming Response.
@@ -146,6 +161,12 @@ type StreamEvent = { type: string; delta?: unknown }
  *
  * Cancelling the response (the reader navigated away) is passed upstream so
  * the model stops generating tokens nobody will read.
+ *
+ * A reply that stops at `max_tokens` ends cleanly as far as the stream is
+ * concerned, so it used to read as a complete answer — and on the co-design
+ * page a blueprint cut off mid-JSON was silently lost. It now gets the same
+ * in-band marker as a stream that dies. The usage line the JSON routes log via
+ * `logUsage` is logged here too, from the message_start / message_delta events.
  */
 export async function streamTextResponse(
   events: AsyncIterable<StreamEvent>,
@@ -167,15 +188,37 @@ export async function streamTextResponse(
     return delta.type === 'text_delta' && typeof delta.text === 'string' ? delta.text : ''
   }
 
+  // message_start carries the input usage; message_delta the stop reason and
+  // the running output count.
+  // Only numeric fields are merged: message_delta can report a count as null,
+  // which would otherwise overwrite the real figure from message_start.
+  const usage: Record<string, number> = {}
+  const addUsage = (u: unknown) => {
+    for (const [k, v] of Object.entries(asRecord(u))) if (typeof v === 'number') usage[k] = v
+  }
+  let stopReason: unknown = null
+  const track = (event: StreamEvent) => {
+    if (event.type === 'message_start') {
+      addUsage(asRecord(event.message).usage)
+    } else if (event.type === 'message_delta') {
+      addUsage(event.usage)
+      const reason = asRecord(event.delta).stop_reason
+      if (typeof reason === 'string') stopReason = reason
+    }
+  }
+
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         let result = first
         while (!result.done) {
+          track(result.value)
           const text = textOf(result.value)
           if (text) controller.enqueue(encoder.encode(text))
           result = await iterator.next()
         }
+        logUsage(label, { usage, stop_reason: stopReason })
+        if (stopReason === 'max_tokens') controller.enqueue(encoder.encode(STREAM_ERROR_MARKER))
       } catch (e) {
         // Past the first chunk the status line is already sent, so the only
         // way to tell the reader the answer is incomplete is in-band.

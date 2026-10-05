@@ -114,6 +114,9 @@ function validateDesign(design: unknown, beads: StashBead[], findings: StashFind
   return violations
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === 'object' && !Array.isArray(v)
+
 // The minimum a reply needs before the Make and Build pages can render it.
 // validateDesign() treats a non-object as {} and so passes it, which let an
 // array, a bare string or an object with no steps through as a "design".
@@ -124,8 +127,18 @@ function designShapeViolations(design: unknown): string[] {
   const d = design as Record<string, unknown>
   const out: string[] = []
   if (typeof d.title !== 'string' || !d.title.trim()) out.push('The design is missing a "title"')
-  if (!Array.isArray(d.components) || d.components.length === 0) out.push('The design is missing "components"')
-  if (!Array.isArray(d.steps) || d.steps.length === 0) out.push('The design is missing "steps"')
+  if (!Array.isArray(d.components) || d.components.length === 0) {
+    out.push('The design is missing "components"')
+  } else if (!d.components.every((c) => isRecord(c) && typeof c.item === 'string' && c.item.trim())) {
+    // The Make page reads c.item off every entry, so a null or bare-string
+    // entry threw during render; validateDesign() just skipped it.
+    out.push('Every entry in "components" must be an object with an "item" name')
+  }
+  if (!Array.isArray(d.steps) || d.steps.length === 0) {
+    out.push('The design is missing "steps"')
+  } else if (!d.steps.every((st) => isRecord(st) && typeof st.instruction === 'string' && st.instruction.trim())) {
+    out.push('Every entry in "steps" must be an object with an "instruction"')
+  }
   return out
 }
 

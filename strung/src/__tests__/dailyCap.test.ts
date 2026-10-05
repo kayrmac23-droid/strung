@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { takeDailyAllowance, dailyCapReached } from '@/lib/dailyCap'
+import { checkDailyAllowance, recordDailyUse, dailyCapReached } from '@/lib/dailyCap'
 import { withEffort, logUsage } from '@/lib/apiRequest'
 
 // Minimal stand-in for the query builder: select().eq().eq().gte() resolves to
@@ -15,41 +15,48 @@ function fakeSupabase(count: number | null, readError: string | null = null, ins
 
 afterEach(() => vi.restoreAllMocks())
 
-describe('takeDailyAllowance', () => {
-  it('allows and records a use while under the cap', async () => {
+describe('checkDailyAllowance', () => {
+  it('allows under the cap without recording anything', async () => {
     const { client, insert } = fakeSupabase(3)
-    const r = await takeDailyAllowance(client, 'u1', 'image', 25)
+    const r = await checkDailyAllowance(client, 'u1', 'image', 25)
     expect(r).toEqual({ allowed: true, checked: true })
-    expect(insert).toHaveBeenCalledWith({ user_id: 'u1', kind: 'image' })
+    // Recording waits for a successful render — a failed one must not use up
+    // the allowance.
+    expect(insert).not.toHaveBeenCalled()
   })
 
-  it('refuses at the cap and records nothing', async () => {
-    const { client, insert } = fakeSupabase(25)
-    const r = await takeDailyAllowance(client, 'u1', 'image', 25)
-    expect(r).toEqual({ allowed: false, checked: true })
-    expect(insert).not.toHaveBeenCalled()
+  it('refuses at the cap', async () => {
+    const { client } = fakeSupabase(25)
+    expect(await checkDailyAllowance(client, 'u1', 'image', 25)).toEqual({ allowed: false, checked: true })
   })
 
   it('looks back exactly 24 hours', async () => {
     const { client, gte } = fakeSupabase(0)
     const now = Date.UTC(2026, 9, 4, 12, 0, 0)
-    await takeDailyAllowance(client, 'u1', 'image', 25, now)
+    await checkDailyAllowance(client, 'u1', 'image', 25, now)
     expect(gte).toHaveBeenCalledWith('created_at', new Date(now - 24 * 3600 * 1000).toISOString())
   })
 
   it('fails open, and says so, when the count cannot be read', async () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { client, insert } = fakeSupabase(null, 'relation "usage_events" does not exist')
-    const r = await takeDailyAllowance(client, 'u1', 'image', 25)
-    expect(r).toEqual({ allowed: true, checked: false })
-    expect(insert).not.toHaveBeenCalled()
+    const { client } = fakeSupabase(null, 'relation "usage_events" does not exist')
+    expect(await checkDailyAllowance(client, 'u1', 'image', 25)).toEqual({ allowed: true, checked: false })
     expect(err).toHaveBeenCalled()
   })
+})
 
-  it('still allows the call when recording the use fails', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { client } = fakeSupabase(1, null, 'boom')
-    expect((await takeDailyAllowance(client, 'u1', 'image', 25)).allowed).toBe(true)
+describe('recordDailyUse', () => {
+  it('records one use for the user and kind', async () => {
+    const { client, insert } = fakeSupabase(0)
+    await recordDailyUse(client, 'u1', 'image')
+    expect(insert).toHaveBeenCalledWith({ user_id: 'u1', kind: 'image' })
+  })
+
+  it('logs rather than throws when the insert fails', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { client } = fakeSupabase(0, null, 'boom')
+    await expect(recordDailyUse(client, 'u1', 'image')).resolves.toBeUndefined()
+    expect(err).toHaveBeenCalled()
   })
 })
 

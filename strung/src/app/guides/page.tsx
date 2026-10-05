@@ -190,7 +190,7 @@ export default function GuidesPage() {
                     <div style={{display:'flex',gap:10}}>
                       <input type="text" className="input-base" style={{flex:1}}
                         placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"
-                        value={aiQ} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()}/>
+                        value={aiQ} maxLength={2000} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()}/>
                       <button className="btn-silver" onClick={ask} disabled={aiLoading}>{aiLoading?<span className="spinner"/>:'Ask'}</button>
                     </div>
                   </>

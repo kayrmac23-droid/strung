@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 import { MODEL, firstTextBlock, getToken, parseBody, truncStr, withEffort, logUsage } from '@/lib/apiRequest'
-import { IMAGE_DAILY_CAP, takeDailyAllowance, dailyCapReached } from '@/lib/dailyCap'
+import { IMAGE_DAILY_CAP, checkDailyAllowance, recordDailyUse, dailyCapReached } from '@/lib/dailyCap'
 import { buildFallbackImagePrompt, describeAssembly, IMAGE_PHOTO_SUFFIX } from '@/lib/imagePrompt'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -51,14 +51,21 @@ async function buildPrompt(design: Record<string, unknown>): Promise<string> {
     steps: design.steps,
   }
 
-  const res = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 400,
-    ...withEffort('low'),
-    messages: [
-      {
-        role: 'user',
-        content: `You are writing a prompt for an image generation model to generate a photorealistic image of a specific finished handmade beaded jewellery piece.
+  // The prompt-writer is non-critical: if the call fails, truncates at
+  // max_tokens or comes back empty, fall back to a deterministic prompt so the
+  // preview still renders. A thrown error used to escape to the route's catch
+  // and fail the whole render as a 500, so an Anthropic hiccup broke previews
+  // even though OpenAI was fine.
+  let res: Anthropic.Message
+  try {
+    res = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 400,
+      ...withEffort('low'),
+      messages: [
+        {
+          role: 'user',
+          content: `You are writing a prompt for an image generation model to generate a photorealistic image of a specific finished handmade beaded jewellery piece.
 
 Here is the complete design:
 ${JSON.stringify(summary, null, 2)}
@@ -72,15 +79,16 @@ ${structure ? '- CRITICAL orientation: honour the "structure" field EXACTLY — 
 Then append exactly this sentence: "${IMAGE_PHOTO_SUFFIX}"
 
 Output ONLY the prompt text, nothing else.`,
-      },
-    ],
-  })
+        },
+      ],
+    })
+  } catch (e) {
+    console.error('make/image: prompt-writer failed, using fallback prompt:', e)
+    return buildFallbackImagePrompt(design)
+  }
 
   logUsage('make/image prompt', res)
   const text = firstTextBlock(res).trim()
-  // The prompt-writer is non-critical: if it truncates at max_tokens or comes
-  // back empty, fall back to a deterministic prompt so the preview still renders
-  // rather than failing the whole request.
   if (res.stop_reason === 'max_tokens' || !text) {
     console.error('make/image: prompt-writer truncated or empty, using fallback prompt')
     return buildFallbackImagePrompt(design)
@@ -121,10 +129,11 @@ export async function POST(req: NextRequest) {
     }
     if (!design.title) return NextResponse.json({ error: 'Invalid design' }, { status: 400 })
 
-    // After validation and the config check, so a rejected or unconfigured
-    // request does not spend any of the user's allowance — and before the first
-    // paid call (the prompt-writer), so a capped user costs nothing.
-    const allowance = await takeDailyAllowance(getAuthenticatedClient(getToken(req)), user.id, 'image', IMAGE_DAILY_CAP)
+    // Checked after validation and the config check, and before the first paid
+    // call (the prompt-writer), so a capped user costs nothing. The use itself
+    // is recorded only once an image has come back — see recordDailyUse.
+    const supabase = getAuthenticatedClient(getToken(req))
+    const allowance = await checkDailyAllowance(supabase, user.id, 'image', IMAGE_DAILY_CAP)
     if (!allowance.allowed) return dailyCapReached()
 
     const prompt = await buildPrompt(design)
@@ -176,6 +185,7 @@ export async function POST(req: NextRequest) {
       console.error('OpenAI image returned no image data:', JSON.stringify(data).slice(0, 300))
       return NextResponse.json({ error: 'Image generation failed' }, { status: 502 })
     }
+    await recordDailyUse(supabase, user.id, 'image')
     const imageUrl = `data:image/png;base64,${b64}`
     return NextResponse.json({ imageUrl })
   } catch (e: unknown) {

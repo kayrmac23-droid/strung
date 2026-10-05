@@ -249,11 +249,28 @@ export default function InventoryPage() {
           })
         )
       )
-      for (const res of responses) {
+      // The two requests succeed or fail independently. Any table that saved is
+      // cleared from the review list straight away — it used to stay there when
+      // the other table failed, so "Save all" again inserted it a second time.
+      let failure = ''
+      for (const [i, res] of responses.entries()) {
         const result = await res.json().catch(() => null)
-        if (!res.ok || result?.error) throw new Error(result?.error || `Save failed (${res.status})`)
+        if (!res.ok || result?.error) {
+          failure ||= result?.error || `Save failed (${res.status})`
+        } else if (jobs[i].table === 'beads') {
+          setReviewBeads([])
+        } else {
+          setReviewFindings([])
+        }
       }
       await load()
+      if (failure) {
+        throw new Error(
+          responses.some(r => r.ok)
+            ? `${failure} — the rest were saved and removed from this list.`
+            : failure
+        )
+      }
       closeQuickAdd()
     } catch (e: unknown) { setParseError(getErrorMessage(e, 'Save failed')) }
     finally { setSavingAll(false) }
@@ -469,7 +486,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Quantity</label>
-                    <input className="input-base" type="number" min={1} value={beadForm.quantity||1}
+                    <input className="input-base" type="number" min={1} value={beadForm.quantity ?? 1}
                       onChange={e=>setBeadForm(f=>({...f,quantity:Number(e.target.value)}))} />
                   </div>
                   <div style={{gridColumn:'1/-1'}}>
@@ -510,7 +527,7 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <label className="label">Quantity</label>
-                    <input className="input-base" type="number" min={1} value={findingForm.quantity||1}
+                    <input className="input-base" type="number" min={1} value={findingForm.quantity ?? 1}
                       onChange={e=>setFindingForm(f=>({...f,quantity:Number(e.target.value)}))} />
                   </div>
                   <div style={{gridColumn:'1/-1'}}>
@@ -579,7 +596,7 @@ export default function InventoryPage() {
                             <input className="input-base" style={{width:130,padding:'6px 10px',fontSize:13}} placeholder="Colour"
                               value={b.colour||''} onChange={e=>updateReviewBead(i,{colour:e.target.value})}/>
                             <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
-                              value={b.quantity||1} onChange={e=>updateReviewBead(i,{quantity:Number(e.target.value)})}/>
+                              value={b.quantity ?? 1} onChange={e=>updateReviewBead(i,{quantity:Number(e.target.value)})}/>
                             <button onClick={()=>removeReviewBead(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
                               onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
                           </div>
@@ -602,7 +619,7 @@ export default function InventoryPage() {
                               </span>
                             )}
                             <input className="input-base" type="number" min={1} style={{width:70,padding:'6px 10px',fontSize:13}}
-                              value={f.quantity||1} onChange={e=>updateReviewFinding(i,{quantity:Number(e.target.value)})}/>
+                              value={f.quantity ?? 1} onChange={e=>updateReviewFinding(i,{quantity:Number(e.target.value)})}/>
                             <button onClick={()=>removeReviewFinding(i)} style={{background:'none',border:'none',color:'var(--muted2)',fontFamily:'var(--font-mono)',fontSize:12,cursor:'pointer',letterSpacing:'0.08em'}}
                               onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'} onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>× remove</button>
                           </div>

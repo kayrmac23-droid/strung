@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Nav from '@/components/Nav'
 import { getAuthHeaders } from '@/lib/authClient'
 import { planStashDecrements } from '@/lib/stashDecrement'
+import { MAX_MINUTES, MAX_NOTES_CHARS } from '@/lib/builds'
 
 interface Step {
   id: number
@@ -38,6 +39,8 @@ interface Build {
   rating: string | null
   notes: string | null
 }
+
+const isRecord = (v: unknown): boolean => !!v && typeof v === 'object' && !Array.isArray(v)
 
 const ratingLabels: Record<string, string> = {
   loved_it: 'Loved it',
@@ -80,8 +83,9 @@ export default function BuildPage() {
           ...record,
           design: {
             ...design,
-            steps: Array.isArray(design.steps) ? design.steps : [],
-            components: Array.isArray(design.components) ? design.components : [],
+            // Entries too: one null step threw on `activeStep.instruction`.
+            steps: Array.isArray(design.steps) ? design.steps.filter(isRecord) : [],
+            components: Array.isArray(design.components) ? design.components.filter(isRecord) : [],
           },
         })
         setNotes(record.notes || '')
@@ -194,7 +198,9 @@ export default function BuildPage() {
     if (!build || build.status === 'completed') return
     const startedAtMs = build.started_at ? new Date(build.started_at).getTime() : Date.now()
     const elapsedMs = Math.max(0, Date.now() - startedAtMs)
-    const minutes = Math.max(1, Math.round(elapsedMs / 60000))
+    // Capped at the API's limit: a draft started over a year ago otherwise
+    // failed completion outright with "Invalid time_taken_minutes".
+    const minutes = Math.min(MAX_MINUTES, Math.max(1, Math.round(elapsedMs / 60000)))
     const updated = await patchBuild({
       status: 'completed',
       current_step: Math.max(totalSteps - 1, 0),
@@ -381,6 +387,7 @@ export default function BuildPage() {
               className="input-base"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              maxLength={MAX_NOTES_CHARS}
               placeholder="What worked, what you'd tweak next time..."
               style={{ width: '100%', minHeight: 120, resize: 'vertical', marginBottom: 12 }}
             />

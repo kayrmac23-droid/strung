@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, parseBody, streamTextResponse } from '@/lib/apiRequest'
+import { MODEL, parseBody, streamTextResponse, withEffort } from '@/lib/apiRequest'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -43,9 +43,15 @@ export async function POST(req: NextRequest) {
 ${safeContext ? `\nContext: ${safeContext}` : ''}
 Be specific, practical, and honest. Warn about common beginner mistakes. Explain why, not just what.`
 
+  // Effort is explicit for the same reason as on the JSON routes (see
+  // withEffort): left out, this model thinks at its default effort, and that
+  // thinking is billed as output and spent from max_tokens before any answer
+  // text streams — at the old 1000-token cap a hard question could come back
+  // cut short or empty. A how-to answer does not need deep reasoning.
   const stream = client.messages.stream({
     model: MODEL,
-    max_tokens: 1000,
+    max_tokens: 2000,
+    ...withEffort('low'),
     system,
     messages: [{ role: 'user', content: question }],
   })

@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, getToken, parseBody, truncStr, streamTextResponse } from '@/lib/apiRequest'
+import { MODEL, getToken, parseBody, truncStr, streamTextResponse, withEffort } from '@/lib/apiRequest'
 import { sanitiseChatMessages } from '@/lib/chatMessages'
 import {
   TECHNIQUE_LIST_TEXT,
@@ -104,9 +104,14 @@ ${STYLE_OVERRIDE_RULE}
 
 Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 
+  // A blueprint is the same design JSON /api/make asks for (which allows 4500
+  // tokens at medium effort) plus the conversational reply around it. At 3000
+  // with no explicit effort — so the model's default thinking also drew on the
+  // cap — a full blueprint could be cut off mid-JSON and silently dropped.
   const stream = client.messages.stream({
     model: MODEL,
-    max_tokens: 3000,
+    max_tokens: 6000,
+    ...withEffort('medium'),
     system,
     messages,
   })

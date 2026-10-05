@@ -97,3 +97,52 @@ export function sanitiseChatMessages(raw: unknown): ChatValidation {
   while (out.length > 0 && out[0].role !== 'user') out.shift()
   return { ok: true, messages: out }
 }
+
+// ── Client side: what the Co-Design page sends ─────────────────────────────
+//
+// The page resent its whole history on every turn and had no way to start
+// over short of a reload. Once a chat passed MAX_MESSAGES turns or
+// MAX_IMAGES_TOTAL photos, the route answered 400 — and since the history only
+// grows, so did every message after it: the conversation was dead. A handful
+// of photos could also push the body past Vercel's 4.5MB request cap, which
+// fails before the route runs. The model only needs the recent turns and the
+// recent photos, so trim to that before sending.
+
+// Leaves headroom under Vercel's 4.5MB body limit for the text of the chat.
+export const MAX_HISTORY_IMAGE_CHARS = 3 * 1024 * 1024
+
+export const PHOTO_PLACEHOLDER = '[A photo was shared here earlier in the chat.]'
+
+type OutgoingBlock = { type: string; text?: string; source?: { data?: unknown } }
+export type OutgoingMessage = { role: 'user' | 'assistant'; content: string | OutgoingBlock[] }
+
+export function trimChatHistory<M extends OutgoingMessage>(messages: M[]): OutgoingMessage[] {
+  let recent: OutgoingMessage[] = messages.slice(-MAX_MESSAGES)
+  // The route drops leading assistant turns anyway; trimming here keeps the
+  // count honest.
+  while (recent.length > 0 && recent[0].role !== 'user') recent = recent.slice(1)
+
+  // Walk newest to oldest, keeping photos while they fit every limit.
+  let images = 0
+  let imageChars = 0
+  const out: OutgoingMessage[] = []
+  for (let i = recent.length - 1; i >= 0; i--) {
+    const m = recent[i]
+    if (typeof m.content === 'string') {
+      out.push({ role: m.role, content: m.content })
+      continue
+    }
+    const blocks = m.content.map((b) => {
+      if (b.type !== 'image') return b
+      const size = typeof b.source?.data === 'string' ? b.source.data.length : 0
+      if (images + 1 <= MAX_IMAGES_TOTAL && imageChars + size <= MAX_HISTORY_IMAGE_CHARS) {
+        images++
+        imageChars += size
+        return b
+      }
+      return { type: 'text', text: PHOTO_PLACEHOLDER }
+    })
+    out.push({ role: m.role, content: blocks })
+  }
+  return out.reverse()
+}

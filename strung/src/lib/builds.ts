@@ -14,9 +14,9 @@ export const BUILD_RATINGS = ['loved_it', 'good', 'could_be_better'] as const
 // anything that has an image (or similar) embedded in it.
 export const MAX_DESIGN_CHARS = 100_000
 const MAX_TITLE_CHARS = 200
-const MAX_NOTES_CHARS = 5_000
+export const MAX_NOTES_CHARS = 5_000
 const MAX_STEP = 10_000
-const MAX_MINUTES = 60 * 24 * 365
+export const MAX_MINUTES = 60 * 24 * 365
 
 export type BuildInputResult =
   | { ok: true; fields: Record<string, unknown> }
