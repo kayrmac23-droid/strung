@@ -236,6 +236,8 @@ New component for palette/sequence surfaces: one tap lays the working strand ont
 
 ## Implementation order (each step shippable alone)
 
+> **Status: done — kept as a record.** All seven steps shipped with the 2026-07-22 implementation, and the 2026-10 revision then moved past several of them: Gloock replaced Instrument Serif as the display face, `StrandProgress` was replaced by `<StepStrand>` in `src/components/Bead.tsx`, and the render-background language lives in `src/lib/imagePrompt.ts` (`visual.ts` has since been removed; images come from GPT Image 2, not DALL·E, which OpenAI retired). Do not re-run these steps; the sections above are current.
+
 1. **Tokens** — `strung/src/app/globals.css`: apply the migration map; add new tokens; replace inline `rgba()` literals with `color-mix()`; delete dead rules (`.btn-gold`, unused vars).
 2. **Fonts** — `strung/src/app/layout.tsx`: Instrument Sans + Newsreader in; Playfair + Cormorant out; DM Mono stays. Body 17px Instrument Sans.
 3. **Buttons/inputs** — `globals.css`: de-chamfer, new set per above; focus ring.
