@@ -35,7 +35,7 @@ export default function NotFound() {
           }}>
             That page doesn&apos;t exist — it may have been moved or you followed a broken link.
           </p>
-          <Link href="/" className="btn-silver">Back to studio</Link>
+          <Link href="/" className="btn-primary">Back to studio</Link>
         </div>
       </main>
     </>

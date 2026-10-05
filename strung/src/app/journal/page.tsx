@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
 import StrandLoader from '@/components/StrandLoader'
-import StrandProgress from '@/components/StrandProgress'
+import Bead, { Strand } from '@/components/Bead'
+import { nominalPx, strandFromComponents, type StashBeadLike } from '@/lib/bead'
 import StrandEmpty from '@/components/StrandEmpty'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
 
@@ -15,6 +16,7 @@ interface Design {
   estimatedTime: string
   steps: { id: number; instruction: string }[]
   pieceType: string
+  components?: { item?: unknown; quantity?: unknown }[]
 }
 
 interface Build {
@@ -31,10 +33,18 @@ interface Build {
   created_at: string
 }
 
-const ratingLabels: Record<string, { label: string; color: string }> = {
-  loved_it: { label: 'Loved it', color: 'var(--madder)' },
-  good: { label: 'Good', color: 'var(--sage)' },
-  could_be_better: { label: 'Could be better', color: 'var(--tan)' },
+const ratingLabels: Record<string, string> = {
+  loved_it: 'Loved it',
+  good: 'Good',
+  could_be_better: 'Could be better',
+}
+
+type Filter = 'all' | 'in_progress' | 'draft' | 'completed'
+const FILTERS: [Filter, string][] = [['all', 'All'], ['in_progress', 'On the bench'], ['draft', 'Ideas'], ['completed', 'Finished']]
+const STATUS: Record<string, [string, string]> = {
+  in_progress: ['On the bench', 'var(--cream)'],
+  completed: ['Finished', 'var(--sage)'],
+  draft: ['Idea', 'var(--tan)'],
 }
 
 // builds.design is jsonb, so an older or hand-edited row can lack steps. One
@@ -44,14 +54,14 @@ function withSafeDesign(b: Build): Build {
   return { ...b, design: { ...d, steps: Array.isArray(d.steps) ? d.steps : [] } }
 }
 
-const diffColor = (d: string) =>
-  d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
 
 export default function JournalPage() {
   const [builds, setBuilds] = useState<Build[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [tab, setTab] = useState<'in_progress' | 'completed'>('in_progress')
+  const [filter, setFilter] = useState<Filter>('all')
+  // Stash beads colour each piece's strand; decoration only, so best-effort.
+  const [stash, setStash] = useState<StashBeadLike[]>([])
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -68,6 +78,10 @@ export default function JournalPage() {
       if (!res.ok) throw new Error('Failed to load')
       const data = await res.json()
       setBuilds(Array.isArray(data) ? data.map(withSafeDesign) : [])
+      fetch('/api/inventory', { headers: await getAuthHeaders() })
+        .then(r => (r.ok ? r.json() : null))
+        .then(d => { if (d && Array.isArray(d.beads)) setStash(d.beads) })
+        .catch(() => {})
     } catch {
       setError(true)
     } finally {
@@ -97,82 +111,49 @@ export default function JournalPage() {
     finally { setDeletingId(null) }
   }
 
-  const inProgress = builds.filter(b => b.status === 'draft' || b.status === 'in_progress')
-  const completed = builds.filter(b => b.status === 'completed')
-
-  const formatDate = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+  const counts = {
+    completed: builds.filter(b => b.status === 'completed').length,
+    in_progress: builds.filter(b => b.status === 'in_progress').length,
+    draft: builds.filter(b => b.status === 'draft').length,
   }
+  const active = builds.filter(b => filter === 'all' || b.status === filter)
 
-  const active = tab === 'in_progress' ? inProgress : completed
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 
   return (
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
-
-          <header style={{ marginBottom: 40 }}>
-            <p className="section-eyebrow fade-up">Your Work</p>
-            <h1 className="fade-up-1" style={{
-              fontSize: 44, color: 'var(--cream)',
-              fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
-            }}>Journal</h1>
-            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>
-              Every piece you&apos;ve built or saved to make.
-            </p>
+        <div className="wrap screen ss-up">
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <p className="eyebrow eyebrow--lit">Journal</p>
+              <h1 className="display d-1">Everything <em>strung</em>.</h1>
+            </div>
+            {!loading && builds.length > 0 && (
+              <dl style={{ display: 'flex', gap: 'clamp(20px,3vw,40px)' }}>
+                {([['Finished', counts.completed], ['On the bench', counts.in_progress], ['Ideas', counts.draft]] as const).map(([l, v]) => (
+                  <div key={l} style={{ display: 'flex', flexDirection: 'column-reverse' }}>
+                    <dt className="eyebrow eyebrow--sm">{l}</dt>
+                    <dd className="display" style={{ fontSize: 44, lineHeight: 1, margin: 0 }}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
           </header>
 
-          {/* Stats row */}
-          {!loading && builds.length > 0 && (
-            <div className="fade-up-2" style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 32
-            }}>
-              {[
-                ['Saved ideas', inProgress.length],
-                ['Completed', completed.length],
-                ['Loved it', completed.filter(b => b.rating === 'loved_it').length],
-              ].map(([label, val]) => (
-                <div key={String(label)} className="card" style={{ padding: '18px 22px' }}>
-                  <div style={{
-                    fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)',
-                    letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6
-                  }}>{String(label)}</div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, color: 'var(--cream)' }}>{String(val)}</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 0, marginBottom: 24 }}>
-            {([['in_progress', `Ideas (${inProgress.length})`], ['completed', `Completed (${completed.length})`]] as const).map(([t, label]) => (
-              <button key={t} onClick={() => setTab(t)} style={{
-                padding: '9px 20px', fontFamily: 'var(--font-mono)', fontSize: 11,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                background: tab === t ? 'var(--surface2)' : 'var(--surface)',
-                border: `1px solid ${tab === t ? 'var(--silver)' : 'var(--border)'}`,
-                color: tab === t ? 'var(--silver2)' : 'var(--muted)',
-                cursor: 'pointer', transition: 'all 0.15s'
-              }}>{label}</button>
+          <div className="chip-row" role="group" aria-label="Filter pieces">
+            {FILTERS.map(([k, label]) => (
+              <button key={k} type="button" className="chip" aria-pressed={filter === k} onClick={() => setFilter(k)}>{label}</button>
             ))}
           </div>
 
-          {/* Content */}
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-              <StrandLoader />
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><StrandLoader /></div>
           ) : error ? (
-            <div style={{
-              textAlign: 'center', padding: '60px 20px',
-              border: '1px dashed var(--rose)', color: 'var(--text2)'
-            }}>
-              <div style={{ fontSize: 40, marginBottom: 12, color: 'var(--rose)' }}>⚠</div>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 16, marginBottom: 16 }}>
-                Couldn&apos;t load your journal. Check your connection and try again.
-              </p>
+            <div role="alert" className="well" style={{ textAlign: 'center', padding: '48px 20px', borderColor: 'var(--rose)' }}>
+              <p style={{ fontSize: 16, marginBottom: 16 }}>Couldn&apos;t load your journal. Check your connection and try again.</p>
               <button onClick={load} className="btn-outline">Retry</button>
             </div>
           ) : signedOut && builds.length === 0 ? (
@@ -180,154 +161,68 @@ export default function JournalPage() {
               <Link href="/account" className="btn-outline">Sign in →</Link>
             </StrandEmpty>
           ) : active.length === 0 ? (
-            <StrandEmpty line={tab === 'in_progress'
-              ? 'No saved ideas yet. Generate a design and save it for later.'
-              : 'No completed pieces yet. Start a build to make something.'}>
+            <StrandEmpty line={filter === 'completed'
+              ? 'No finished pieces yet. Start a build to make something.'
+              : filter === 'in_progress' ? 'Nothing on the bench right now.'
+              : 'No saved ideas yet. Generate a design and save it for later.'}>
               <Link href="/make" className="btn-outline">Go to Make →</Link>
             </StrandEmpty>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="tray-grid tray-grid--fill" style={{ ['--min' as string]: '270px' }}>
               {active.map(build => {
-                const r = build.rating ? ratingLabels[build.rating] : null
-                const stepsDone = build.status === 'completed' ? build.design.steps.length : build.current_step
-                const stepsTotal = build.design.steps.length
-                const safeStepsTotal = Math.max(stepsTotal, 1)
-                const progressRatio = Math.min(Math.max(stepsDone / safeStepsTotal, 0), 1)
-
+                const done = build.status === 'completed'
+                const total = Math.max(build.design.steps.length, 1)
+                const stepNow = Math.min(build.current_step + 1, total)
+                const [statusLabel, statusColour] = STATUS[build.status] ?? ['Saved', 'var(--tan)']
+                const rating = build.rating ? ratingLabels[build.rating] : null
+                const strand = strandFromComponents(build.design.components, stash, 9)
+                const note = build.notes || build.design.description
                 return (
-                  <div key={build.id} className="card" style={{ padding: 28 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                          {build.design.difficulty && (
-                            <span className="tag" style={{
-                              borderColor: diffColor(build.design.difficulty),
-                              color: diffColor(build.design.difficulty)
-                            }}>{build.design.difficulty}</span>
-                          )}
-                          {build.design.pieceType && (
-                            <span className="tag">{build.design.pieceType}</span>
-                          )}
-                          {r && (
-                            <span className="tag" style={{ borderColor: r.color, color: r.color }}>
-                              {r.label}
-                            </span>
-                          )}
-                          {build.status === 'in_progress' && (
-                            <span className="tag" style={{ borderColor: 'var(--moonstone)', color: 'var(--moonstone)' }}>
-                              In progress · step {Math.min(stepsDone + 1, safeStepsTotal)}/{safeStepsTotal}
-                            </span>
-                          )}
-                          {build.status === 'draft' && (
-                            <span className="tag" style={{ color: 'var(--muted)' }}>Saved idea</span>
-                          )}
-                        </div>
-
-                        <h3 style={{
-                          fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400,
-                          color: 'var(--cream)', marginBottom: 6
-                        }}>{build.title}</h3>
-                        <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 10 }}>
-                          {build.design.description}
-                        </p>
-
-                        {build.notes && (
-                          <p style={{
-                            fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--muted)',
-                            fontStyle: 'italic', marginBottom: 10, lineHeight: 1.5
-                          }}>{build.notes}</p>
+                  <article key={build.id} className="panel journal-card">
+                    <Link href={`/make/build/${build.id}`} className="journal-card-link" aria-label={`${build.title} — ${done ? 'view steps' : build.status === 'in_progress' ? 'continue' : 'start building'}`}>
+                      <div className={done ? 'journal-plate journal-plate--done' : 'journal-plate'}>
+                        <Strand gap={done ? 4 : 5} height={done ? 20 : 28} style={{ padding: '0 20px', width: '100%', justifyContent: 'center' }}>
+                          {strand.length
+                            ? strand.map((b, i) => <Bead key={i} hex={b.hex} shape={b.form} size={nominalPx(b.form) * (done ? 1.4 : 2.2)} />)
+                            : <span />}
+                        </Strand>
+                        {!done && (
+                          <span className="eyebrow eyebrow--sm">
+                            {build.status === 'in_progress' ? `Step ${stepNow} of ${total} — continue` : 'Ready to build'}
+                          </span>
                         )}
-
-                        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
-                            {formatDate(build.created_at)}
-                          </span>
-                          {typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 && (
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
-                              {build.time_taken_minutes} min
-                            </span>
-                          )}
-                          {build.design.steps.length > 0 && (
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
-                              {build.design.steps.length} steps
-                            </span>
-                          )}
-                        </div>
                       </div>
-
-                      {/* Progress strand for in-progress */}
-                      {build.status === 'in_progress' && (
-                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                          <StrandProgress total={safeStepsTotal} done={stepsDone} />
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.08em' }}>
-                            {Math.round(progressRatio * 100)}%
-                          </span>
+                      <div style={{ padding: '18px 20px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div className="eyebrow eyebrow--sm" style={{ display: 'flex', justifyContent: 'space-between', gap: 8, letterSpacing: '.12em' }}>
+                          <span style={{ color: statusColour }}>{statusLabel}{rating ? ` · ${rating}` : ''}</span>
+                          <span>{formatDate(build.completed_at || build.created_at)}</span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{
-                      display: 'flex', gap: 10, marginTop: 20, alignItems: 'center', flexWrap: 'wrap',
-                      paddingTop: 16, borderTop: '1px solid var(--border)'
-                    }}>
-                      <Link
-                        href={`/make/build/${build.id}`}
-                        className={build.status === 'completed' ? 'btn-outline' : 'btn-silver'}
-                        style={{ padding: '8px 20px' }}
-                      >
-                        {build.status === 'completed'
-                          ? 'View steps →'
-                          : build.status === 'in_progress' ? 'Continue →' : 'Start building →'}
-                      </Link>
-
+                        <h2 className="display d-card">{build.title}</h2>
+                        {note && <p className="aside-line" style={{ color: 'var(--text2)' }}>{note}</p>}
+                        <span className="eyebrow eyebrow--sm" style={{ letterSpacing: '.12em' }}>
+                          {[build.design.pieceType, build.design.difficulty, done && typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 ? `${build.time_taken_minutes} min` : null].filter(Boolean).join(' · ')}
+                        </span>
+                      </div>
+                    </Link>
+                    <div style={{ padding: '0 20px 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
                       {confirmingId === build.id ? (
-                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginLeft: 'auto' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)', letterSpacing: '0.06em' }}>
-                            Delete this piece?
-                          </span>
-                          <button
-                            onClick={() => deleteBuild(build.id)}
-                            disabled={deletingId === build.id}
-                            style={{
-                              background: 'none', border: 'none', color: 'var(--rose)',
-                              fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer', letterSpacing: '0.08em'
-                            }}
-                          >
+                        <>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)', letterSpacing: '0.06em' }}>Delete this piece?</span>
+                          <button className="link-quiet" style={{ color: 'var(--madder-text)' }} onClick={() => deleteBuild(build.id)} disabled={deletingId === build.id}>
                             {deletingId === build.id ? 'removing…' : 'yes, delete'}
                           </button>
-                          <button
-                            onClick={() => setConfirmingId(null)}
-                            disabled={deletingId === build.id}
-                            style={{
-                              background: 'none', border: 'none', color: 'var(--muted2)',
-                              fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer', letterSpacing: '0.08em'
-                            }}
-                          >
-                            cancel
-                          </button>
-                        </div>
+                          <button className="link-quiet" onClick={() => setConfirmingId(null)} disabled={deletingId === build.id}>cancel</button>
+                        </>
                       ) : (
-                        <button
-                          onClick={() => { setDeleteError(null); setConfirmingId(build.id) }}
-                          style={{
-                            background: 'none', border: 'none', color: 'var(--muted2)',
-                            fontSize: 12, fontFamily: 'var(--font-mono)', cursor: 'pointer',
-                            letterSpacing: '0.08em', transition: 'color 0.15s', marginLeft: 'auto'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.color = 'var(--rose)'}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--muted2)'}
-                        >
-                          × remove
-                        </button>
+                        <button className="link-quiet link-quiet--danger" onClick={() => { setDeleteError(null); setConfirmingId(build.id) }} aria-label={`Remove ${build.title}`}>× remove</button>
                       )}
                     </div>
                     {deleteError === build.id && (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em', textAlign: 'right' }}>
+                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', padding: '0 20px 14px', letterSpacing: '0.06em', textAlign: 'right' }}>
                         Failed to delete. Try again.
                       </p>
                     )}
-                  </div>
+                  </article>
                 )
               })}
             </div>

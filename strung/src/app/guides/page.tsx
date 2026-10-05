@@ -167,7 +167,7 @@ export default function GuidesPage() {
                 <div dangerouslySetInnerHTML={{__html:formatRichText(active.sections[section].body, GUIDE_PROSE)}}/>
                 <div style={{display:'flex',marginTop:22,paddingTop:18,borderTop:'1px solid var(--border)'}}>
                   {section>0&&<button className="btn-outline" onClick={()=>setSection(s=>s-1)}>← Previous</button>}
-                  {section<active.sections.length-1&&<button className="btn-silver" style={{marginLeft:'auto'}} onClick={()=>setSection(s=>s+1)}>Next →</button>}
+                  {section<active.sections.length-1&&<button className="btn-primary" style={{marginLeft:'auto'}} onClick={()=>setSection(s=>s+1)}>Next →</button>}
                 </div>
               </div>
 
@@ -191,7 +191,7 @@ export default function GuidesPage() {
                       <input type="text" className="input-base" style={{flex:1}}
                         placeholder="e.g. 'My loops keep opening' or 'What size crimp should I use?'"
                         value={aiQ} maxLength={2000} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ask()}/>
-                      <button className="btn-silver" onClick={ask} disabled={aiLoading}>{aiLoading?<span className="spinner"/>:'Ask'}</button>
+                      <button className="btn-primary" onClick={ask} disabled={aiLoading}>{aiLoading?<span className="spinner"/>:'Ask'}</button>
                     </div>
                   </>
                 )}

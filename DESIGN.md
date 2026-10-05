@@ -1,6 +1,17 @@
 # DESIGN.md — strung visual system
 
-**"Velvet, Rewarmed" — the evening bench.** Locked 2026-07-22.
+**"Velvet, Rewarmed" — the evening bench.** Locked 2026-07-22. **Revised 2026-10-05** by the editorial redesign handoff (Landing, How it works, Studio): see *2026-10 revision* below — where it and the older text disagree, the revision wins.
+
+## 2026-10 revision
+
+- **Display type is Gloock** (400, self-hosted) for every headline — landing, How it works and the studio. This reverses Rule 2's "no serifs in the chrome" for headings only: body, UI, buttons and the wordmark stay Instrument Sans; labels stay DM Mono. Newsreader italic keeps its marginalia role and may set an accent word inside a Gloock headline ("Everything *strung*.").
+- **Primary actions are oxblood**: `--button-accent #7D2C34`, hover `#8F3540`, cream text. Oxblood is under 3:1 on the dark ladder, so it is never small text; small accent text stays `--madder-text`.
+- **Big type and space carry the design; beads are the only decoration.** Headlines are fluid (`clamp`), with de-emphasised words in `--deemph #7A6A62` (display sizes only — 3.8:1). Oversized step numerals use `--numeral #2E2523` as texture.
+- **Beads are drawn in CSS** (`<Bead>`: two radial highlights over the bead hex + drop shadow; very dark beads get a faint cream ring), in six forms: round, rondelle, bicone, chip, tube, seed. A strand is a 1px `--saddle` thread with beads on it.
+- **Layout:** 0 radius except 2px on buttons, 2px gaps between trays, content 1280 (studio) / 1360 (public), fluid grids that collapse to one column. Screens fade up 12px on entry.
+- **Navigation:** studio = Bench · Stash · Make · Journal (+ Learn, avatar), bottom tab bar on phones; public = How it works · Sign in · Start free.
+- **Kept from the old system, deliberately:** `--meta` stays `#98918B` rather than the handoff's `#8D8078`, which is 4.02:1 on `--umber` header bands — under AA at the 10–11px caps used there.
+- **The proofing card is built** (Palette → "Daylight proof"): calico `#F4F0E8`, ink `#23201A`, hairline `#DCD5C6`, meta `#6B6458`.
 
 This file is canonical for all UI, styling, and visual-asset work in this repo. When existing code and this document disagree, this document wins. It is written to be executed by Claude Code and audited by Kayla.
 
@@ -19,7 +30,7 @@ The previous identity (blue-black field, Playfair/Cormorant, silver scale, glowi
 These are auditable. Violations are bugs.
 
 1. **THE RED CHANNEL LEADS.** Every dark surface token samples R > G ≥ B. (The sibling product AXIS is blue-black with the blue channel leading; strung must never drift there.) Test: sample any dark hex.
-2. **NO SERIFS IN THE CHROME.** Interface and display type is Instrument Sans; labels and data are DM Mono. The single serif — Newsreader Italic — appears only as marginalia: journal entries, AI asides, empty-state lines. Test: `grep` font-family declarations.
+2. **NO SERIFS IN THE CHROME.** *(Revised 2026-10: headlines are Gloock — see above.)* Interface type is Instrument Sans; labels and data are DM Mono. Newsreader Italic appears only as marginalia: journal entries, AI asides, empty-state lines, and accent words in headlines. Test: `grep` font-family declarations.
 3. **NO METAL IN THE INTERFACE.** No gold, brass, or silver hexes in tokens or components. Metals live in photography only. The accent is thread-red (madder). Test: `grep` tokens for metallic values.
 4. **THE NAP.** Raised surfaces cast a soft warm shadow and catch a 1px cream "lamplight edge" on top. Shadows are welcome here — velvet has pile. (AXIS forbids shadows; strung embraces them. This is a deliberate divergence.)
 5. **NO SKY.** No starfields, constellations, glow orbs, particles, or celestial gradients. Texture is material: nap, thread, wax, wood. The old glowing nav orb is retired.

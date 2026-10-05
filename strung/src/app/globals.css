@@ -1,18 +1,25 @@
 :root {
-  /* ── the mocha ladder — every dark: R > G ≥ B (DESIGN Rule 1) ── */
-  --bean:   #121110;  /* level 0 · canvas — the bench */
-  --roast:  #191817;  /* recess  · wells, inputs, image placeholders */
-  --mocha:  #211F1D;  /* level 1 · cards — the tray */
-  --umber:  #2E2B28;  /* level 2 · header bands, hover, modals, sticky panels */
-  --seam:   #403C38;  /* hairline borders */
-  --saddle: #5A544E;  /* hairline hover, strong rules, strand thread */
-  --tan:    #A39488;  /* suede accent — tag text/borders, secondary glyphs */
+  /* ── the mocha ladder — every dark: R > G ≥ B (DESIGN Rule 1) ──
+        Values from the 2026-10 redesign handoff; they match DESIGN.md's ladder,
+        which the previous greyer values (#121110 …) had drifted from. */
+  --bean:   #0D0A09;  /* level 0 · canvas — the bench */
+  --roast:  #14100F;  /* recess  · wells, inputs, image placeholders */
+  --mocha:  #1A1413;  /* level 1 · cards — the tray */
+  --garnet-wash: #221A18; /* selected card body (paired with an oxblood border) */
+  --umber:  #2B2321;  /* level 2 · header bands, hover, modals, sticky panels */
+  --hair:   #2A2220;  /* hairline inside a card — quieter than --seam */
+  --numeral:#2E2523;  /* oversized step numerals — texture, not text */
+  --seam:   #3E3330;  /* hairline borders */
+  --saddle: #544740;  /* hairline hover, strong rules, strand thread */
+  --deemph: #7A6A62;  /* de-emphasised headline words — display sizes only (3.8:1) */
+  --tan:    #9C8070;  /* suede accent — tag text/borders, secondary glyphs */
 
-  --cream:  #EFEAE2;  /* primary text, headings, primary button fill */
-  --text2:  #B5ADA6;  /* body/secondary text */
-  --meta:   #98918B;  /* mono meta — caps sizes only. 5.29:1 on cards (was
-                         #8A827B at 4.35:1, under AA for the 10-11px caps
-                         this is used at). */
+  --cream:  #EDE6DB;  /* primary text, headings, primary button fill */
+  --text2:  #B9ACA2;  /* body/secondary text */
+  --meta:   #98918B;  /* mono meta — caps sizes only. Kept lighter than the
+                         handoff's #8D8078, which is 4.02:1 on --umber header
+                         bands — under AA for the 10-11px caps used there.
+                         This is 4.95:1 on umber, 5.86:1 on cards. */
 
   --madder:      #C4564C;  /* the red thread — accents, active, focus, marked bead */
   --madder-deep: #A8352C;  /* pressed states, filled accents, selection background */
@@ -33,6 +40,16 @@
 
   --sage:  #8FA383;   /* success, in-stock, stash-matched */
   --ochre: #C99B3F;   /* warning, low quantity (semantic only — not decoration) */
+
+  /* Calico — the daylight proofing field (DESIGN §The proofing card). */
+  --calico: #F4F0E8;
+  --calico-ink: #23201A;
+  --calico-edge: #DCD5C6;
+  --calico-meta: #6B6458;
+
+  --nav-h: 64px;
+  --nav-h-public: 68px;
+  --tabbar-h: 72px;
 
   --nap: 0 10px 28px rgba(6,4,3,0.6);
   --lamplight: inset 0 1px 0 rgba(237,230,219,0.05);
@@ -66,7 +83,8 @@
   --text: var(--text2);
   /* --gold / --emerald deleted (Rule 3 — no metal in the interface) */
 
-  --font-display: var(--font-instrument-serif, Georgia, serif);
+  /* Gloock — the display face for every heading (2026-10 redesign). */
+  --font-display: var(--font-gloock), Georgia, serif;
   --font-body: var(--font-instrument), system-ui, sans-serif;
   --font-mono: var(--font-dm-mono), monospace;
   --font-serif: var(--font-newsreader), Georgia, serif;  /* marginalia only (Rule 2) */
@@ -121,9 +139,9 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
 /* Buttons — de-chamfered, no gradients, no metal (DESIGN Rule 3, §Buttons).
    Primary fills oxblood (--button-accent) so the hero action dominates; the
    fill is the accent, so no under-label thread is needed. .btn-primary is
-   canonical; .btn-silver is kept as an alias so existing markup picks up the
+   canonical; .btn-primary is kept as an alias so existing markup picks up the
    new treatment without a rename. */
-.btn-primary, .btn-silver {
+.btn-primary, .btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 11px 20px 10px;
   background: var(--button-accent); color: var(--cream);
@@ -132,13 +150,13 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   letter-spacing: 0.14em; text-transform: uppercase;
   position: relative; cursor: pointer; transition: background 0.2s, color 0.2s;
 }
-.btn-primary:hover, .btn-silver:hover { background: var(--button-accent-hover); }
-.btn-primary:active, .btn-silver:active { background: var(--button-accent-active); }
+.btn-primary:hover, .btn-primary:hover { background: var(--button-accent-hover); }
+.btn-primary:active, .btn-primary:active { background: var(--button-accent-active); }
 /* Cream outline on keyboard focus — never red-on-red against the oxblood fill. */
-.btn-primary:focus-visible, .btn-silver:focus-visible {
+.btn-primary:focus-visible, .btn-primary:focus-visible {
   outline: 2px solid var(--cream); outline-offset: 2px;
 }
-.btn-primary:disabled, .btn-silver:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary:disabled, .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-outline {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -175,8 +193,17 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
    copy-pasted inline into all twelve pages; it lives here instead, with the
    <main id="main"> the skip link targets. */
 .page-main {
-  padding-top: 60px;
+  padding-top: var(--nav-h);
   min-height: 100dvh;
+}
+.page-main--public { padding-top: var(--nav-h-public); }
+/* Build mode hides the nav and draws its own bar. */
+.page-main--bare { padding-top: 0; }
+/* Studio pages on phones get a bottom tab bar (Nav); keep content clear of it. */
+@media (max-width: 640px) {
+  .page-main:not(.page-main--public):not(.page-main--bare) {
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  }
 }
 
 /* Skip link — first focusable element on the page, visually hidden until
@@ -212,28 +239,7 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
 }
 .card:hover { border-color: var(--saddle); }
 
-/* Card that is itself a link — CSS hover/focus instead of JS handlers */
-.card--link {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 32px; text-decoration: none; color: inherit;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-}
-.card--link:hover, .card--link:focus-visible {
-  border-color: var(--saddle);
-  background: var(--umber);
-}
-
-/* Homepage feature cards — neutral chrome only (no jewel-toned dividers/glyphs),
-   the "digital velvet tray" rule. One rule for every card, no per-card overrides.
-   Tighter vertical rhythm so the grid isn't a full-viewport scroll. */
-.feature-card {
-  border-top: 2px solid var(--steel2);
-  padding: 22px 26px;
-  min-height: 210px;
-}
-
 /* Inventory (Stash) — extracted repeated inline style objects */
-.stash-card { padding: 20px 22px; }
 .card.stash-modal { padding: 28px; margin-bottom: 24px; border: 1px solid var(--silver); position: relative; }
 .stash-row {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -341,19 +347,6 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   color: var(--madder-text); margin-bottom: 8px;
 }
 
-/* Responsive grid — 3 → 2 → 1 columns */
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-}
-@media (max-width: 900px) {
-  .grid-3 { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 560px) {
-  .grid-3 { grid-template-columns: 1fr; }
-}
-
 /* Responsive section padding */
 .page-pad {
   padding-left: 40px;
@@ -366,76 +359,6 @@ textarea.input-base { resize: vertical; min-height: 80px; }
   .page-pad { padding-left: 14px; padding-right: 14px; }
 }
 
-/* Codesign page — chat + blueprint panel */
-.codesign-grid {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 28px;
-  align-items: start;
-}
-@media (max-width: 860px) {
-  .codesign-grid { grid-template-columns: 1fr; }
-}
-
-/* Nav */
-.nav-hamburger {
-  display: none;
-  background: none; border: none;
-  color: var(--silver); cursor: pointer;
-  font-size: 24px; line-height: 1;
-  padding: 4px 8px;
-}
-
-.nav-links {
-  display: flex;
-  list-style: none;
-  align-items: center;
-  gap: 32px;
-}
-
-@media (max-width: 860px) {
-  .nav-links { gap: 20px; }
-}
-
-@media (max-width: 640px) {
-  .nav-hamburger { display: block; }
-
-  .nav-links {
-    display: none;
-  }
-
-  .nav-links--open {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    position: fixed;
-    top: 60px; left: 0; right: 0;
-    background: color-mix(in srgb, var(--bean) 97%, transparent);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--seam);
-    padding: 4px 0 12px;
-    z-index: 99;
-  }
-
-  .nav-links--open li {
-    border-bottom: 1px solid var(--border);
-  }
-
-  .nav-links--open li:last-child {
-    border-bottom: none;
-  }
-
-  .nav-links--open a {
-    display: block !important;
-    padding: 16px 24px !important;
-    font-size: 11px !important;
-    letter-spacing: 0.14em;
-    border-bottom: none !important;
-    padding-bottom: 16px !important;
-  }
-}
-
 /* Text selection */
 ::selection { background: color-mix(in srgb, var(--madder-deep) 55%, transparent); color: var(--cream); }
 
@@ -443,14 +366,7 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 :focus-visible { outline: 1px solid var(--madder); outline-offset: 2px; }
 .input-base:focus-visible, .select-base:focus-visible { outline: 1px solid var(--madder); outline-offset: 0; }
 
-/* Marquee */
-@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-.marquee-track { display: flex; animation: marquee 40s linear infinite; will-change: transform; }
-.marquee-track:hover { animation-play-state: paused; }
-
 /* Responsive layout grids */
-.palette-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
-@media (max-width: 860px) { .palette-grid { grid-template-columns: 1fr; } }
 
 .advisor-grid { display: grid; grid-template-columns: 360px 1fr; gap: 32px; align-items: start; }
 @media (max-width: 960px) { .advisor-grid { grid-template-columns: 1fr; } }
@@ -502,3 +418,245 @@ textarea.input-base { resize: vertical; min-height: 80px; }
 }
 .colour-slider::-webkit-slider-runnable-track { height: 4px; background: transparent; }
 .colour-slider::-moz-range-track { height: 4px; border-radius: 2px; background: transparent; }
+
+
+/* ═════════ 2026-10 redesign — studio vocabulary ═════════
+   Big Gloock type, mono labels, 2px-gap trays. Shared here so pages stop
+   repeating the same dozen inline style objects. */
+
+@keyframes ss-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.ss-up   { animation: ss-up .5s ease both; }
+.ss-up-1 { animation: ss-up .7s .15s ease both; }
+@media (prefers-reduced-motion: reduce) { .ss-up, .ss-up-1 { animation: none; } }
+
+/* Content column. Studio screens cap at 1280, public pages at 1360. */
+.wrap {
+  max-width: 1280px; margin: 0 auto; width: 100%;
+  padding-left: clamp(18px, 4vw, 44px); padding-right: clamp(18px, 4vw, 44px);
+}
+.wrap--wide { max-width: 1360px; padding-left: clamp(18px, 4vw, 48px); padding-right: clamp(18px, 4vw, 48px); }
+.screen { padding-top: clamp(28px, 5vw, 56px); padding-bottom: 80px; display: flex; flex-direction: column; gap: 32px; }
+
+/* Display type — Gloock everywhere a headline sits. */
+.display {
+  font-family: var(--font-display); font-weight: 400; font-synthesis: none;
+  letter-spacing: -.025em; line-height: .94; color: var(--cream); text-wrap: balance;
+}
+.display .soft { color: var(--deemph); }
+.display em, .display .aside { font-family: var(--font-serif); font-style: italic; letter-spacing: -.01em; }
+.d-hero  { font-size: clamp(60px, 11.6vw, 196px); line-height: .88; }
+.d-1     { font-size: clamp(52px, 8vw, 120px); line-height: .92; letter-spacing: -.03em; }
+.d-2     { font-size: clamp(38px, 4.8vw, 76px); line-height: .98; }
+.d-3     { font-size: clamp(28px, 3.2vw, 40px); line-height: 1.05; letter-spacing: -.02em; }
+.d-card  { font-size: 28px; line-height: 1.05; letter-spacing: -.02em; }
+.numeral { font-family: var(--font-display); font-weight: 400; color: var(--numeral); letter-spacing: -.03em; line-height: .75; }
+
+/* Labels — DM Mono caps. .eyebrow is the quiet one, .eyebrow--lit the screen title. */
+.eyebrow {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--meta);
+}
+.eyebrow--lit { color: var(--cream); letter-spacing: .18em; }
+.eyebrow--sm { font-size: 10px; letter-spacing: .14em; }
+.aside-line { font-family: var(--font-serif); font-style: italic; font-size: 16px; line-height: 1.45; color: var(--tan); }
+
+/* Mono-caps link with the oxblood underline ("Open stash →"). */
+.link-under {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--cream); border-bottom: 1px solid var(--button-accent);
+}
+.link-under:hover { border-bottom-color: var(--cream); }
+
+/* Large primary / outline sizes for hero and screen-level actions. */
+.btn-lg { padding: 18px 32px 17px; font-size: 12px; }
+.btn-primary.btn-md, .btn-outline.btn-md { padding: 14px 24px 13px; }
+
+/* Trays. .panel is a card without padding; .panel-head is its umber rim. */
+.panel { background: var(--mocha); border: 1px solid var(--seam); box-shadow: var(--nap), var(--lamplight); min-width: 0; }
+.panel-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 22px; background: var(--umber); border-bottom: 1px solid var(--seam);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
+}
+.panel-body { padding: clamp(20px, 3vw, 32px); }
+.well { background: var(--roast); border: 1px solid var(--seam); }
+.row-line { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--seam); }
+.row-line:last-child { border-bottom: none; }
+
+/* Tray grids — 2px mosaic gap, fluid columns. Set --min to tune. */
+.tray-grid { display: grid; gap: 2px; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--min, 260px)), 1fr)); }
+.tray-grid--fill { grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--min, 260px)), 1fr)); }
+.split { display: grid; gap: clamp(32px, 5vw, 80px); grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--min, 420px)), 1fr)); }
+
+/* Chips — option toggles. Use aria-pressed so state is announced. */
+.chip {
+  padding: 10px 16px; border-radius: 2px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+  background: var(--roast); border: 1px solid var(--seam); color: var(--meta);
+  transition: color .15s, border-color .15s, background .15s;
+}
+.chip:hover { color: var(--cream); border-color: var(--saddle); }
+.chip[aria-pressed="true"], .chip[aria-selected="true"], .chip.is-on { background: var(--umber); border-color: var(--cream); color: var(--cream); }
+.chip:disabled { opacity: .45; cursor: not-allowed; }
+.chip-row { display: flex; gap: 2px; flex-wrap: wrap; }
+
+/* Clickable tray card. */
+.tray-btn {
+  text-align: left; padding: 0; cursor: pointer; color: inherit; font: inherit;
+  background: var(--mocha); border: 1px solid var(--seam); box-shadow: var(--nap), var(--lamplight);
+  display: flex; flex-direction: column; transition: background .2s, border-color .2s;
+}
+.tray-btn:hover, .tray-btn:focus-visible { background: var(--umber); border-color: var(--saddle); }
+.tray-btn.is-on { background: var(--garnet-wash); border-color: var(--button-accent-hover); }
+
+/* The sentence brief — tap an underlined word to cycle it. */
+.brief-word {
+  font: inherit; letter-spacing: inherit; color: var(--cream); background: none; border: none;
+  border-bottom: .07em solid var(--button-accent); padding: 0; cursor: pointer;
+}
+.brief-word:hover { border-bottom-color: var(--button-accent-hover); }
+
+/* Studio nav */
+.studio-nav-links { display: flex; gap: 4px; align-items: center; list-style: none; }
+.studio-nav-link {
+  display: inline-block; padding: 8px 14px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--meta); transition: color .2s;
+}
+.studio-nav-link:hover { color: var(--cream); }
+.studio-nav-link[aria-current="page"] { color: var(--cream); box-shadow: inset 0 -1px 0 var(--button-accent-hover); }
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  background: var(--umber); border: 1px solid var(--saddle);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 11px; color: var(--cream); text-transform: uppercase;
+}
+.tabbar { display: none; }
+@media (max-width: 640px) {
+  .studio-nav-links, .studio-nav-learn { display: none; }
+  .tabbar {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 100;
+    background: var(--roast); border-top: 1px solid var(--seam);
+    padding: 6px 6px calc(14px + env(safe-area-inset-bottom));
+  }
+  .tabbar a {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; min-height: 52px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--meta);
+  }
+  .tabbar a[aria-current="page"] { color: var(--cream); }
+  .tabbar .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--tan); }
+  .tabbar a[aria-current="page"] .dot { background: var(--button-accent-hover); border-color: var(--button-accent-hover); }
+}
+.public-nav-links { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 28px); font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+.public-nav-links a.quiet { color: var(--meta); transition: color .2s; }
+.public-nav-links a.quiet:hover { color: var(--cream); }
+.public-nav-links a.quiet[aria-current="page"] { color: var(--cream); border-bottom: 1px solid var(--button-accent-hover); padding-bottom: 2px; }
+@media (max-width: 420px) { .public-nav-links .hide-xs { display: none; } }
+.toc-row { display: flex; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--hair); color: var(--text2); transition: color .2s; }
+.toc-row:hover { color: var(--cream); }
+/* Bench: the build in progress takes two thirds, Running low the rest. An
+   auto-fit grid with span 2 overflows once it drops to one column. */
+.bench-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 2px; }
+@media (max-width: 900px) { .bench-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Stash ledger */
+.ledger-row {
+  width: 100%; display: flex; align-items: center; gap: 18px; padding: 14px 20px;
+  background: transparent; border: none; border-bottom: 1px solid var(--seam); cursor: pointer;
+  font: inherit; color: inherit; transition: background .15s;
+}
+li:last-child > .ledger-row { border-bottom: none; }
+.ledger-row:hover { background: color-mix(in srgb, var(--umber) 55%, transparent); }
+.ledger-row.is-on { background: var(--umber); box-shadow: inset 2px 0 0 var(--button-accent-hover); }
+.ledger-bar { flex: 0 1 180px; height: 4px; background: var(--roast); position: relative; }
+.ledger-bar > span { position: absolute; left: 0; top: 0; bottom: 0; }
+@media (max-width: 560px) { .ledger-bar { display: none; } .ledger-row { gap: 12px; padding: 12px 14px; } }
+.stash-aside {
+  flex: 0 1 340px; min-width: 280px; position: sticky; top: calc(var(--nav-h) + 16px);
+  background: var(--umber); border: 1px solid var(--saddle); box-shadow: var(--nap), var(--lamplight);
+}
+@media (max-width: 640px) { .stash-aside { position: static; flex-basis: 100%; } }
+.spec-grid {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 18px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+}
+.spec-grid dt { color: var(--meta); }
+.spec-grid dd { color: var(--cream); margin: 0; overflow-wrap: anywhere; }
+.qty-btn {
+  width: 40px; height: 40px; background: none; border: 1px solid var(--saddle); border-radius: 2px;
+  color: var(--cream); font-size: 18px; cursor: pointer;
+}
+.qty-btn:disabled { opacity: .4; cursor: not-allowed; }
+.link-quiet {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted2); transition: color .15s;
+}
+.link-quiet:hover { color: var(--cream); }
+.link-quiet--danger:hover { color: var(--madder-text); }
+
+/* Make — the AI render slot */
+.render-well {
+  min-height: 420px; display: flex; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(135deg, var(--roast) 0 10px, var(--mocha) 10px 20px);
+}
+
+/* Visually hidden, still announced. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Co-design */
+.codesign-blueprint { position: sticky; top: calc(var(--nav-h) + 16px); max-height: calc(100dvh - var(--nav-h) - 32px); overflow-y: auto; }
+@media (max-width: 860px) { .codesign-blueprint { position: static; max-height: none; } }
+.chat-answer p { margin-bottom: 10px; }
+.chat-answer p:last-child { margin-bottom: 0; }
+.chat-answer ul, .chat-answer ol { margin: 6px 0 10px 20px; }
+.chat-answer strong { font-style: normal; font-family: var(--font-body); font-weight: 600; font-size: .85em; }
+.steps-details summary { cursor: pointer; list-style: none; }
+.steps-details summary::-webkit-details-marker { display: none; }
+.steps-details summary::after { content: ' ▾'; }
+.steps-details[open] summary::after { content: ' ▴'; }
+
+/* Palette — daylight proof toggle */
+.proof-toggle {
+  display: flex; align-items: center; gap: 10px; background: none; cursor: pointer;
+  border: 1px solid var(--saddle); border-radius: 2px; padding: 10px 14px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--cream);
+}
+.proof-switch { width: 28px; height: 14px; border-radius: 7px; background: var(--roast); border: 1px solid var(--saddle); box-shadow: inset 14px 0 0 var(--saddle); transition: all .2s; }
+.proof-switch.is-on { background: var(--calico); box-shadow: inset -14px 0 0 var(--button-accent-hover); }
+
+/* Build mode */
+.build-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 16px clamp(18px, 4vw, 44px);
+  background: color-mix(in srgb, var(--bean) 92%, transparent); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--seam);
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+}
+.build-strand { position: relative; display: flex; justify-content: space-between; align-items: flex-start; min-height: 64px; overflow-x: auto; gap: 4px; }
+.build-strand-thread { position: absolute; left: 14px; right: 14px; top: 22px; height: 1px; background: var(--saddle); }
+.build-strand > button {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: none; border: none; padding: 0; cursor: pointer; min-width: 28px;
+}
+.build-strand > button:disabled { cursor: default; }
+.build-controls {
+  position: sticky; bottom: 0; display: flex; gap: 2px;
+  padding: 12px clamp(18px, 4vw, 44px) calc(16px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bean) 94%, transparent); border-top: 1px solid var(--seam);
+}
+
+/* Journal */
+.journal-card { display: flex; flex-direction: column; transition: background .2s, border-color .2s; }
+.journal-card:hover { border-color: var(--saddle); background: var(--umber); }
+.journal-card-link { display: flex; flex-direction: column; color: inherit; flex: 1; }
+.journal-plate {
+  aspect-ratio: 4 / 5; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  background: var(--roast); border-bottom: 1px solid var(--seam);
+}
+.journal-plate--done { background: repeating-linear-gradient(135deg, var(--roast) 0 10px, var(--mocha) 10px 20px); }
