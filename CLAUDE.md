@@ -141,6 +141,8 @@ Every value comes from the image, not from the source board's keyword tags (thos
 
 Glyph radius scales with the matched stash bead's `size` via `src/lib/beadSize.ts`. `beads.size` is a **category** (`seed`/`small`/`medium`/`large`/`statement`), not a measurement — there is no millimetre column — so each category maps to the midpoint of its Calculator range; free text like `8mm` is read too. `medium` is the reference (scale 1), and an empty or unreadable size draws at the default radius, byte-identical to before. Findings never scale (their `size` is a gauge, length or ring diameter). Rows and the column margin widen only when a glyph is above the default radius. The size comes from the live stash, not from `builds.design`, so a design's diagram changes if the matched stash bead's size changes.
 
+Each element resolves to a stash item in this order: a bead it names (both-ways name substring), then a finding it names, then a bead whose colour it contains as a whole word. Colour is the last resort — it once ran in the same pass as the name check, so an earlier bead sharing a colour shadowed the bead or finding the element actually named.
+
 ## Supabase Access
 
 ### Client-side
