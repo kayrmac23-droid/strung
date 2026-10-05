@@ -59,36 +59,52 @@ function normalise(blueprint: any): NormElement[] {
   return raw.map(normaliseElement)
 }
 
-function matchBead(matchStr: string, beads: BeadItem[]): BeadItem | undefined {
+// Both-ways substring match on a stash item's name.
+function nameMatches(matchStr: string, rawName: string | undefined): boolean {
+  const name = (rawName || '').toLowerCase().trim()
+  return !!name && (matchStr.includes(name) || name.includes(matchStr))
+}
+
+// The colour as a whole word, so "red" does not match "threaded", nor "tan"
+// "titanium".
+function colourMatches(matchStr: string, rawColour: string | undefined): boolean {
+  const colour = (rawColour || '').toLowerCase().trim()
+  if (!colour) return false
+  const escaped = colour.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`).test(matchStr)
+}
+
+// Name match across every bead first: a colour hit on an earlier stash row must
+// not shadow a later bead the element actually names.
+function matchBeadByName(matchStr: string, beads: BeadItem[]): BeadItem | undefined {
   if (!matchStr) return undefined
-  return beads.find((b) => {
-    const name = (b.name || '').toLowerCase().trim()
-    const colour = (b.colour || '').toLowerCase().trim()
-    return (
-      (name && (matchStr.includes(name) || name.includes(matchStr))) ||
-      (colour && matchStr.includes(colour))
-    )
-  })
+  return beads.find((b) => nameMatches(matchStr, b.name))
+}
+
+function matchBeadByColour(matchStr: string, beads: BeadItem[]): BeadItem | undefined {
+  if (!matchStr) return undefined
+  return beads.find((b) => colourMatches(matchStr, b.colour))
 }
 
 // Same name matching as beads — findings have no colour field to fall back on.
 function matchFinding(matchStr: string, findings: FindingItem[]): FindingItem | undefined {
   if (!matchStr) return undefined
-  return findings.find((f) => {
-    const name = (f.name || '').toLowerCase().trim()
-    return !!name && (matchStr.includes(name) || name.includes(matchStr))
-  })
+  return findings.find((f) => nameMatches(matchStr, f.name))
 }
 
 type ResolvedGlyph = { shape: string; fill: string; r: number }
 
-// Beads first, then findings — same precedence as the stash decrement. Only a
-// matched bead's size scales the glyph; a finding's size means something else
-// per type (gauge, length, ring diameter), so findings and unmatched elements
-// keep the default radius.
+// Precedence: a bead named by the element, then a finding named by it (beads
+// before findings, as in the stash decrement), and only then a bead whose colour
+// the element mentions. A name is evidence of identity; a colour is a guess, so
+// "silver jump rings" resolves to the jump-ring finding, not a silver bead.
+// Only a matched bead's size scales the glyph; a finding's size means something
+// else per type (gauge, length, ring diameter), so findings and unmatched
+// elements keep the default radius.
 function resolveGlyph(matchStr: string, beads: BeadItem[], findings: FindingItem[]): ResolvedGlyph {
-  const bead = matchBead(matchStr, beads)
-  const finding = bead ? undefined : matchFinding(matchStr, findings)
+  const named = matchBeadByName(matchStr, beads)
+  const finding = named ? undefined : matchFinding(matchStr, findings)
+  const bead = named || (finding ? undefined : matchBeadByColour(matchStr, beads))
   const fill =
     bead?.hex ||
     (finding ? metalColours[finding.metal] || metalColours.other : '') ||

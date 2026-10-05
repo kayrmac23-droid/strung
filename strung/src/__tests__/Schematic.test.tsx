@@ -193,3 +193,39 @@ describe('Schematic — bead size', () => {
     expect(radius(container)).toBe(15)
   })
 })
+
+describe('Schematic — stash matching', () => {
+  const fillOf = (blueprint: object, beads: BeadItem[], findings: FindingItem[] = []) => {
+    const { container } = render(<Schematic blueprint={blueprint} beads={beads} findings={findings} />)
+    return container.querySelector('circle, ellipse, rect, polygon, path')!.getAttribute('fill')
+  }
+  const one = (item: string) => ({ components: [{ item }] })
+
+  it('prefers a bead named by the element over an earlier bead that only shares its colour', () => {
+    const stash = [
+      { name: 'Hematite rounds', colour: 'silver', hex: '#111111', shape: 'round', quantity: 9 },
+      { name: 'Silver-lined crystal', colour: 'clear', hex: '#222222', shape: 'round', quantity: 9 },
+    ] as unknown as BeadItem[]
+    expect(fillOf(one('Silver-lined crystal'), stash)).toBe('#222222')
+  })
+
+  it('prefers a finding named by the element over a bead that only shares its colour', () => {
+    const stash = [{ name: 'Hematite rounds', colour: 'silver', hex: '#111111', shape: 'round', quantity: 9 }] as unknown as BeadItem[]
+    const kit = [{ name: 'Jump rings', type: 'jump_ring', metal: 'silver', quantity: 50 }] as unknown as FindingItem[]
+    expect(fillOf(one('Silver jump rings'), stash, kit)).not.toBe('#111111')
+  })
+
+  it('still falls back to a colour match when nothing is named', () => {
+    const stash = [{ name: 'Baltic beads', colour: 'amber', hex: '#c8860a', shape: 'round', quantity: 9 }] as unknown as BeadItem[]
+    expect(fillOf(one('6mm amber rounds'), stash)).toBe('#c8860a')
+  })
+
+  it('matches a colour only as a whole word', () => {
+    const stash = [
+      { name: 'Glass rounds', colour: 'red', hex: '#aa0000', shape: 'round', quantity: 9 },
+      { name: 'Tiger eye', colour: 'tan', hex: '#c0a070', shape: 'round', quantity: 9 },
+    ] as unknown as BeadItem[]
+    expect(fillOf(one('Threaded titanium spacer'), stash)).toBe('var(--muted)')
+    expect(fillOf(one('Deep red accent'), stash)).toBe('#aa0000')
+  })
+})
