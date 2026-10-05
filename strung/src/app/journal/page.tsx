@@ -242,7 +242,7 @@ export default function JournalPage() {
                           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
                             {formatDate(build.created_at)}
                           </span>
-                          {build.time_taken_minutes && (
+                          {typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 && (
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
                               {build.time_taken_minutes} min
                             </span>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { getToken, parseBody } from '@/lib/apiRequest'
+import { getToken, parseBody, isUuid } from '@/lib/apiRequest'
 import { isAllowedTable } from '@/lib/colour'
 import { cleanStashInput } from '@/lib/stashItems'
 
@@ -89,6 +89,7 @@ export async function DELETE(req: NextRequest) {
   const table = searchParams.get('table')
   const id = searchParams.get('id')
   if (!id || !isAllowedTable(table)) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
+  if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { error } = await supabase.from(table).delete().eq('id', id).eq('user_id', user.id)
   if (error) {
     console.error('inventory DELETE error:', error)
@@ -108,6 +109,7 @@ export async function PATCH(req: NextRequest) {
   const { table, id, data } = body
   if (!isAllowedTable(table)) return NextResponse.json({ error: 'Invalid table' }, { status: 400 })
   if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
+  if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const cleaned = cleanStashInput(table, data, true)
   if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
   if (Object.keys(cleaned.fields).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

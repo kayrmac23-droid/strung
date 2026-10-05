@@ -13,6 +13,8 @@ import { validateAssembly, type Assembly } from '@/lib/assembly'
 import { getAuthHeaders, getSession } from '@/lib/authClient'
 import { prepareImageForIdentify } from '@/lib/imagePrep'
 import { readTextStream } from '@/lib/streamText'
+import { trimChatHistory } from '@/lib/chatMessages'
+import { STREAM_ERROR_MARKER } from '@/lib/apiRequest'
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
 type TextBlock = { type: 'text'; text: string }
@@ -62,19 +64,42 @@ function checkedBlueprint(parsed: Blueprint, beads: BeadItem[], findings: Findin
   return stripped
 }
 
-function parseMessage(text: string, beads: BeadItem[], findings: FindingItem[]): { display: string; blueprint: Blueprint | null } {
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
+
+function parseMessage(raw: string, beads: BeadItem[], findings: FindingItem[]): { display: string; blueprint: Blueprint | null } {
+  // A cut-short reply ends with the marker, which would sit inside an unclosed
+  // blueprint and be stripped with it. Take it off first, put it back after.
+  const cut = raw.endsWith(STREAM_ERROR_MARKER)
+  const text = cut ? raw.slice(0, -STREAM_ERROR_MARKER.length) : raw
   // The model may revise the design within one reply; the LAST blueprint is the
   // current one (the first match used to win, showing a superseded design).
   const matches = [...text.matchAll(/<blueprint>([\s\S]*?)<\/blueprint>/g)]
-  if (matches.length === 0) return { display: text, blueprint: null }
-  const display = text.replace(/<blueprint>[\s\S]*?<\/blueprint>/g, '').replace(/\n{3,}/g, '\n\n').trim()
+  // An unclosed block (a reply cut off mid-blueprint) is hidden too. Only
+  // closed blocks were stripped, so a truncated reply ended up showing its raw
+  // half-written JSON in the chat once streaming finished.
+  const stripped = text
+    .replace(/<blueprint>[\s\S]*?(<\/blueprint>|$)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  const display = cut ? `${stripped}${STREAM_ERROR_MARKER}`.trim() : stripped
+  if (matches.length === 0) return { display, blueprint: null }
   try {
     const parsed = JSON.parse(matches[matches.length - 1][1].trim())
     // Anything without a title and steps cannot be saved or built from.
-    if (!parsed || typeof parsed !== 'object' || typeof parsed.title !== 'string' || !Array.isArray(parsed.steps)) {
+    if (!isRecord(parsed) || typeof parsed.title !== 'string' || !Array.isArray(parsed.steps)) {
       return { display, blueprint: null }
     }
-    return { display, blueprint: checkedBlueprint(parsed, beads, findings) }
+    // The panel reads c.item and s.instruction off every entry, so one null or
+    // bare-string entry threw during render and took the whole page down.
+    const blueprint = {
+      ...parsed,
+      components: Array.isArray(parsed.components)
+        ? parsed.components.filter((c) => isRecord(c) && typeof c.item === 'string')
+        : [],
+      steps: parsed.steps.filter((st) => isRecord(st) && typeof st.instruction === 'string'),
+    } as unknown as Blueprint
+    if (blueprint.steps.length === 0) return { display, blueprint: null }
+    return { display, blueprint: checkedBlueprint(blueprint, beads, findings) }
   } catch {
     return { display, blueprint: null }
   }
@@ -236,9 +261,8 @@ export default function CoDesignPage() {
         body: JSON.stringify({
           // Error notices are shown in the chat but are not part of the
           // conversation: their content is '' so they never reach the model.
-          messages: next
-            .filter(m => typeof m.content !== 'string' || m.content.trim())
-            .map(m => ({ role: m.role, content: m.content })),
+          // Trimmed to the recent turns and photos — see trimChatHistory.
+          messages: trimChatHistory(next.filter(m => typeof m.content !== 'string' || m.content.trim())),
         }),
       })
 

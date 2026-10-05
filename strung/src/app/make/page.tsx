@@ -102,7 +102,9 @@ export default function MakePage() {
   }, [])
 
   async function generate() {
-    if (loading) return
+    // Not while a refine is in flight either: its reply would land after this
+    // one and replace the new design with an adjusted copy of the old one.
+    if (loading || refining) return
     setLoading(true); setError(''); setDesign(null)
     imageRequest.current++
     setImageLoading(false); setImageError('')
@@ -204,7 +206,8 @@ export default function MakePage() {
   }
 
   async function startBuilding() {
-    if (!design || saving) return
+    // Saving mid-refine would store the design the maker is busy changing.
+    if (!design || saving || refining) return
     if (!await getSession()) { setError('Sign in to save your designs.'); return }
     setSaving(true)
     try {
@@ -229,7 +232,8 @@ export default function MakePage() {
   }
 
   async function saveForLater() {
-    if (!design || saving) return
+    // Saving mid-refine would store the design the maker is busy changing.
+    if (!design || saving || refining) return
     if (!await getSession()) { setError('Sign in to save your designs.'); return }
     setSaving(true)
     try {
@@ -404,7 +408,7 @@ export default function MakePage() {
               </div>
             </div>
             <button className="btn-silver" style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
-              onClick={generate} disabled={loading || signedOut}>
+              onClick={generate} disabled={loading || refining || signedOut}>
               {loading
                 ? <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                     <span className="strand-loader"><i/><i/><i/></span>
@@ -540,13 +544,13 @@ export default function MakePage() {
                 {/* CTAs */}
                 <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
                   <button className="btn-silver" style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
-                    onClick={startBuilding} disabled={saving}>
+                    onClick={startBuilding} disabled={saving || refining}>
                     {saving ? <><span className="spinner" />Starting…</> : '→ Start Building'}
                   </button>
-                  <button className="btn-outline" onClick={saveForLater} disabled={saving}>
+                  <button className="btn-outline" onClick={saveForLater} disabled={saving || refining}>
                     Save for later
                   </button>
-                  <button className="btn-outline" onClick={generate} disabled={loading}>
+                  <button className="btn-outline" onClick={generate} disabled={loading || refining}>
                     Try another
                   </button>
                 </div>

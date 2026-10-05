@@ -20,17 +20,14 @@ export type DailyAllowance = {
 }
 
 /**
- * Check the user's allowance for `kind` over the last 24h and, if there is
- * room, record this use.
+ * Check the user's allowance for `kind` over the last 24h, without recording
+ * anything. Pair with `recordDailyUse()` once the call has actually succeeded.
  *
  * Fails OPEN on a database error. The preview is non-critical, and refusing it
  * because a bookkeeping table is unreachable would break a feature to guard a
  * bill; the error is logged so a missing table is visible, not silent.
- *
- * Check-then-insert is not atomic, so concurrent requests can overshoot the cap
- * by a few. That is acceptable for a spend guard.
  */
-export async function takeDailyAllowance(
+export async function checkDailyAllowance(
   supabase: SupabaseClient,
   userId: string,
   kind: string,
@@ -48,11 +45,22 @@ export async function takeDailyAllowance(
     console.error('daily cap read failed (allowing):', error?.message ?? 'no count returned')
     return { allowed: true, checked: false }
   }
-  if (count >= cap) return { allowed: false, checked: true }
+  return { allowed: count < cap, checked: true }
+}
 
-  const { error: insertError } = await supabase.from('usage_events').insert({ user_id: userId, kind })
-  if (insertError) console.error('daily cap record failed:', insertError.message)
-  return { allowed: true, checked: true }
+/**
+ * Count one use of `kind` against the user's daily allowance.
+ *
+ * Recorded after the paid call succeeds, not before it. Recording up front
+ * charged a use for every render that then failed upstream — an OpenAI outage
+ * spent the whole day's allowance on errors, and users cannot delete their own
+ * rows (deliberately: see the README policies) to get it back. The cost is that
+ * concurrent requests can overshoot the cap by a few; the per-minute burst
+ * limit bounds that, and it is acceptable for a spend guard.
+ */
+export async function recordDailyUse(supabase: SupabaseClient, userId: string, kind: string): Promise<void> {
+  const { error } = await supabase.from('usage_events').insert({ user_id: userId, kind })
+  if (error) console.error('daily cap record failed:', error.message)
 }
 
 export function dailyCapReached(): Response {

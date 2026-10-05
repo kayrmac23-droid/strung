@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { getToken, parseBody } from '@/lib/apiRequest'
+import { getToken, parseBody, isUuid } from '@/lib/apiRequest'
 import { cleanBuildInput } from '@/lib/builds'
 
 // Set well above the AI-route limits: the UI legitimately bursts this route —
@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
 
   // ?id= returns a single build (or 404) instead of the full list.
   if (id) {
+    if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const { data, error } = await supabase
       .from('builds')
       .select('*')
@@ -93,6 +94,7 @@ export async function PATCH(req: NextRequest) {
   if (!body) return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   const { id, ...raw } = body
   if (typeof id !== 'string' || !id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const cleaned = cleanBuildInput(raw, true)
   if (!cleaned.ok) return NextResponse.json({ error: cleaned.error }, { status: 400 })
   if (Object.keys(cleaned.fields).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
@@ -120,6 +122,7 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { error } = await supabase.from('builds').delete().eq('id', id).eq('user_id', user.id)
   if (error) {
     console.error('builds DELETE error:', error)

@@ -53,6 +53,38 @@ describe('streamTextResponse', () => {
   })
 })
 
+describe('streamTextResponse: max_tokens and usage', () => {
+  const start = { type: 'message_start', message: { usage: { input_tokens: 12, output_tokens: 1 } } }
+  const stop = (reason: string) => ({
+    type: 'message_delta',
+    delta: { stop_reason: reason },
+    usage: { output_tokens: 40, input_tokens: null },
+  })
+
+  it('marks a reply that stopped at max_tokens as cut short', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const res = await streamTextResponse(events([start, delta('half a bluepr'), stop('max_tokens')]), 'test')
+    expect(await res.text()).toBe('half a bluepr' + STREAM_ERROR_MARKER)
+  })
+
+  it('leaves a reply that ended normally untouched', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const res = await streamTextResponse(events([start, delta('done'), stop('end_turn')]), 'test')
+    expect(await res.text()).toBe('done')
+  })
+
+  it('logs one ai-usage line from the stream events', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+    const res = await streamTextResponse(events([start, delta('x'), stop('end_turn')]), 'Advice')
+    await res.text()
+    expect(log).toHaveBeenCalledWith(
+      'ai-usage',
+      JSON.stringify({ route: 'Advice', input: 12, output: 40, cacheRead: 0, stop: 'end_turn' }),
+    )
+    log.mockRestore()
+  })
+})
+
 describe('readTextStream', () => {
   const streamOf = (chunks: Uint8Array[]) =>
     new ReadableStream<Uint8Array>({
