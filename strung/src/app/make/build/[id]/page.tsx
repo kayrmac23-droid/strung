@@ -2,9 +2,12 @@
 export const dynamic = 'force-dynamic'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Nav from '@/components/Nav'
+import Bead, { CurrentBead, OpenBead } from '@/components/Bead'
+import StrandLoader from '@/components/StrandLoader'
+import { beadFormFor, nominalPx, safeHex, stepColours } from '@/lib/bead'
 import { getAuthHeaders } from '@/lib/authClient'
 import { planStashDecrements } from '@/lib/stashDecrement'
 import { MAX_MINUTES, MAX_NOTES_CHARS } from '@/lib/builds'
@@ -51,6 +54,10 @@ const ratingLabels: Record<string, string> = {
 export default function BuildPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const router = useRouter()
+  // Stash beads, only to colour the progress strand and the step's materials.
+  // Best-effort: build mode works the same without them.
+  const [stashBeads, setStashBeads] = useState<Array<{ name: string; hex?: string; shape?: string; type?: string }>>([])
 
   const [build, setBuild] = useState<Build | null>(null)
   const [loading, setLoading] = useState(true)
@@ -99,6 +106,14 @@ export default function BuildPage() {
     }
 
     loadBuild()
+    ;(async () => {
+      try {
+        const res = await fetch('/api/inventory', { headers: await getAuthHeaders() })
+        if (!res.ok) return
+        const d = await res.json()
+        if (!cancelled && Array.isArray(d.beads)) setStashBeads(d.beads)
+      } catch { /* colours are decoration only */ }
+    })()
     return () => {
       cancelled = true
     }
@@ -228,11 +243,7 @@ export default function BuildPage() {
       <>
         <Nav />
         <main id="main" className="page-main">
-          <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 60, paddingBottom: 60 }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <span className="spinner-dark" />
-            </div>
-          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 20px' }}><StrandLoader label="Laying out the steps…" /></div>
         </main>
       </>
     )
@@ -243,10 +254,10 @@ export default function BuildPage() {
       <>
         <Nav />
         <main id="main" className="page-main">
-          <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 60, paddingBottom: 60 }}>
-            <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)' }}>{error || 'Build not found'}</p>
+          <div className="wrap" style={{ paddingTop: 60, paddingBottom: 60 }}>
+            <p role="alert" style={{ color: 'var(--madder-text)', fontFamily: 'var(--font-mono)' }}>{error || 'Build not found'}</p>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              {signedOut && <Link href="/account" className="btn-silver">Sign in</Link>}
+              {signedOut && <Link href="/account" className="btn-primary">Sign in</Link>}
               <Link href="/journal" className="btn-outline">Back to journal</Link>
             </div>
           </div>
@@ -255,152 +266,174 @@ export default function BuildPage() {
     )
   }
 
+  const done = build.status === 'completed'
+  const colours = stepColours(steps, stashBeads)
+  const isLast = activeStepIndex >= totalSteps - 1
+  const pad2 = (n: number) => String(n).padStart(2, '0')
+  // What goes on the board: the step's material, else the stash bead its
+  // instruction names (many steps leave `material` null). Longest name wins so
+  // "garnet rondelle" beats "garnet". Nothing found → the panel is left out
+  // rather than claiming the step needs nothing.
+  const material = activeStep?.material?.trim() || ''
+  const boardText = `${material} ${activeStep?.instruction ?? ''}`.toLowerCase()
+  const materialBead = [...stashBeads]
+    .filter(b => typeof b.name === 'string' && b.name.trim().length >= 3)
+    .sort((a, b) => b.name.length - a.name.length)
+    .find(b => boardText.includes(b.name.trim().toLowerCase()))
+  const boardLabel = material || materialBead?.name || ''
+
   return (
     <>
-      <Nav />
-      <main id="main" className="page-main">
-        <div className="page-pad" style={{ maxWidth: 960, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
-          <p className="section-eyebrow">Build mode</p>
-          <h1 style={{
-            fontSize: 40,
-            color: 'var(--cream)',
-            fontFamily: 'var(--font-display)',
-            fontWeight: 400,
-            margin: '8px 0 8px',
-          }}>
-            {build.title}
-          </h1>
-          <p style={{ color: 'var(--text2)', fontSize: 17, marginBottom: 24 }}>
-            {build.design.description}
-          </p>
+      <a href="#main" className="skip-link">Skip to content</a>
+      <main id="main" className="page-main page-main--bare" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Build mode drops the studio nav: one bar, one way out. */}
+        <div className="build-bar">
+          <Link href="/bench" className="link-quiet" style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase' }}>× Leave the bench</Link>
+          <span style={{ color: 'var(--cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{build.title}</span>
+          <span style={{ color: 'var(--tan)' }}>{done ? 'Finished' : totalSteps ? `${pad2(activeStepIndex + 1)} / ${pad2(totalSteps)}` : '—'}</span>
+        </div>
 
-          {error && (
-            <p style={{ color: 'var(--rose)', fontFamily: 'var(--font-mono)', fontSize: 12, marginBottom: 18 }}>{error}</p>
-          )}
+        {error && <p role="alert" className="wrap" style={{ color: 'var(--madder-text)', fontFamily: 'var(--font-mono)', fontSize: 12, paddingTop: 16 }}>{error}</p>}
 
-          <div className="card" style={{ padding: 28, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <span className="tag">
-                Step {totalSteps === 0 ? 0 : activeStepIndex + 1} / {totalSteps}
-              </span>
-              <span className="tag">
-                {build.status === 'completed' ? 'Completed' : build.status === 'draft' ? 'Draft' : 'In progress'}
-              </span>
+        {!done ? (
+          <>
+            <div className="wrap" style={{ flex: 1, maxWidth: 1180, paddingTop: 'clamp(24px,4vw,48px)', paddingBottom: 40, display: 'flex', flexDirection: 'column', gap: 'clamp(28px,4vw,48px)' }}>
+              {totalSteps > 0 && (
+                <nav aria-label="Steps" className="build-strand">
+                  <div aria-hidden="true" className="build-strand-thread" />
+                  {steps.map((_, i) => {
+                    const cur = i === activeStepIndex
+                    return (
+                      <button key={i} type="button" onClick={() => goToStep(i)} disabled={saving || cur}
+                        aria-label={`Step ${i + 1}${i < activeStepIndex ? ', done' : ''}`} aria-current={cur ? 'step' : undefined}>
+                        <span style={{ height: 44, display: 'flex', alignItems: 'center' }}>
+                          {cur ? <CurrentBead size={28} /> : i < activeStepIndex ? <Bead hex={colours[i] || '#9C8070'} size={20} /> : <OpenBead size={14} fill="var(--mocha)" />}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.1em', color: cur ? 'var(--cream)' : 'var(--meta)' }}>{pad2(i + 1)}</span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              )}
+
+              {activeStep ? (
+                <div key={activeStepIndex} className="split" style={{ ['--min' as string]: '380px', gap: 'clamp(24px,4vw,56px)', alignItems: 'start', animation: 'ss-up .35s ease both' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
+                      <span className="numeral" aria-hidden="true" style={{ fontSize: 'clamp(96px,14vw,200px)', lineHeight: .8, letterSpacing: '-.04em', color: 'var(--seam)' }}>{pad2(activeStepIndex + 1)}</span>
+                      {activeStep.technique && <span className="eyebrow eyebrow--lit" style={{ letterSpacing: '.14em' }}>{activeStep.technique}</span>}
+                    </div>
+                    <h1 className="display" style={{ fontSize: 'clamp(30px,3.8vw,52px)', lineHeight: 1.1, letterSpacing: '-.015em', textWrap: 'pretty' }}>{activeStep.instruction}</h1>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                    {boardLabel && (
+                      <div className="panel">
+                        <div className="panel-head"><span>On the board for this step</span></div>
+                        <div style={{ padding: '8px 22px 14px' }}>
+                          <div className="row-line" style={{ padding: '10px 0' }}>
+                            <div style={{ width: 24, display: 'flex', justifyContent: 'center' }}>
+                              {materialBead ? <Bead hex={safeHex(materialBead.hex)} shape={beadFormFor(materialBead)} size={nominalPx(beadFormFor(materialBead)) * 1.8} /> : <OpenBead size={12} colour="var(--tan)" fill="transparent" />}
+                            </div>
+                            <span style={{ flex: 1, color: 'var(--cream)', fontSize: 15 }}>{boardLabel}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {activeStep.tip && (
+                      <div className="well" style={{ padding: '20px 22px' }}>
+                        <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>From the margin</span>
+                        <p style={{ marginTop: 8, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18, lineHeight: 1.45 }}>{activeStep.tip}</p>
+                      </div>
+                    )}
+                    {activeStep.technique && (
+                      <Link href="/guides" className="link-under" style={{ alignSelf: 'flex-start', marginTop: 8 }}>Read up on {activeStep.technique.toLowerCase()} →</Link>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="aside-line" style={{ fontSize: 18 }}>No steps found for this design.</p>
+              )}
             </div>
 
-            {activeStep ? (
-              <div style={{ marginTop: 18 }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, color: 'var(--cream)', marginBottom: 10 }}>
-                  {activeStep.instruction}
-                </h2>
-                {activeStep.material && (
-                  <p style={{ color: 'var(--text2)', fontSize: 14, marginBottom: 6 }}>
-                    Material: {activeStep.material}
-                  </p>
-                )}
-                {activeStep.technique && (
-                  <p style={{ color: 'var(--moonstone)', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.09em' }}>
-                    Technique: {activeStep.technique}
-                  </p>
-                )}
-                {activeStep.tip && (
-                  <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 10, fontStyle: 'italic' }}>
-                    Tip: {activeStep.tip}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--muted)', marginTop: 16 }}>No steps found for this design.</p>
-            )}
-
-            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button
-                className="btn-outline"
-                disabled={saving || activeStepIndex <= 0 || build.status === 'completed'}
-                onClick={() => goToStep(activeStepIndex - 1)}
-              >
-                ← Previous
-              </button>
-              <button
-                className="btn-silver"
-                disabled={saving || activeStepIndex >= totalSteps - 1 || build.status === 'completed'}
-                onClick={() => goToStep(activeStepIndex + 1)}
-              >
-                Next step →
-              </button>
-              {build.status !== 'completed' && (
-                <button className="btn-silver" disabled={saving} onClick={completeBuild}>
-                  {saving ? 'Saving…' : 'Mark complete'}
+            <div className="build-controls">
+              <button className="btn-outline" style={{ flex: '0 1 200px', padding: 20, fontSize: 12 }}
+                disabled={saving || activeStepIndex <= 0} onClick={() => goToStep(activeStepIndex - 1)}>← Back</button>
+              {isLast ? (
+                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 12 }} disabled={saving} onClick={completeBuild}>
+                  {saving ? 'Saving…' : 'Mark it finished'}
+                </button>
+              ) : (
+                <button className="btn-primary" style={{ flex: 1, padding: 20, fontSize: 12 }} disabled={saving} onClick={() => goToStep(activeStepIndex + 1)}>
+                  Next · step {pad2(activeStepIndex + 2)} →
                 </button>
               )}
             </div>
-          </div>
-
-          {showStashPrompt && (
-            <div className="card" style={{ padding: 20, marginBottom: 16, borderColor: 'var(--silver)' }}>
-              <p style={{ color: 'var(--cream)', fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 4 }}>Nice work — you finished it.</p>
-              <p style={{ color: 'var(--text2)', fontSize: 15, marginBottom: 14 }}>Subtract the materials you used from your stash?</p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-silver" disabled={decrementing} onClick={decrementStash}>
-                  {decrementing ? <><span className="spinner" />Updating…</> : 'Yes, subtract'}
-                </button>
-                <button className="btn-outline" disabled={decrementing} onClick={() => setShowStashPrompt(false)}>Not now</button>
+          </>
+        ) : (
+          <div className="wrap ss-up" style={{ flex: 1, maxWidth: 880, paddingTop: 'clamp(40px,6vw,80px)', paddingBottom: 'clamp(40px,6vw,80px)', display: 'flex', flexDirection: 'column', gap: 36 }}>
+            {totalSteps > 0 && (
+              <div aria-hidden="true" style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32, maxWidth: 520 }}>
+                <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 1, background: 'var(--saddle)' }} />
+                {steps.map((_, i) => <Bead key={i} hex={colours[i] || '#9C8070'} size={20} />)}
               </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <h1 className="display" style={{ fontSize: 'clamp(64px,10vw,148px)', lineHeight: .88, letterSpacing: '-.035em' }}>Strung.</h1>
+              <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 22, color: 'var(--tan)' }}>
+                {build.title}{typeof build.time_taken_minutes === 'number' && build.time_taken_minutes > 0 ? ` · ${build.time_taken_minutes} minute${build.time_taken_minutes === 1 ? '' : 's'} at the bench.` : '.'}
+              </p>
             </div>
-          )}
-          {stashNote && (
-            <p style={{ color: 'var(--text2)', fontFamily: 'var(--font-mono)', fontSize: 12, marginBottom: 16, letterSpacing: '0.06em' }}>{stashNote}</p>
-          )}
 
-          <div className="card" style={{ padding: 24, marginBottom: 16 }}>
-            <h3 style={{
-              color: 'var(--cream)',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 400,
-              fontSize: 24,
-              marginBottom: 14,
-            }}>
-              Reflection
-            </h3>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              {Object.entries(ratingLabels).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setRating(value)}
-                  style={{
-                    padding: '8px 12px',
-                    border: `1px solid ${rating === value ? 'var(--silver)' : 'var(--border)'}`,
-                    color: rating === value ? 'var(--silver2)' : 'var(--muted)',
-                    background: rating === value ? 'var(--surface2)' : 'var(--bg2)',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span className="eyebrow eyebrow--sm" style={{ letterSpacing: '.16em' }}>How did it come out</span>
+              <div className="chip-row" role="group" aria-label="Rating">
+                {Object.entries(ratingLabels).map(([value, label]) => (
+                  <button key={value} type="button" className="chip" aria-pressed={rating === value} onClick={() => setRating(value)}>{label}</button>
+                ))}
+              </div>
             </div>
             <textarea
               className="input-base"
+              aria-label="Notes on this piece"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               maxLength={MAX_NOTES_CHARS}
               placeholder="What worked, what you'd tweak next time..."
-              style={{ width: '100%', minHeight: 120, resize: 'vertical', marginBottom: 12 }}
+              style={{ minHeight: 120, fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 18 }}
             />
-            <button className="btn-outline" disabled={saving} onClick={saveReflection}>
-              {saving ? 'Saving…' : 'Save notes'}
-            </button>
-          </div>
 
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Link href="/journal" className="btn-outline">Back to journal</Link>
-            <Link href="/make" className="btn-ghost">Create another design</Link>
+            {showStashPrompt && (
+              <div className="panel">
+                <div className="panel-head"><span>Take these out of your stash?</span></div>
+                <div style={{ padding: '6px 22px 18px' }}>
+                  {(build.design.components || []).map((c, i) => (
+                    <div key={i} className="row-line" style={{ justifyContent: 'space-between', fontSize: 15 }}>
+                      <span style={{ color: 'var(--cream)' }}>{c.item}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--tan)' }}>−{c.quantity}</span>
+                    </div>
+                  ))}
+                  <p className="aside-line" style={{ fontSize: 14, margin: '12px 0 14px' }}>Matched to your stash by name — anything worded differently is left alone.</p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button className="btn-primary btn-md" disabled={decrementing} onClick={decrementStash}>
+                      {decrementing ? <><span className="spinner" />Updating…</> : 'Yes, subtract'}
+                    </button>
+                    <button className="btn-outline btn-md" disabled={decrementing} onClick={() => setShowStashPrompt(false)}>Not now</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {stashNote && <p role="status" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.06em' }}>{stashNote}</p>}
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button className="btn-primary" style={{ flex: '1 1 240px', padding: '18px 24px 17px', fontSize: 12 }} disabled={saving}
+                onClick={async () => { if (await patchBuild({ notes: notes.trim() || null, rating: rating || null })) router.push('/journal') }}>
+                {saving ? 'Saving…' : 'Into the journal →'}
+              </button>
+              <button className="btn-outline" style={{ padding: '17px 20px' }} disabled={saving} onClick={saveReflection}>Save notes</button>
+              <Link href="/make" className="btn-outline" style={{ padding: '17px 20px' }}>Make another</Link>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </>
   )

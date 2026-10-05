@@ -3,7 +3,9 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import Nav from '@/components/Nav'
+import Nav, { MakeTabs } from '@/components/Nav'
+import Bead, { OpenBead } from '@/components/Bead'
+import { beadFormFor, nominalPx, safeHex, stepColours } from '@/lib/bead'
 import Schematic from '@/components/Schematic'
 import StrandLoader from '@/components/StrandLoader'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
@@ -11,13 +13,32 @@ import { getAuthHeaders, getSession } from '@/lib/authClient'
 import { VALID_STYLES, STYLE_LABELS, STYLE_DESCRIPTIONS, type Style } from '@/lib/designVocab'
 import type { Assembly } from '@/lib/assembly'
 
-const pieceTypes = ['Any', 'Earrings', 'Necklace', 'Bracelet', 'Pendant', 'Anklet']
-const moods = ['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
-const times = [
-  { value: '15min', label: '15 minutes', sub: 'Quick & simple' },
-  { value: '1hour', label: '1 hour', sub: 'Moderate' },
-  { value: 'afternoon', label: 'Afternoon', sub: 'Complex welcome' },
+// The brief is a sentence (2026-10 redesign): "Make me a [piece] that feels
+// [mood], with [time] at the bench." Each underlined word cycles through its
+// options. `value` is what /api/make receives; `say` is how it reads in the
+// sentence.
+const pieceTypes = [
+  { value: 'Any', say: 'something' },
+  { value: 'Earrings', say: 'a pair of earrings' },
+  { value: 'Necklace', say: 'a necklace' },
+  { value: 'Bracelet', say: 'a bracelet' },
+  { value: 'Pendant', say: 'a pendant' },
+  { value: 'Anklet', say: 'an anklet' },
 ]
+const moods = [
+  { value: '', say: 'right for the stash' },
+  ...['Dark & moody', 'Ethereal & dreamy', 'Earthy & rustic', 'Bold & dramatic', 'Delicate & feminine', 'Celestial & mystical', 'Coastal & breezy', 'Rich & opulent']
+    .map(m => ({ value: m, say: m.toLowerCase() })),
+]
+const times = [
+  { value: '15min', say: 'fifteen minutes' },
+  { value: '1hour', say: 'about an hour' },
+  { value: 'afternoon', say: 'a whole afternoon' },
+]
+const cycle = <T,>(list: T[], cur: number) => (cur + 1) % list.length
+// Starting points for the adjust box. Tapping one fills the box rather than
+// sending it — every adjustment is a paid design call.
+const ADJUST_HINTS = ['Fewer steps', 'Make it asymmetric', 'Make it longer', 'Use a different accent bead']
 
 interface Step {
   id: number
@@ -72,7 +93,8 @@ export default function MakePage() {
   const [adjustment, setAdjustment] = useState('')
   const [refining, setRefining] = useState(false)
   const [recentTitles, setRecentTitles] = useState<string[]>([])
-  const [view, setView] = useState<'visual' | 'schematic'>('visual')
+  // Diagram first: it's free, and the render is a paid call made on request.
+  const [view, setView] = useState<'visual' | 'schematic'>('schematic')
   const [stashError, setStashError] = useState(false)
   // Bumped whenever the design on screen changes. A preview request only
   // applies its result if the counter still matches what it started with —
@@ -256,383 +278,239 @@ export default function MakePage() {
     }
   }
 
-  const diffColor = (d: string) =>
-    d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
+  const pieceIdx = Math.max(0, pieceTypes.findIndex(p => p.value === pieceType))
+  const moodIdx = Math.max(0, moods.findIndex(m => m.value === mood))
+  const timeIdx = Math.max(0, times.findIndex(t => t.value === timeAvailable))
+  const allInStash = design?.materialsCheck?.allAvailable !== false
+  const stashByName = new Map(beads.map(b => [b.name.trim().toLowerCase(), b]))
+  const findingByName = new Map(findings.map(f => [f.name.trim().toLowerCase(), f]))
+  const colours = design ? stepColours(design.steps, beads) : []
 
   return (
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div className="page-pad" style={{ maxWidth: 900, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
+        <MakeTabs />
+        <div className="wrap ss-up" style={{ paddingTop: 'clamp(28px,4vw,48px)', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 40 }}>
 
-          <header style={{ marginBottom: 40 }}>
-            <p className="section-eyebrow fade-up">Design Generator</p>
-            <h1 className="fade-up-1" style={{
-              fontSize: 44, color: 'var(--cream)',
-              fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
-            }}>Make Something</h1>
-            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>
-              Tell the AI what you&apos;re after. It reads your stash and designs one piece you can build right now.
-            </p>
-          </header>
-
-          {/* Signed-out prompt */}
           {signedOut && (
-            <div className="fade-up-2" style={{
-              padding: '12px 18px', background: 'var(--surface)',
-              border: '1px solid var(--border)', marginBottom: 24
-            }}>
-              <span style={{ fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>
-                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to load your stash.
+            <div className="well" style={{ padding: '12px 18px' }}>
+              <span style={{ fontSize: 15 }}>
+                <Link href="/account" className="link-under">Sign in</Link>&nbsp; to load your stash and design from it.
               </span>
             </div>
           )}
 
-          {/* Stash status */}
-          {stashLoaded && !signedOut && (
-            <div className="fade-up-2" style={{
-              display: 'flex', gap: 20, padding: '12px 18px',
-              background: 'var(--surface)', border: '1px solid var(--border)',
-              marginBottom: 24, alignItems: 'center', flexWrap: 'wrap'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: beads.length > 0 ? 'var(--sage)' : 'var(--rose)' }} />
-                <span className="mono" style={{ fontSize: 11, color: 'var(--text2)', letterSpacing: '0.08em' }}>
-                  {beads.length} bead{beads.length !== 1 ? 's' : ''} in stash
-                </span>
+          {!design && !loading && (
+            <section aria-labelledby="brief-h" style={{ display: 'flex', flexDirection: 'column', gap: 30 }}>
+              <h1 id="brief-h" className="sr-only">Make something</h1>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <p className="display" style={{ fontSize: 'clamp(34px,5.4vw,78px)', lineHeight: 1.1, letterSpacing: '-.02em', color: 'var(--meta)', maxWidth: '20ch', textWrap: 'pretty' }}>
+                  Make me{' '}
+                  <button type="button" className="brief-word" style={{ borderBottomWidth: 2 }} aria-label={`Piece: ${pieceTypes[pieceIdx].say}. Change`}
+                    onClick={() => setPieceType(pieceTypes[cycle(pieceTypes, pieceIdx)].value)}>{pieceTypes[pieceIdx].say}</button>
+                  {' '}that feels{' '}
+                  <button type="button" className="brief-word" style={{ borderBottomWidth: 2 }} aria-label={`Mood: ${moods[moodIdx].say}. Change`}
+                    onClick={() => setMood(moods[cycle(moods, moodIdx)].value)}>{moods[moodIdx].say}</button>
+                  , with{' '}
+                  <button type="button" className="brief-word" style={{ borderBottomWidth: 2 }} aria-label={`Time: ${times[timeIdx].say}. Change`}
+                    onClick={() => setTimeAvailable(times[cycle(times, timeIdx)].value)}>{times[timeIdx].say}</button>
+                  {' '}at the bench.
+                </p>
+                <span className="eyebrow">Tap an underlined word to change it</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: findings.length > 0 ? 'var(--sage)' : 'var(--rose)' }} />
-                <span className="mono" style={{ fontSize: 11, color: 'var(--text2)', letterSpacing: '0.08em' }}>
-                  {findings.length} finding{findings.length !== 1 ? 's' : ''} in stash
-                </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <span className="eyebrow eyebrow--sm" style={{ letterSpacing: '.16em' }}>Style · optional</span>
+                <div className="chip-row" role="group" aria-label="Style">
+                  <button type="button" className="chip" aria-pressed={style === ''} onClick={() => setStyle('')} title="No style constraint">Open</button>
+                  {VALID_STYLES.map(st => (
+                    <button key={st} type="button" className="chip" aria-pressed={style === st} onClick={() => setStyle(st)} title={STYLE_DESCRIPTIONS[st]}>{STYLE_LABELS[st]}</button>
+                  ))}
+                </div>
+                {style && <p className="aside-line">{STYLE_DESCRIPTIONS[style]}</p>}
               </div>
-              {stashError && (
-                <span role="alert" style={{ fontSize: 14, color: 'var(--rose)', fontFamily: 'var(--font-body)' }}>
-                  Couldn’t load your stash — designs may not reflect what you own. Refresh to try again.
-                </span>
-              )}
-              {!stashError && beads.length === 0 && findings.length === 0 && (
-                <span style={{ fontSize: 14, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                  Add materials to your stash for personalised designs — or generate anyway for a general idea.
-                </span>
-              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <button className="btn-primary btn-lg" style={{ padding: '18px 34px 17px', letterSpacing: '.16em' }}
+                  onClick={generate} disabled={loading || refining || signedOut}>
+                  {signedOut ? 'Sign in to design' : 'Design it'}
+                </button>
+                {stashLoaded && !signedOut && (
+                  stashError ? (
+                    <span role="alert" style={{ fontSize: 15, color: 'var(--madder-text)' }}>
+                      Couldn’t load your stash — designs may not reflect what you own. Refresh to try again.
+                    </span>
+                  ) : beads.length === 0 && findings.length === 0 ? (
+                    <span className="aside-line" style={{ fontSize: 17 }}>Your stash is empty — <Link href="/inventory" className="link-under">add beads</Link> for designs built from what you own, or design anyway for a general idea.</span>
+                  ) : (
+                    <span className="aside-line" style={{ fontSize: 17 }}>Reads all {beads.length} bead type{beads.length === 1 ? '' : 's'} and {findings.length} finding{findings.length === 1 ? '' : 's'} before it draws anything.</span>
+                  )
+                )}
+              </div>
+            </section>
+          )}
+
+          {loading && (
+            <div className="well" style={{ minHeight: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <StrandLoader label="Reading stash & designing…" />
             </div>
           )}
 
-          {/* Brief form */}
-          <div className="card fade-up-2" style={{ padding: 32, marginBottom: 32 }}>
-            <div className="blueprint-grid" style={{ gap: 20, marginBottom: 24 }}>
-              <div>
-                <label className="label">Piece type</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                  {pieceTypes.map(p => (
-                    <button key={p} onClick={() => setPieceType(p)} style={{
-                      padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                      letterSpacing: '0.08em', textTransform: 'uppercase',
-                      background: pieceType === p ? 'var(--surface2)' : 'var(--bg2)',
-                      border: `1px solid ${pieceType === p ? 'var(--silver)' : 'var(--border)'}`,
-                      color: pieceType === p ? 'var(--silver2)' : 'var(--muted)',
-                      cursor: 'pointer', transition: 'all 0.15s'
-                    }}>{p}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="label">Time available</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                  {times.map(t => (
-                    <button key={t.value} onClick={() => setTimeAvailable(t.value)} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 14px',
-                      background: timeAvailable === t.value ? 'var(--surface2)' : 'var(--bg2)',
-                      border: `1px solid ${timeAvailable === t.value ? 'var(--silver)' : 'var(--border)'}`,
-                      cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left'
-                    }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: timeAvailable === t.value ? 'var(--cream)' : 'var(--text2)' }}>{t.label}</span>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.08em' }}>{t.sub}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div style={{ marginBottom: 24 }}>
-              <label className="label">Style</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                <button onClick={() => setStyle('')} title="No style constraint" style={{
-                  padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                  letterSpacing: '0.08em', textTransform: 'uppercase',
-                  background: style === '' ? 'var(--surface2)' : 'var(--bg2)',
-                  border: `1px solid ${style === '' ? 'var(--silver)' : 'var(--border)'}`,
-                  color: style === '' ? 'var(--silver2)' : 'var(--muted)',
-                  cursor: 'pointer', transition: 'all 0.15s'
-                }}>Open</button>
-                {VALID_STYLES.map(s => (
-                  <button key={s} onClick={() => setStyle(s)} title={STYLE_DESCRIPTIONS[s]} style={{
-                    padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    background: style === s ? 'var(--surface2)' : 'var(--bg2)',
-                    border: `1px solid ${style === s ? 'var(--silver)' : 'var(--border)'}`,
-                    color: style === s ? 'var(--silver2)' : 'var(--muted)',
-                    cursor: 'pointer', transition: 'all 0.15s'
-                  }}>{STYLE_LABELS[s]}</button>
-                ))}
-              </div>
-              {style && (
-                <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8, fontFamily: 'var(--font-body)' }}>
-                  {STYLE_DESCRIPTIONS[style]}
-                </p>
-              )}
-            </div>
-            <div style={{ marginBottom: 24 }}>
-              <label className="label">Mood / vibe</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                <button onClick={() => setMood('')} style={{
-                  padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                  letterSpacing: '0.08em', textTransform: 'uppercase',
-                  background: mood === '' ? 'var(--surface2)' : 'var(--bg2)',
-                  border: `1px solid ${mood === '' ? 'var(--silver)' : 'var(--border)'}`,
-                  color: mood === '' ? 'var(--silver2)' : 'var(--muted)',
-                  cursor: 'pointer', transition: 'all 0.15s'
-                }}>Open</button>
-                {moods.map(m => (
-                  <button key={m} onClick={() => setMood(m)} style={{
-                    padding: '7px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    background: mood === m ? 'var(--surface2)' : 'var(--bg2)',
-                    border: `1px solid ${mood === m ? 'var(--silver)' : 'var(--border)'}`,
-                    color: mood === m ? 'var(--silver2)' : 'var(--muted)',
-                    cursor: 'pointer', transition: 'all 0.15s'
-                  }}>{m}</button>
-                ))}
-              </div>
-            </div>
-            <button className="btn-silver" style={{ width: '100%', justifyContent: 'center', padding: '14px' }}
-              onClick={generate} disabled={loading || refining || signedOut}>
-              {loading
-                ? <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                    <span className="strand-loader"><i/><i/><i/></span>
-                    <span style={{ textAlign: 'center', lineHeight: 1.3 }}>Reading stash &amp; designing…</span>
-                  </span>
-                : signedOut
-                  ? 'Sign in to design'
-                  : 'Design Something'}
-            </button>
-          </div>
-
           {error && (
-            <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 20, color: 'var(--rose)' }}>
+            <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--madder-text)' }}>
               {error === 'Sign in to save your designs.'
-                ? <><Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to save your designs.</>
+                ? <><Link href="/account" className="link-under">Sign in</Link>&nbsp; to save your designs.</>
                 : error}
             </p>
           )}
 
-          {/* Design output */}
           {design && (
-            <div className="fade-up">
-              {/* Header card */}
-              <div style={{
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderTop: '3px solid var(--silver)', padding: 36, marginBottom: 16
-              }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-                  <span className="tag" style={{ borderColor: diffColor(design.difficulty), color: diffColor(design.difficulty) }}>
-                    {design.difficulty}
-                  </span>
-                  <span className="tag">{design.estimatedTime}</span>
-                  <span className="tag">{design.pieceType}</span>
-                  {design.materialsCheck?.allAvailable === false && (
-                    <span className="tag" style={{ borderColor: 'var(--rose)', color: 'var(--rose)' }}>⚠ Check materials</span>
-                  )}
+            <section aria-labelledby="design-h" className="ss-up" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 760 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {design.difficulty && <span className="tag">{design.difficulty}</span>}
+                    {design.estimatedTime && <span className="tag">{design.estimatedTime}</span>}
+                    {design.pieceType && <span className="tag">{design.pieceType}</span>}
+                    {allInStash
+                      ? <span className="tag" style={{ color: 'var(--sage)' }}>● All in stash</span>
+                      : <span className="tag" style={{ color: 'var(--ochre)' }}>● Check materials</span>}
+                  </div>
+                  <h2 id="design-h" className="display d-1" style={{ fontSize: 'clamp(54px,8vw,124px)', lineHeight: .9 }}>{design.title}</h2>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'clamp(18px,1.8vw,22px)', lineHeight: 1.45, color: 'var(--text2)', maxWidth: '50ch' }}>{design.description}</p>
                 </div>
-                <h2 style={{
-                  fontSize: 36, color: 'var(--cream)', fontFamily: 'var(--font-display)',
-                  fontWeight: 400, marginBottom: 8
-                }}>{design.title}</h2>
-                <p style={{ color: 'var(--text2)', fontSize: 17, marginBottom: 16 }}>{design.description}</p>
+                <button type="button" className="link-under" onClick={() => { setDesign(null); setError(''); imageRequest.current++; setImageLoading(false) }} disabled={saving || refining}>← Change the brief</button>
+              </div>
 
-                <div style={{
-                  background: 'var(--bg2)', border: '1px solid var(--border)',
-                  padding: '14px 18px', marginBottom: 16
-                }}>
-                  <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>COLOUR STORY</span>
-                  <p style={{ color: 'var(--text)', fontSize: 15, marginTop: 6, lineHeight: 1.6 }}>{design.colourStory}</p>
-                </div>
-
-                {/* Visual (AI render) + Schematic (buildable diagram) */}
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                    {([['visual', 'Visual'], ['schematic', 'Schematic']] as const).map(([v, label]) => (
-                      <button key={v} onClick={() => setView(v)} style={{
-                        padding: '6px 14px', fontFamily: 'var(--font-mono)', fontSize: 10,
-                        letterSpacing: '0.1em', textTransform: 'uppercase',
-                        background: view === v ? 'var(--surface2)' : 'var(--bg2)',
-                        border: `1px solid ${view === v ? 'var(--silver)' : 'var(--border)'}`,
-                        color: view === v ? 'var(--silver2)' : 'var(--muted)',
-                        cursor: 'pointer', transition: 'all 0.15s'
-                      }}>{label}</button>
+              <div className="split" style={{ ['--min' as string]: '420px', gap: 2, alignItems: 'start' }}>
+                <div className="panel">
+                  <div role="tablist" aria-label="Design view" className="chip-row" style={{ padding: 10, background: 'var(--umber)', borderBottom: '1px solid var(--seam)' }}>
+                    {([['schematic', 'Diagram'], ['visual', 'Render']] as const).map(([v, label]) => (
+                      <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '8px 14px', fontSize: 10 }} onClick={() => setView(v)}>{label}</button>
                     ))}
                   </div>
-
                   {view === 'schematic' ? (
-                    <>
+                    <div style={{ background: 'var(--roast)', padding: 12 }}>
                       <Schematic blueprint={design} beads={beads} findings={findings} />
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
-                        BUILDABLE DIAGRAM · MATCHED TO YOUR STASH
-                      </p>
-                    </>
+                      <p className="eyebrow eyebrow--sm" style={{ marginTop: 6, letterSpacing: '.12em' }}>Buildable diagram · matched to your stash</p>
+                    </div>
                   ) : imageLoading && !design.imageUrl ? (
-                    <div style={{
-                      height: 320, background: 'var(--roast)', border: '1px solid var(--seam)',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
-                    }}>
-                      <StrandLoader />
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.1em' }}>
-                        RENDERING DESIGN…
-                      </span>
+                    <div className="render-well">
+                      <StrandLoader label="Rendering design…" />
                     </div>
                   ) : design.imageUrl ? (
                     <div style={{ position: 'relative' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={design.imageUrl}
-                        alt={design.title}
-                        style={{ width: '100%', display: 'block', border: '1px solid var(--border)', maxHeight: 420, objectFit: 'cover' }}
-                      />
-                      <div style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
-                        padding: '24px 16px 10px',
-                        background: 'linear-gradient(to top, rgba(13,10,9,0.85) 0%, transparent 100%)'
-                      }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--tan)', letterSpacing: '0.12em' }}>
-                          AI RENDER · FOR REFERENCE ONLY
-                        </span>
-                      </div>
-                    </div>
-                  ) : imageError ? (
-                    <div style={{
-                      padding: '14px 16px', background: 'var(--bg2)', border: '1px solid var(--border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap'
-                    }}>
-                      <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text2)' }}>
-                        {imageError}
-                      </span>
-                      <button className="btn-ghost" onClick={retryImage} disabled={imageLoading} style={{ flexShrink: 0 }}>
-                        Retry preview
-                      </button>
+                      <img src={design.imageUrl} alt={design.title} style={{ width: '100%', display: 'block', maxHeight: 520, objectFit: 'cover' }} />
+                      <span className="eyebrow eyebrow--sm" style={{ position: 'absolute', left: 16, bottom: 12, color: 'var(--tan)', padding: '4px 8px', background: 'color-mix(in srgb, var(--bean) 80%, transparent)' }}>AI render · for reference only</span>
                     </div>
                   ) : (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', border: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                      <button className="btn-outline" onClick={retryImage} disabled={imageLoading}>
-                        Render preview
-                      </button>
+                    <div className="render-well" style={{ flexDirection: 'column', gap: 14, padding: 24, textAlign: 'center' }}>
+                      {imageError && <span style={{ fontSize: 15, color: 'var(--text2)', maxWidth: '40ch' }}>{imageError}</span>}
+                      <button className="btn-outline" onClick={retryImage} disabled={imageLoading}>{imageError ? 'Retry preview' : 'Render preview'}</button>
+                      <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>AI render · for reference only</span>
                     </div>
                   )}
                 </div>
 
-                {design.materialsCheck?.notes && (
-                  <div style={{
-                    background: 'rgba(200,112,112,0.05)', border: '1px solid rgba(200,112,112,0.2)',
-                    padding: '12px 16px', marginBottom: 16
-                  }}>
-                    <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--rose)' }}>MATERIALS NOTE</span>
-                    <p style={{ color: 'var(--text2)', fontSize: 14, marginTop: 6 }}>{design.materialsCheck.notes}</p>
+                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {design.colourStory && (
+                    <div className="well" style={{ padding: '22px 24px' }}>
+                      <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>Colour story</span>
+                      <p style={{ marginTop: 8, fontSize: 16, lineHeight: 1.6 }}>{design.colourStory}</p>
+                    </div>
+                  )}
+                  <div className="panel">
+                    <div className="panel-head"><span>Materials</span><span>Need / have</span></div>
+                    <div style={{ padding: '6px 24px 16px' }}>
+                      {(design.components || []).map((c, i) => {
+                        const key = typeof c.item === 'string' ? c.item.trim().toLowerCase() : ''
+                        const bead = stashByName.get(key)
+                        const finding = bead ? undefined : findingByName.get(key)
+                        const have = bead ? bead.quantity : finding?.quantity
+                        const need = Number(c.quantity) || 0
+                        const ok = typeof have === 'number' && have >= need
+                        const form = bead ? beadFormFor(bead) : null
+                        return (
+                          <div key={i} className="row-line" style={{ alignItems: 'flex-start' }}>
+                            <div style={{ width: 24, display: 'flex', justifyContent: 'center', paddingTop: 5 }}>
+                              {bead && form ? <Bead hex={safeHex(bead.hex)} shape={form} size={nominalPx(form) * 1.8} /> : <OpenBead size={12} colour="var(--tan)" fill="transparent" />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              <span style={{ color: 'var(--cream)', fontSize: 15 }}>{c.item}</span>
+                              {typeof have === 'number' && (
+                                <div style={{ height: 2, background: 'var(--roast)', maxWidth: 200 }}>
+                                  <div style={{ height: 2, width: `${Math.min(100, have > 0 ? need / have * 100 : 100)}%`, background: ok ? 'var(--sage)' : 'var(--ochre)' }} />
+                                </div>
+                              )}
+                              {c.note && <span style={{ fontSize: 13, color: 'var(--meta)' }}>{c.note}</span>}
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.06em', whiteSpace: 'nowrap', color: typeof have === 'number' && !ok ? 'var(--ochre)' : 'var(--text2)' }}>
+                              {need}{typeof have === 'number' ? ` / ${have}` : ''}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
-                )}
-
-                {/* CTAs */}
-                <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-                  <button className="btn-silver" style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
-                    onClick={startBuilding} disabled={saving || refining}>
-                    {saving ? <><span className="spinner" />Starting…</> : '→ Start Building'}
-                  </button>
-                  <button className="btn-outline" onClick={saveForLater} disabled={saving || refining}>
-                    Save for later
-                  </button>
-                  <button className="btn-outline" onClick={generate} disabled={loading || refining}>
-                    Try another
-                  </button>
-                </div>
-
-                {/* Refine */}
-                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                  <label className="label">Adjust this design</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      className="input-base"
-                      style={{ flex: 1 }}
-                      placeholder="e.g. swap the garnets for moonstone · fewer steps"
-                      value={adjustment}
-                      maxLength={300}
-                      onChange={e => setAdjustment(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && adjustment.trim()) refine() }}
-                      disabled={refining || loading}
-                    />
-                    <button className="btn-outline" onClick={refine} disabled={refining || loading || !adjustment.trim()}>
-                      {refining ? <><span className="spinner-dark" />Adjusting…</> : 'Adjust'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Materials + Steps preview */}
-              <div className="blueprint-grid">
-                <div className="card" style={{ padding: 28 }}>
-                  <h3 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
-                    color: 'var(--cream)', marginBottom: 16
-                  }}>Materials</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {(design.components || []).map((c, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                        <span style={{
-                          fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--silver)',
-                          minWidth: 20, marginTop: 2
-                        }}>×{c.quantity}</span>
-                        <div>
-                          <p style={{ color: 'var(--cream)', fontSize: 15 }}>{c.item}</p>
-                          <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 2 }}>{c.note}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="card" style={{ padding: 28 }}>
-                  <h3 style={{
-                    fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400,
-                    color: 'var(--cream)', marginBottom: 16
-                  }}>Steps preview</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(design.steps || []).slice(0, 5).map((s) => (
-                      <div key={s.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                        <span style={{
-                          width: 22, height: 22, background: 'var(--surface2)',
-                          border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 10,
-                          color: 'var(--muted)', flexShrink: 0
-                        }}>{s.id}</span>
-                        <div>
-                          <p style={{ color: 'var(--text2)', fontSize: 14, lineHeight: 1.4 }}>{s.instruction}</p>
-                          {s.technique && (
-                            <span style={{
-                              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em',
-                              color: 'var(--moonstone)', textTransform: 'uppercase', marginTop: 3, display: 'block'
-                            }}>{s.technique}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {(design.steps || []).length > 5 && (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', letterSpacing: '0.08em' }}>
-                        + {(design.steps || []).length - 5} more steps in build mode
-                      </p>
-                    )}
+                  {design.materialsCheck?.notes && (
+                    <div className="well" style={{ padding: '14px 24px' }}>
+                      <span className="eyebrow eyebrow--sm" style={{ color: allInStash ? 'var(--tan)' : 'var(--ochre)' }}>Materials note</span>
+                      <p style={{ marginTop: 6, fontSize: 15 }}>{design.materialsCheck.notes}</p>
+                    </div>
+                  )}
+                  <div style={{ padding: '20px 24px', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button className="btn-primary" style={{ flex: '1 1 200px', padding: '16px 22px 15px' }} onClick={startBuilding} disabled={saving || refining}>
+                        {saving ? <><span className="spinner" />Starting…</> : 'Start building →'}
+                      </button>
+                      <button className="btn-outline" style={{ padding: '15px 18px' }} onClick={saveForLater} disabled={saving || refining}>Save</button>
+                      <button className="btn-outline" style={{ padding: '15px 18px' }} onClick={generate} disabled={loading || refining}>Try another</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, paddingTop: 12, borderTop: '1px solid var(--seam)' }}>
+                      <input
+                        className="input-base"
+                        style={{ flex: 1, minWidth: 0 }}
+                        aria-label="Adjust this design"
+                        placeholder="Adjust it — e.g. swap the garnets for moonstone"
+                        value={adjustment}
+                        maxLength={300}
+                        onChange={e => setAdjustment(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && adjustment.trim()) refine() }}
+                        disabled={refining || loading}
+                      />
+                      <button className="btn-outline" onClick={refine} disabled={refining || loading || !adjustment.trim()}>
+                        {refining ? <><span className="spinner" />Adjusting…</> : 'Adjust'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {ADJUST_HINTS.map(h => (
+                        <button key={h} type="button" className="chip" style={{ padding: '6px 10px', fontSize: 10, letterSpacing: '.08em' }} onClick={() => setAdjustment(h)} disabled={refining || loading}>{h}</button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+
+              {(design.steps || []).length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <span className="eyebrow" style={{ letterSpacing: '.14em' }}>The build · {design.steps.length} step{design.steps.length === 1 ? '' : 's'}</span>
+                  <ol className="tray-grid tray-grid--fill" style={{ ['--min' as string]: '240px', listStyle: 'none' }}>
+                    {design.steps.map((st, i) => (
+                      <li key={st.id ?? i} style={{ padding: '18px 20px', background: 'var(--mocha)', border: '1px solid var(--seam)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span className="numeral" style={{ fontSize: 30, lineHeight: 1, color: 'var(--saddle)' }}>{String(i + 1).padStart(2, '0')}</span>
+                          {colours[i] ? <Bead hex={colours[i]!} size={11} /> : <OpenBead size={8} colour="var(--tan)" fill="transparent" />}
+                        </div>
+                        <span style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--cream)' }}>{st.instruction}</span>
+                        {st.technique && <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', letterSpacing: '.12em' }}>{st.technique}</span>}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </section>
           )}
         </div>
       </main>

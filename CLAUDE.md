@@ -35,6 +35,7 @@ OPENAI_API_KEY=...          # required for GPT Image 2 image generation
 
 **Stash → Make → Build → Journal**
 
+0. Signed-in home is the Bench (`/bench`): the stash on one thread, the build in progress, what's running low, saved ideas
 1. User adds beads and findings to their Stash (`/inventory`)
 2. AI reads the stash and generates a bespoke design on the Make page (`/make`)
 3. User steps through the build instructions on the Build page (`/make/build/[id]`)
@@ -50,10 +51,12 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 
 | URL | Nav label | Description |
 |---|---|---|
-| `/` | — | Landing / home |
-| `/inventory` | Stash | Bead + findings CRUD, photo identification, bulk text stash parsing |
+| `/` | — | Public landing (public nav: How it works · Sign in · Start free) |
+| `/how-it-works` | How it works | Public five-step explainer |
+| `/bench` | Bench | Signed-in home — built only from the maker's own stash and builds |
+| `/inventory` | Stash | Bead + findings ledger with colour-spectrum filter and detail panel (± quantity), photo identification, bulk text stash parsing |
 | `/make` | Make | AI design generator + refinement + GPT Image preview |
-| `/make/build/[id]` | — | Step-by-step build mode; optional stash decrement on completion |
+| `/make/build/[id]` | — | Step-by-step build mode (no nav — its own bar and sticky Back/Next); optional stash decrement on completion |
 | `/sequence` | Palette | Colour palette + repeating bead sequence generator |
 | `/codesign` | Co-Design | Conversational AI co-designer |
 | `/journal` | Journal | Saved and completed builds |
@@ -61,10 +64,10 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 | `/auth/callback` | — | Supabase OAuth callback |
 | `/guides` | Learn | Jewellery guides + streaming AI advisor scoped to the open guide section |
 | `/glossary` | — | Static glossary (active under Learn nav item) |
-| `/calculator` | Calculator | Bead count, wire length and approximate weight (`src/lib/beadMath.ts`) |
+| `/calculator` | — | Bead count, wire length and approximate weight (`src/lib/beadMath.ts`). Under Learn; linked from the footer as "Bead math" |
 | `/not-found` | — | 404 |
 
-Nav has 7 items (Stash, Make, Co-Design, Palette, Calculator, Learn, Journal) plus Account. Note the mismatch between route and label: `/sequence` is labelled **Palette**.
+`Nav` has two variants. **Studio** (default): Bench · Stash · Make · Journal, with Learn (`/guides`, `/glossary`, `/calculator`) and the account avatar on the right; on phones the four destinations move to a fixed bottom tab bar. **Public** (`<Nav variant="public" />`, landing and How it works): How it works · Sign in · Start free (`/account?mode=signup`), or "Open studio" when signed in. Make covers three tools switched by `MakeTabs` (from `@/components/Nav`): Generate `/make`, Co-design `/codesign`, Palette `/sequence` — note `/sequence` is labelled **Palette**. Build mode renders no `Nav`; its `<main>` uses `page-main page-main--bare`.
 
 ## API Routes
 
@@ -190,20 +193,23 @@ This is deliberately best-effort — completion has already been persisted by th
 
 No CSS framework. Two layers:
 
-- **Utility classes** in `src/app/globals.css`: `.card`, `.btn-silver`, `.btn-outline`, `.btn-ghost`, `.btn-gold`, `.tag`, `.input-base`, `.select-base`, `.label`, `.spinner`, `.spinner-dark`, `.section-eyebrow`, `.fade-up` through `.fade-up-4`, `.mono`, `.prose`.
+- **Utility classes** in `src/app/globals.css`: `.btn-primary` (oxblood) / `.btn-outline` / `.btn-ghost` with `.btn-md` / `.btn-lg`, `.chip` (state via `aria-pressed` / `aria-selected` / `.is-on`), `.display` + size classes `.d-hero` `.d-1` `.d-2` `.d-3` `.d-card`, `.eyebrow`, `.aside-line`, `.link-under`, `.panel` / `.panel-head` / `.well` / `.row-line`, `.tray-grid` (2px mosaic; tune with `--min`), `.split`, `.wrap`, `.ss-up`, plus `.card`, `.tag`, `.input-base`, `.select-base`, `.label`, `.prose`. `.btn-silver` and `.spinner` survive as legacy aliases.
+- **Beads are drawn in CSS** by `<Bead hex shape size />` (`src/components/Bead.tsx`, style from `beadStyle()` in `src/lib/bead.ts`), threaded with `<Strand>`; `<StepStrand>` is the build-progress strand. `beadFormFor()` maps a stash row's free-text shape to one of six forms; `colourFamily()` drives the Stash spectrum filter; `strandFromComponents()` / `stepColours()` colour a design from the stash by name. Public pages draw only the illustrative beads in `src/lib/demoBeads.ts` — never real stash data.
 - **Inline styles** for layout, spacing, and one-off values — used heavily throughout.
 
-CSS custom properties (`:root`) handle the colour palette. Use variables in all new code: `var(--silver)`, `var(--moonstone)`, `var(--rose)`, `var(--surface)`, `var(--border)`, etc.
+CSS custom properties (`:root`) handle the colour palette — the mocha ladder in DESIGN.md (`--bean` `--roast` `--mocha` `--umber` `--seam` `--saddle` `--tan`, `--cream` `--text2` `--meta`, `--button-accent` oxblood, `--sage`, `--ochre`). Use variables in all new code; the legacy names (`--surface`, `--border`, `--silver`, …) are aliases onto the ladder.
 
-Fonts: `var(--font-display)` = Instrument Serif (headings), `var(--font-body)` = Instrument Sans (UI + prose), `var(--font-serif)` = Newsreader italic (marginalia only), `var(--font-mono)` = DM Mono (labels/tags/meta).
+Fonts: `var(--font-display)` = Gloock (every heading), `var(--font-body)` = Instrument Sans (UI + prose, and the `strung` wordmark), `var(--font-serif)` = Newsreader italic (marginalia, AI replies, accent words inside headlines), `var(--font-mono)` = DM Mono (labels/tags/meta/buttons).
+
+The `next/font` variable classes go on `<html>`, not `<body>`: `globals.css` composes them into `--font-body` / `--font-mono` / `--font-serif` on `:root`, and a `var()` that is undefined where it is declared invalidates the whole property. On `<body>` every face silently fell back to Times New Roman.
 
 Fonts are **self-hosted** via `next/font/local` from `src/app/fonts/` (latin-subset woff2 plus each family's OFL licence). Do not switch back to `next/font/google`: it downloads from Google during the build, and a failed download fails the whole build with "Build failed because of webpack errors". The CSP `font-src` is `'self'` only, so a font loaded from a third-party URL will also be blocked at runtime. To add a weight, download its woff2 into that folder and add it to `layout.tsx`.
 
 **Text colour vs UI colour.** `--madder` (#C4564C) is 3.74:1 on `--mocha` cards — fine for borders, dots and focus rings (WCAG 1.4.11 asks 3:1 of non-text) but under the 4.5:1 AA floor for the 10–11px mono caps it was being used at. Small text on the accent uses `--madder-text` (#D17A72, 5.60:1); `--madder` itself is unchanged and stays for every non-text use. Likewise `--field-edge` (#6E6A66, 3.31:1 on `--roast`) is the input/select border — `--seam` was 1.62:1 there, an effectively invisible control boundary. Every token keeps R > G ≥ B per DESIGN Rule 1.
 
-**Responsive layout.** Horizontal page padding comes from `.page-pad` (40px, stepping down to 20px and 14px on phones) — set only `paddingTop`/`paddingBottom` inline, never `padding: '52px 40px …'`. Two- and three-column grids use `.blueprint-grid` / `.form-grid-3` / `.stats-grid-4`, which collapse on narrow screens; an inline `gridTemplateColumns` does not.
+**Responsive layout.** Redesigned pages use `.wrap` (max 1280px, fluid `clamp(18px,4vw,44px)` sides; `.wrap--wide` is 1360 for public pages) and fluid grids (`.tray-grid`, `.split`) built on `repeat(auto-fit, minmax(min(100%, var(--min)), 1fr))`. Never combine an auto-fit grid with `grid-column: span 2` — it overflows once the grid drops to one column (`.bench-grid` uses a media query instead). The older `.page-pad` / `.blueprint-grid` / `.form-grid-3` / `.stats-grid-4` remain for the Learn pages and forms. The handoff's sizes were written in container units (`cqw`); they are ported as `vw` because `container-type` on `<main>` would make it the containing block for every `position: fixed` descendant.
 
-**Page shell.** Every page renders `<main id="main" className="page-main">` rather than repeating `paddingTop: 60` / `minHeight: '100vh'` inline. `.page-main` carries both, and `id="main"` is the target of the `.skip-link` that `Nav` renders as the first focusable element on the page. Use `100dvh`, never `100vh` — mobile browser chrome makes `100vh` overflow the viewport.
+**Page shell.** Every page renders `<main id="main" className="page-main">` (`page-main--public` under the public nav, `page-main--bare` in build mode) rather than repeating the nav offset / `minHeight` inline. `.page-main` carries both (`--nav-h` 64px, `--nav-h-public` 68px, plus bottom padding for the phone tab bar), and `id="main"` is the target of the `.skip-link` that `Nav` renders as the first focusable element on the page. Use `100dvh`, never `100vh` — mobile browser chrome makes `100vh` overflow the viewport.
 
 ## Path Alias
 

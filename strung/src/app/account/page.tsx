@@ -1,6 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Nav from '@/components/Nav'
 import { supabase } from '@/lib/supabase'
 
@@ -17,8 +18,15 @@ export default function AccountPage() {
   const [isError, setIsError] = useState(false)
 
   useEffect(() => {
+    // "Start free" links here with ?mode=signup. Read once the auth check
+    // settles rather than via useSearchParams, which would force a Suspense
+    // boundary on the page; the form is hidden until then anyway.
+    const wantsSignup = new URLSearchParams(window.location.search).get('mode') === 'signup'
     supabase.auth.getUser()
-      .then(({ data }) => setSessionEmail(data.user?.email ?? null))
+      .then(({ data }) => {
+        setSessionEmail(data.user?.email ?? null)
+        if (wantsSignup) setMode('signup')
+      })
       .catch(() => setSessionEmail(null))
       .finally(() => setLoading(false))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
@@ -74,25 +82,25 @@ export default function AccountPage() {
       <main id="main" className="page-main">
         <div className="page-pad" style={{ maxWidth: 520, margin: '0 auto', paddingTop: 80, paddingBottom: 80 }}>
 
-          <header style={{ marginBottom: 40 }}>
-            <p className="section-eyebrow fade-up">Account</p>
-            <h1 className="fade-up-1" style={{
-              fontSize: 44, color: 'var(--cream)',
-              fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px'
-            }}>
+          <header style={{ marginBottom: 40, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p className="eyebrow eyebrow--lit fade-up">Account</p>
+            <h1 className="display d-1 fade-up-1">
               {loading ? '' : sessionEmail ? 'You\'re in.' : mode === 'signin' ? 'Sign in.' : 'Sign up.'}
             </h1>
           </header>
 
           {loading ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-              <span className="spinner-dark" />
+              <span className="strand-loader" role="status" aria-label="Loading"><i/><i/><i/></span>
             </div>
           ) : sessionEmail ? (
             <div className="card fade-up" style={{ padding: 32 }}>
               <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted)', letterSpacing: '0.12em', marginBottom: 6 }}>SIGNED IN AS</p>
               <p style={{ color: 'var(--cream)', fontSize: 18, marginBottom: 28 }}>{sessionEmail}</p>
-              <button className="btn-outline" onClick={signOut}>Sign out</button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Link href="/bench" className="btn-primary btn-md">Go to your bench →</Link>
+                <button className="btn-outline" onClick={signOut}>Sign out</button>
+              </div>
             </div>
           ) : (
             <form className="card fade-up" style={{ padding: 32 }} onSubmit={submit} noValidate>
@@ -108,9 +116,9 @@ export default function AccountPage() {
                   <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); reset() }} style={{
                     flex: 1, padding: '9px 0',
                     fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
-                    background: mode === m ? 'var(--surface2)' : 'var(--surface)',
-                    border: `1px solid ${mode === m ? 'var(--silver)' : 'var(--border)'}`,
-                    color: mode === m ? 'var(--silver2)' : 'var(--muted)',
+                    background: mode === m ? 'var(--umber)' : 'var(--roast)',
+                    border: `1px solid ${mode === m ? 'var(--cream)' : 'var(--seam)'}`,
+                    color: mode === m ? 'var(--cream)' : 'var(--meta)',
                     cursor: 'pointer', transition: 'all 0.15s'
                   }}>{m === 'signin' ? 'Sign in' : 'Create account'}</button>
                 ))}
@@ -140,7 +148,7 @@ export default function AccountPage() {
               />
               <button
                 type="submit"
-                className="btn-silver"
+                className="btn-primary"
                 disabled={submitting || !email.trim() || !password}
                 style={{ width: '100%', justifyContent: 'center', padding: '13px' }}
               >

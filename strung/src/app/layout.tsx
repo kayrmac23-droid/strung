@@ -7,7 +7,7 @@ import './globals.css'
 // alongside) rather than loaded through next/font/google, which fetches from
 // Google at build time and fails the whole build when that fetch does.
 
-// Display + interface grotesk (DESIGN §Type). No serif in the chrome (Rule 2).
+// Interface grotesk (DESIGN §Type) — body, UI and the wordmark.
 const instrument = localFont({
   src: './fonts/InstrumentSans-Variable.woff2',
   weight: '400 600',
@@ -15,11 +15,12 @@ const instrument = localFont({
   display: 'swap',
 })
 
-// Display serif for headings — single-weight face (400 only).
-const instrumentSerif = localFont({
-  src: './fonts/InstrumentSerif-Regular.woff2',
+// Gloock — the display face for every heading (2026-10 redesign handoff).
+// Single weight (400). Latin subset from Google Fonts, self-hosted like the rest.
+const gloock = localFont({
+  src: './fonts/Gloock-Regular.woff2',
   weight: '400',
-  variable: '--font-instrument-serif',
+  variable: '--font-gloock',
   display: 'swap',
   adjustFontFallback: 'Times New Roman',
 })
@@ -55,8 +56,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${instrument.variable} ${instrumentSerif.variable} ${newsreader.variable} ${dmMono.variable}`}>
+    // The font variables go on <html>, not <body>: globals.css composes them
+    // into --font-body / --font-mono / --font-serif on :root, and a var() that
+    // is undefined where it is declared makes the whole custom property invalid.
+    // On <body> they were, so every face silently fell back to Times New Roman.
+    <html lang="en" className={`${instrument.variable} ${gloock.variable} ${newsreader.variable} ${dmMono.variable}`}>
+      <body>
         {children}
         <SpeedInsights />
       </body>

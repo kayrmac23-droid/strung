@@ -9,7 +9,9 @@ import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 import { prepareImageForIdentify } from '@/lib/imagePrep'
 import type { Confidence } from '@/lib/stashItems'
-import { beadColours, typeColours } from '@/lib/stash-colours'
+import { beadColours } from '@/lib/stash-colours'
+import Bead from '@/components/Bead'
+import { beadFormFor, colourFamily, COLOUR_FAMILIES, nominalPx, safeHex, type ColourFamily } from '@/lib/bead'
 
 type ReviewBead = BeadItem & { confidence?: Confidence }
 type ReviewFinding = FindingItem & { confidence?: Confidence }
@@ -86,6 +88,10 @@ export default function InventoryPage() {
   const [reviewFindings, setReviewFindings] = useState<ReviewFinding[]>([])
   const [savingAll, setSavingAll] = useState(false)
   const [signedOut, setSignedOut] = useState(false)
+  // Ledger selection, spectrum filter and the quantity stepper (2026-10 redesign).
+  const [selId, setSelId] = useState<string|null>(null)
+  const [fam, setFam] = useState<ColourFamily|null>(null)
+  const [qtyBusy, setQtyBusy] = useState(false)
 
   const beadSizes = ['seed','small','medium','large','statement']
   const [beadForm, setBeadForm] = useState<Partial<BeadItem>>({ type:'gemstone', size:'small', quantity:1, hex:'#7a9ab8' })
@@ -288,98 +294,98 @@ export default function InventoryPage() {
     return matchSearch && matchType
   })
 
+
   const arrow = <span style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',pointerEvents:'none' as const,fontSize:11}}>▾</span>
+
+  const LOW = 10
+  const famOf = (b: BeadItem) => colourFamily(safeHex(b.hex))
+  const famCounts = COLOUR_FAMILIES.map(f => ({ ...f, count: beads.filter(b => famOf(b) === f.key).length }))
+  const shownBeads = fam ? filteredBeads.filter(b => famOf(b) === fam) : filteredBeads
+  const famLabel = fam ? COLOUR_FAMILIES.find(f => f.key === fam)!.label.toLowerCase() : ''
+  const totalBeads = beads.reduce((a, b) => a + (Number(b.quantity) || 0), 0)
+  const lowCount = beads.filter(b => (Number(b.quantity) || 0) < LOW).length
+  const sel = tab === 'beads' ? beads.find(b => b.id === selId) ?? null : null
+  const maxLog = Math.log10(1000)
+
+  // ± on the detail panel: one PATCH per tap, then reload so the ledger and
+  // every count agree with what the server stored.
+  async function stepQty(b: BeadItem, delta: number) {
+    if (!b.id || qtyBusy) return
+    const next = Math.max(0, (Number(b.quantity) || 0) + delta)
+    if (next === b.quantity) return
+    setQtyBusy(true); setListError('')
+    try {
+      const res = await fetch('/api/inventory', {
+        method: 'PATCH',
+        headers: await getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ table: 'beads', id: b.id, data: { quantity: next } }),
+      })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok || result.error) throw new Error(result.error || 'Update failed')
+      setBeads(bs => bs.map(x => x.id === b.id ? { ...x, quantity: next } : x))
+    } catch (e: unknown) { setListError(getErrorMessage(e, 'Failed to update')) }
+    finally { setQtyBusy(false) }
+  }
+
+  const confirmRow = (id: string) => confirmingId === id ? (
+    <span style={{display:'inline-flex',alignItems:'center',gap:12}}>
+      <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
+      <button className="link-quiet" style={{color:'var(--madder-text)'}} onClick={()=>deleteItem(id)} disabled={deletingId===id}>{deletingId===id?'removing…':'yes'}</button>
+      <button className="link-quiet" onClick={()=>setConfirmingId(null)} disabled={deletingId===id}>cancel</button>
+    </span>
+  ) : (
+    <button className="link-quiet link-quiet--danger" onClick={()=>setConfirmingId(id)}>× remove</button>
+  )
+
 
   return (
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div className="page-pad" style={{maxWidth:1100,margin:'0 auto',paddingTop:52,paddingBottom:80}}>
-          <header style={{marginBottom:40}}>
-            <p className="section-eyebrow fade-up">Inventory</p>
-            <h1 className="fade-up-1" style={{fontSize:44,color:'var(--cream)',fontFamily:'var(--font-display)',fontWeight:400,margin:'8px 0 10px'}}>My Stash</h1>
-            <p className="fade-up-2" style={{color:'var(--text2)',fontSize:17}}>Log your beads and findings. The AI reads this to generate designs from what you actually own.</p>
+        <div className="wrap screen ss-up">
+          <header style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:24,flexWrap:'wrap'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              <p className="eyebrow eyebrow--lit">Stash</p>
+              <h1 className="display d-1">{loading ? 'Your stash.' : `${totalBeads.toLocaleString('en-AU')} bead${totalBeads===1?'':'s'}.`}</h1>
+              {!loading && !signedOut && (
+                <p className="eyebrow" style={{letterSpacing:'.14em'}}>
+                  {beads.length} type{beads.length===1?'':'s'} · {findings.length} finding{findings.length===1?'':'s'}
+                  {lowCount > 0 && <> · <span style={{color:'var(--ochre)'}}>{lowCount} running low</span></>}
+                </p>
+              )}
+            </div>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              <button className="btn-primary btn-md" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti || signedOut}>
+                {identifyingMulti ? <><span className="spinner"/>Reading photo…</> : 'Photograph beads'}
+              </button>
+              <button className="btn-outline btn-md" disabled={signedOut} onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>Paste a list</button>
+              <button className="btn-outline btn-md" disabled={signedOut} onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'bead':'finding'}</button>
+              <input
+                ref={multiFileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{display:'none'}}
+                onChange={e => { const f = e.target.files?.[0]; if (f) identifyMulti(f); e.target.value = '' }}
+              />
+            </div>
           </header>
 
           {listError && (
-            <div
-              role="alert"
-              style={{
-                display:'flex',alignItems:'flex-start',gap:12,
-                padding:'12px 18px',marginBottom:24,
-                background:'var(--surface)',border:'1px solid var(--rose)'
-              }}
-            >
-              <span style={{flex:1,fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>{listError}</span>
-              <button
-                onClick={() => setListError('')}
-                aria-label="Dismiss error"
-                className="btn-ghost"
-                style={{padding:'2px 8px'}}
-              >Dismiss</button>
+            <div role="alert" className="well" style={{display:'flex',alignItems:'flex-start',gap:12,padding:'12px 18px',borderColor:'var(--rose)'}}>
+              <span style={{flex:1,fontSize:14,color:'var(--text2)'}}>{listError}</span>
+              <button onClick={() => setListError('')} aria-label="Dismiss error" className="btn-ghost" style={{padding:'2px 8px'}}>Dismiss</button>
             </div>
           )}
 
           {signedOut && (
-            <div style={{padding:'12px 18px',background:'var(--surface)',border:'1px solid var(--border)',marginBottom:24}}>
-              <span style={{fontSize:14,color:'var(--text2)',fontFamily:'var(--font-body)'}}>
-                <Link href="/account" style={{color:'var(--moonstone)',textDecoration:'underline'}}>Sign in</Link> to load your stash.
+            <div className="well" style={{padding:'12px 18px'}}>
+              <span style={{fontSize:15,color:'var(--text2)'}}>
+                <Link href="/account" className="link-under" style={{fontSize:11}}>Sign in</Link>&nbsp; to load your stash.
               </span>
             </div>
           )}
-
-          {/* Stats */}
-          <div className="fade-up-2 stats-grid-4" style={{marginBottom:32}}>
-            {[
-              ['Total Beads',beads.length],
-              ['Total Findings',findings.length],
-              ['Bead Types',[...new Set(beads.map(b=>b.type))].length],
-              ['Total Pieces',beads.reduce((a,b)=>a+b.quantity,0)+findings.reduce((a,f)=>a+f.quantity,0)],
-            ].map(([label,val]) => (
-              <div key={String(label)} className="card" style={{padding:'20px 24px'}}>
-                <div style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--meta)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>{String(label)}</div>
-                <div style={{fontFamily:'var(--font-display)',fontSize:32,color:'var(--cream)'}}>{String(val)}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Controls */}
-          <div style={{display:'flex',gap:12,marginBottom:24,alignItems:'center',flexWrap:'wrap'}}>
-            <div style={{display:'flex',gap:0}}>
-              {(['beads','findings'] as const).map(t => (
-                <button key={t} onClick={()=>{setTab(t);setFilterType('');setSearch('')}} style={{
-                  padding:'9px 20px',fontFamily:'var(--font-mono)',fontSize:11,
-                  letterSpacing:'0.12em',textTransform:'uppercase',
-                  background:tab===t?'var(--surface2)':'var(--surface)',
-                  border:`1px solid ${tab===t?'var(--silver)':'var(--border)'}`,
-                  color:tab===t?'var(--silver2)':'var(--muted)',cursor:'pointer',transition:'all 0.15s'
-                }}>{t}</button>
-              ))}
-            </div>
-            <input className="input-base" style={{flex:1,maxWidth:260}}
-              placeholder={`Search ${tab}…`} value={search} onChange={e=>setSearch(e.target.value)} />
-            <div style={{position:'relative',minWidth:160}}>
-              <select className="select-base" value={filterType} onChange={e=>setFilterType(e.target.value)}>
-                <option value="">All types</option>
-                {(tab==='beads'?beadTypes:findingTypes).map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
-              </select>
-              {arrow}
-            </div>
-            <button className="btn-silver" disabled={signedOut} onClick={()=>{setShowForm(true);setSaveError('')}}>+ Add {tab==='beads'?'Bead':'Finding'}</button>
-            <button className="btn-outline" disabled={signedOut} onClick={()=>{setShowQuickAdd(true);setParseError('');setQuickAddSource('text')}}>✎ Quick add</button>
-            <button className="btn-outline" onClick={()=>multiFileInputRef.current?.click()} disabled={identifyingMulti || signedOut} style={{gap:6}}>
-              {identifyingMulti ? <><span className="spinner-dark"/>Reading photo…</> : 'Add from photo'}
-            </button>
-            <input
-              ref={multiFileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              style={{display:'none'}}
-              onChange={e => { const f = e.target.files?.[0]; if (f) identifyMulti(f); e.target.value = '' }}
-            />
-          </div>
-          {identifyMultiError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginBottom:16,letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
+          {identifyMultiError && <p role="alert" style={{color:'var(--madder-text)',fontFamily:'var(--font-mono)',fontSize:12,letterSpacing:'0.06em'}}>{identifyMultiError}</p>}
 
           {/* Add form */}
           {showForm && (
@@ -539,7 +545,7 @@ export default function InventoryPage() {
               )}
               {saveError && <p style={{color:'var(--rose)',fontFamily:'var(--font-mono)',fontSize:12,marginTop:16,letterSpacing:'0.06em'}}>{saveError}</p>}
               <div style={{display:'flex',gap:10,marginTop:12}}>
-                <button className="btn-silver" onClick={saveItem} disabled={saving}>
+                <button className="btn-primary" onClick={saveItem} disabled={saving}>
                   {saving?<><span className="spinner"/>Saving…</>:'Save to Stash'}
                 </button>
                 <button className="btn-outline" onClick={()=>{setShowForm(false);setSaveError('')}}>Cancel</button>
@@ -566,7 +572,7 @@ export default function InventoryPage() {
                     onChange={e=>setQuickText(e.target.value)}
                   />
                   <div style={{display:'flex',gap:10,marginTop:12}}>
-                    <button className="btn-silver" onClick={parseStash} disabled={parsing}>
+                    <button className="btn-primary" onClick={parseStash} disabled={parsing}>
                       {parsing?<><span className="spinner"/>Parsing…</>:'Parse'}
                     </button>
                     <button className="btn-outline" onClick={closeQuickAdd}>Cancel</button>
@@ -587,7 +593,7 @@ export default function InventoryPage() {
                         {reviewBeads.map((b,i)=>(
                           <div key={i} className="stash-row">
                             <div style={{width:22,height:22,borderRadius:'50%',background:b.hex||'#7a9ab8',border:'1px solid rgba(255,255,255,0.12)',flexShrink:0}}/>
-                            <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            <span style={{flex:1,minWidth:120,fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                             {b.confidence && b.confidence!=='certain' && (
                               <span className="tag" style={b.confidence==='unsure'?{color:'var(--rose)',borderColor:'var(--rose)'}:undefined}>
                                 {b.confidence==='unsure'?'? unsure':'~ likely'}
@@ -610,7 +616,7 @@ export default function InventoryPage() {
                       <div style={{display:'flex',flexDirection:'column',gap:8}}>
                         {reviewFindings.map((f,i)=>(
                           <div key={i} className="stash-row">
-                            <span style={{flex:1,minWidth:120,fontFamily:'var(--font-display)',fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
+                            <span style={{flex:1,minWidth:120,fontSize:15,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
                             {f.type && <span className="tag">{f.type.replace(/_/g,' ')}</span>}
                             {f.metal && <span className="tag">{f.metal.replace(/_/g,' ')}</span>}
                             {f.confidence && f.confidence!=='certain' && (
@@ -627,7 +633,7 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   )}
-                  <button className="btn-silver" onClick={saveAll} disabled={savingAll}>
+                  <button className="btn-primary" onClick={saveAll} disabled={savingAll}>
                     {savingAll?<><span className="spinner"/>Saving…</>:`Save all (${reviewBeads.length+reviewFindings.length})`}
                   </button>
                 </div>
@@ -635,19 +641,84 @@ export default function InventoryPage() {
             </div>
           )}
 
-          {/* Items list */}
-          {loading ? (
-            <div style={{display:'flex',justifyContent:'center',padding:60}}>
-              <StrandLoader/>
+          {/* Colour spectrum — one band per hue family, sized by how many bead types fall in it. */}
+          {tab==='beads' && beads.length > 0 && (
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <div role="group" aria-label="Filter by colour" style={{display:'flex',height:44,gap:2}}>
+                {famCounts.filter(f => f.count > 0).map(f => (
+                  <button key={f.key} type="button" title={`${f.label} · ${f.count}`} aria-label={`${f.label}, ${f.count} type${f.count===1?'':'s'}`} aria-pressed={fam===f.key}
+                    onClick={()=>setFam(cur => cur===f.key ? null : f.key)}
+                    style={{flex:`${f.count} 1 0`,minWidth:18,border:'none',cursor:'pointer',borderRadius:0,
+                      background:`linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.2)), ${f.swatch}`,
+                      opacity: fam && fam!==f.key ? 0.25 : 1, outline: fam===f.key ? '1px solid var(--cream)' : 'none', outlineOffset:2, transition:'opacity .2s'}} />
+                ))}
+              </div>
+              <div className="eyebrow" style={{display:'flex',justifyContent:'space-between',gap:12,flexWrap:'wrap',letterSpacing:'.14em'}}>
+                <span>{fam ? `${shownBeads.length} ${famLabel} bead type${shownBeads.length===1?'':'s'}` : 'Colour spectrum of your stash · tap a band to filter'}</span>
+                {fam && <button type="button" className="link-quiet" style={{color:'var(--cream)'}} onClick={()=>setFam(null)}>Show all ×</button>}
+              </div>
             </div>
+          )}
+
+          {/* Controls */}
+          <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+            <div className="chip-row" role="tablist" aria-label="Stash section">
+              {(['beads','findings'] as const).map(t => (
+                <button key={t} role="tab" aria-selected={tab===t} className="chip" style={{padding:'11px 18px'}}
+                  onClick={()=>{setTab(t);setFilterType('');setSearch('');setSelId(null);setEditingId(null)}}>{t}</button>
+              ))}
+            </div>
+            <input className="input-base" style={{flex:1,maxWidth:260}} aria-label={`Search ${tab}`}
+              placeholder={`Search ${tab}…`} value={search} onChange={e=>setSearch(e.target.value)} />
+            <div style={{position:'relative',minWidth:160}}>
+              <select className="select-base" aria-label="Filter by type" value={filterType} onChange={e=>setFilterType(e.target.value)}>
+                <option value="">All types</option>
+                {(tab==='beads'?beadTypes:findingTypes).map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
+              </select>
+              {arrow}
+            </div>
+          </div>
+
+          {/* Items */}
+          {loading ? (
+            <div style={{display:'flex',justifyContent:'center',padding:60}}><StrandLoader/></div>
           ) : tab==='beads' ? (
-            filteredBeads.length === 0 ? (
-              <StrandEmpty line={search||filterType?'No beads match your filter.':'No beads yet. Add your first bead to get started.'} />
+            shownBeads.length === 0 ? (
+              <StrandEmpty line={search||filterType||fam?'No beads match your filter.':'No beads yet. Add your first bead to get started.'} />
             ) : (
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
-                {filteredBeads.map(b => (
-                  <div key={b.id} className="card stash-card" style={{position:'relative'}}>
-                    {editingId === b.id ? (
+              <div style={{display:'flex',gap:2,flexWrap:'wrap',alignItems:'flex-start'}}>
+                <ul className="panel" style={{flex:'1 1 520px',listStyle:'none'}}>
+                  {shownBeads.map(b => {
+                    const q = Number(b.quantity) || 0, low = q < LOW, on = selId === b.id
+                    const form = beadFormFor(b)
+                    return (
+                      <li key={b.id}>
+                        <button type="button" className={`ledger-row${on?' is-on':''}`} aria-pressed={on}
+                          onClick={()=>{ setSelId(on ? null : b.id ?? null); setEditingId(null); setConfirmingId(null) }}>
+                          <span style={{width:40,display:'flex',justifyContent:'center',flex:'none'}}><Bead hex={safeHex(b.hex)} shape={form} size={Math.min(nominalPx(form) * 2.4, 26)} /></span>
+                          <span style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',textAlign:'left'}}>
+                            <span style={{color:'var(--cream)',fontSize:16,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                            <span className="eyebrow eyebrow--sm" style={{letterSpacing:'.12em'}}>{b.type}{b.size?` · ${b.size}`:''}{b.colour?` · ${b.colour}`:''}</span>
+                          </span>
+                          <span className="ledger-bar" aria-hidden="true"><span style={{width:`${Math.min(100, Math.log10(q + 1) / maxLog * 100)}%`,background: low ? 'var(--ochre)' : safeHex(b.hex)}} /></span>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'.1em',textTransform:'uppercase',minWidth:70,textAlign:'right',color: low ? 'var(--ochre)' : 'var(--cream)'}}>
+                            {low ? `${q} · low` : q.toLocaleString('en-AU')}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                {sel && (
+                  <aside aria-label={`${sel.name} details`} className="stash-aside ss-up">
+                    <div className="well" style={{height:180,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',border:'none',borderBottom:'1px solid var(--seam)'}}>
+                      <div aria-hidden="true" style={{position:'absolute',left:0,right:0,top:'50%',height:1,background:'var(--saddle)'}} />
+                      <Bead hex={safeHex(sel.hex)} shape={beadFormFor(sel)} size={Math.min(70, 8 * nominalPx(beadFormFor(sel)))} />
+                      <button type="button" onClick={()=>{setSelId(null);setEditingId(null)}} aria-label="Close details" style={{position:'absolute',top:10,right:12,background:'none',border:'none',color:'var(--meta)',fontSize:20,cursor:'pointer'}}>×</button>
+                    </div>
+                    <div style={{padding:22,display:'flex',flexDirection:'column',gap:18}}>
+                      {editingId === sel.id ? (
                       <div>
                         <div className="blueprint-grid" style={{gap:10,marginBottom:12}}>
                           <div style={{gridColumn:'1/-1'}}>
@@ -685,74 +756,51 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         <div style={{display:'flex',gap:8}}>
-                          <button className="btn-silver" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(b.id!)}>Save</button>
+                          <button className="btn-primary" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(sel.id!)}>Save</button>
                           <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:10}}>
-                          <div style={{width:32,height:32,borderRadius:'50%',background:b.hex,border:'1px solid rgba(255,255,255,0.1)',flexShrink:0,position:'relative'}}>
-                            <div style={{position:'absolute',top:4,left:5,width:6,height:6,background:'rgba(255,255,255,0.3)',borderRadius:'50%',filter:'blur(1px)'}}/>
+                        </div>
+                      ) : (
+                        <>
+                          <h2 className="display" style={{fontSize:34,lineHeight:1,letterSpacing:'-.02em'}}>{sel.name}</h2>
+                          <dl className="spec-grid">
+                            <dt>Type</dt><dd>{sel.type}</dd>
+                            {sel.size && <><dt>Size</dt><dd>{sel.size}</dd></>}
+                            {sel.shape && <><dt>Shape</dt><dd>{sel.shape}</dd></>}
+                            {sel.colour && <><dt>Colour</dt><dd>{sel.colour}</dd></>}
+                            <dt>Hex</dt><dd>{safeHex(sel.hex).toUpperCase()}</dd>
+                          </dl>
+                          <div className="well" style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 12px'}}>
+                            <button type="button" className="qty-btn" aria-label="One fewer" onClick={()=>stepQty(sel,-1)} disabled={qtyBusy || sel.quantity <= 0}>−</button>
+                            <div style={{display:'flex',flexDirection:'column',alignItems:'center'}} aria-live="polite">
+                              <span className="display" style={{fontSize:34,lineHeight:1}}>{sel.quantity}</span>
+                              <span className="eyebrow eyebrow--sm">In stash</span>
+                            </div>
+                            <button type="button" className="qty-btn" aria-label="One more" onClick={()=>stepQty(sel,1)} disabled={qtyBusy}>+</button>
                           </div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</p>
-                            <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:typeColours[b.type]||'var(--muted)',letterSpacing:'0.08em'}}>{b.type}{b.shape?` · ${b.shape}`:''}</p>
+                          {sel.notes && <p className="aside-line">{sel.notes}</p>}
+                          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                            <Link href="/make" className="btn-primary btn-md">Design from your stash →</Link>
+                            <Link href="/sequence" className="btn-outline btn-md">Build a palette</Link>
                           </div>
-                        </div>
-                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
-                          <span className="tag">{b.colour}</span>
-                          <span className="tag">{b.size}</span>
-                          <span className="tag">qty: {b.quantity}</span>
-                        </div>
-                        {b.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{b.notes}</p>}
-                        <div style={{display:'flex',alignItems:'center'}}>
-                          <button onClick={() => { setEditingId(b.id!); setEditForm(b) }} style={{
-                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                            transition:'color 0.15s',padding:0,marginRight:12
-                          }}
-                          onMouseEnter={e=>e.currentTarget.style.color='var(--moonstone)'}
-                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                            ✎ edit
-                          </button>
-                          {confirmingId===b.id ? (
-                            <span style={{display:'inline-flex',alignItems:'center',gap:10}}>
-                              <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
-                              <button onClick={()=>deleteItem(b.id!)} disabled={deletingId===b.id} style={{
-                                background:'none',border:'none',color:'var(--rose)',fontSize:12,
-                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
-                              }}>{deletingId===b.id?'removing…':'yes'}</button>
-                              <button onClick={()=>setConfirmingId(null)} disabled={deletingId===b.id} style={{
-                                background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
-                              }}>cancel</button>
-                            </span>
-                          ) : (
-                            <button onClick={()=>setConfirmingId(b.id!)} style={{
-                              background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                              fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                              transition:'color 0.15s',padding:0
-                            }}
-                            onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                            onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                              × remove
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                          <div style={{display:'flex',alignItems:'center',gap:16,paddingTop:12,borderTop:'1px solid var(--seam)'}}>
+                            <button className="link-quiet" onClick={() => { setEditingId(sel.id!); setEditForm(sel) }}>✎ edit</button>
+                            {confirmRow(sel.id!)}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </aside>
+                )}
               </div>
             )
           ) : (
             filteredFindings.length === 0 ? (
               <StrandEmpty line={search||filterType?'No findings match your filter.':'No findings yet. Add your clasps, ear wires, and pins.'} />
             ) : (
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:2}}>
+              <div className="tray-grid tray-grid--fill" style={{['--min' as string]:'240px'}}>
                 {filteredFindings.map(f => (
-                  <div key={f.id} className="card stash-card">
+                  <div key={f.id} style={{padding:'14px 16px',background:'var(--mocha)',border:'1px solid var(--seam)',display:'flex',flexDirection:'column',gap:10}}>
                     {editingId === f.id ? (
                       <div>
                         <div className="blueprint-grid" style={{gap:10,marginBottom:12}}>
@@ -792,54 +840,23 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         <div style={{display:'flex',gap:8}}>
-                          <button className="btn-silver" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(f.id!)}>Save</button>
+                          <button className="btn-primary" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>editItem(f.id!)}>Save</button>
                           <button className="btn-outline" style={{fontSize:12,padding:'6px 14px'}} onClick={()=>{setEditingId(null);setEditForm({})}}>Cancel</button>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div style={{marginBottom:10}}>
-                          <p style={{fontFamily:'var(--font-display)',fontSize:16,color:'var(--cream)'}}>{f.name}</p>
-                          <p style={{fontFamily:'var(--font-mono)',fontSize:10,color:'var(--steel2)',letterSpacing:'0.08em',marginTop:2}}>{f.type.replace(/_/g,' ')} · {f.metal.replace(/_/g,' ')}</p>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10}}>
+                          <div style={{display:'flex',flexDirection:'column',minWidth:0}}>
+                            <span style={{color:'var(--cream)',fontSize:15}}>{f.name}</span>
+                            <span className="eyebrow eyebrow--sm" style={{letterSpacing:'.12em'}}>{f.type.replace(/_/g,' ')} · {f.metal.replace(/_/g,' ')}{f.size?` · ${f.size}`:''}</span>
+                          </div>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:11,letterSpacing:'.1em',color: f.quantity < LOW ? 'var(--ochre)' : 'var(--cream)'}}>{f.quantity}</span>
                         </div>
-                        <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
-                          {f.size && <span className="tag">{f.size}</span>}
-                          <span className="tag">qty: {f.quantity}</span>
-                        </div>
-                        {f.notes && <p style={{fontSize:13,color:'var(--muted)',marginBottom:10,lineHeight:1.4}}>{f.notes}</p>}
-                        <div style={{display:'flex',alignItems:'center'}}>
-                          <button onClick={() => { setEditingId(f.id!); setEditForm(f) }} style={{
-                            background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                            fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                            transition:'color 0.15s',padding:0,marginRight:12
-                          }}
-                          onMouseEnter={e=>e.currentTarget.style.color='var(--moonstone)'}
-                          onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                            ✎ edit
-                          </button>
-                          {confirmingId===f.id ? (
-                            <span style={{display:'inline-flex',alignItems:'center',gap:10}}>
-                              <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',letterSpacing:'0.06em'}}>Delete?</span>
-                              <button onClick={()=>deleteItem(f.id!)} disabled={deletingId===f.id} style={{
-                                background:'none',border:'none',color:'var(--rose)',fontSize:12,
-                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
-                              }}>{deletingId===f.id?'removing…':'yes'}</button>
-                              <button onClick={()=>setConfirmingId(null)} disabled={deletingId===f.id} style={{
-                                background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                                fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',padding:0
-                              }}>cancel</button>
-                            </span>
-                          ) : (
-                            <button onClick={()=>setConfirmingId(f.id!)} style={{
-                              background:'none',border:'none',color:'var(--muted2)',fontSize:12,
-                              fontFamily:'var(--font-mono)',cursor:'pointer',letterSpacing:'0.08em',
-                              transition:'color 0.15s',padding:0
-                            }}
-                            onMouseEnter={e=>e.currentTarget.style.color='var(--rose)'}
-                            onMouseLeave={e=>e.currentTarget.style.color='var(--muted2)'}>
-                              × remove
-                            </button>
-                          )}
+                        {f.notes && <p className="aside-line" style={{fontSize:14}}>{f.notes}</p>}
+                        <div style={{display:'flex',alignItems:'center',gap:16}}>
+                          <button className="link-quiet" onClick={() => { setEditingId(f.id!); setEditForm(f) }}>✎ edit</button>
+                          {confirmRow(f.id!)}
                         </div>
                       </>
                     )}

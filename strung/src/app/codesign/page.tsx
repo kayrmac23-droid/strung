@@ -2,9 +2,8 @@
 export const dynamic = 'force-dynamic'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import Nav from '@/components/Nav'
+import Nav, { MakeTabs } from '@/components/Nav'
 import Schematic from '@/components/Schematic'
-import BeadIcon from '@/components/BeadIcon'
 import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import StrandLoader from '@/components/StrandLoader'
@@ -139,7 +138,7 @@ export default function CoDesignPage() {
   const [signedOut, setSignedOut] = useState(false)
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [findings, setFindings] = useState<FindingItem[]>([])
-  const [view, setView] = useState<'visual' | 'schematic'>('visual')
+  const [view, setView] = useState<'visual' | 'schematic'>('schematic')
   const [pendingImage, setPendingImage] = useState<{ base64: string; mediaType: string; dataUrl: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -338,280 +337,206 @@ export default function CoDesignPage() {
     finally { setSaving(false) }
   }
 
-  const diffColor = (d: string) => d === 'Beginner' ? 'var(--sage)' : d === 'Advanced' ? 'var(--rose)' : 'var(--moonstone)'
-
   return (
     <>
       <Nav />
       <main id="main" className="page-main">
-        <div className="page-pad" style={{ maxWidth: 1300, margin: '0 auto', paddingTop: 52, paddingBottom: 80 }}>
-          <header style={{ marginBottom: 32 }}>
-            <p className="section-eyebrow fade-up">AI Co-Designer</p>
-            <h1 className="fade-up-1" style={{ fontSize: 44, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, margin: '8px 0 10px' }}>Design Studio</h1>
-            <p className="fade-up-2" style={{ color: 'var(--text2)', fontSize: 17 }}>Chat with your AI co-designer. Describe what you&apos;re imagining and build a blueprint together.</p>
-          </header>
+        <MakeTabs />
+        <div className="wrap ss-up" style={{ paddingTop: 'clamp(28px,4vw,48px)', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <h1 className="sr-only">Co-design</h1>
 
           {signedOut && (
-            <div style={{ padding: '12px 18px', background: 'var(--surface)', border: '1px solid var(--border)', marginBottom: 24 }}>
-              <span style={{ fontSize: 14, color: 'var(--text2)', fontFamily: 'var(--font-body)' }}>
-                <Link href="/account" style={{ color: 'var(--moonstone)', textDecoration: 'underline' }}>Sign in</Link> to chat with the co-designer — it designs from your stash.
+            <div className="well" style={{ padding: '12px 18px' }}>
+              <span style={{ fontSize: 15 }}>
+                <Link href="/account" className="link-under">Sign in</Link>&nbsp; to chat with the co-designer — it designs from your stash.
               </span>
             </div>
           )}
 
-          <div className="codesign-grid">
+          <div className="split" style={{ ['--min' as string]: '400px', gap: 2, alignItems: 'start' }}>
 
-            {/* Chat column */}
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ marginBottom: 16, minHeight: 320 }}>
+            {/* Chat */}
+            <section className="panel" aria-label="Conversation" style={{ display: 'flex', flexDirection: 'column', minHeight: 620 }}>
+              <div className="panel-head"><span>Talking it through</span></div>
+              <div style={{ flex: 1, padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 22 }}>
                 {messages.length === 0 ? (
-                  <div style={{ padding: '32px 0' }}>
-                    <p style={{ color: 'var(--text2)', fontSize: 16, marginBottom: 16, fontFamily: 'var(--font-body)' }}>
-                      Start by describing what you have in mind — or pick a prompt:
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {starters.map(s => (
-                        <button key={s} onClick={() => send(s)} style={{
-                          background: 'var(--surface)', border: '1px solid var(--border)',
-                          color: 'var(--text2)', fontFamily: 'var(--font-body)', fontSize: 14,
-                          padding: '11px 16px', textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
-                        }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--silver)'; e.currentTarget.style.color = 'var(--cream)' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text2)' }}>
-                          {s}
-                        </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <p className="aside-line" style={{ fontSize: 19, color: 'var(--text2)' }}>Describe what you have in mind — or start from one of these.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {starters.map(st => (
+                        <button key={st} type="button" className="tray-btn" onClick={() => send(st)} disabled={signedOut}
+                          style={{ padding: '12px 16px', fontSize: 15, boxShadow: 'none', background: 'var(--roast)' }}>{st}</button>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {messages.map((msg, i) => (
-                      <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: 10 }}>
-                        {msg.role === 'assistant' && (
-                          <div style={{
-                            width: 28, height: 28, borderRadius: '50%',
-                            background: 'var(--surface2)', border: '1px solid var(--border2)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0, marginTop: 4,
-                          }}><BeadIcon shape="round" size={13} stroke="var(--tan)" /></div>
-                        )}
-                        <div style={{
-                          maxWidth: '82%', padding: '12px 16px',
-                          background: msg.role === 'user' ? 'var(--surface2)' : 'var(--surface)',
-                          border: `1px solid ${msg.role === 'user' ? 'var(--silver)' : 'var(--border)'}`,
-                          color: 'var(--text)', fontFamily: 'var(--font-body)', fontSize: 15, lineHeight: 1.7,
-                        }}>
-                          {msg.imageDataUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={msg.imageDataUrl}
-                              alt="uploaded reference"
-                              style={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: msg.display ? 10 : 0, border: '1px solid var(--border)' }}
-                            />
-                          )}
-                          {msg.role === 'assistant'
-                            ? msg.display
-                              ? <div dangerouslySetInnerHTML={{ __html: formatRichText(msg.display, CHAT_MESSAGE) }} />
-                              : <span className="spinner-dark" />
-                            : msg.display}
+                  <div role="log" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                    {messages.map((msg, i) => {
+                      const me = msg.role === 'user'
+                      return (
+                        <div key={i} className="ss-up" style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: me ? 'flex-end' : 'flex-start' }}>
+                          <span className="eyebrow eyebrow--sm" style={{ color: me ? 'var(--meta)' : 'var(--cream)' }}>{me ? 'You' : 'strung'}</span>
+                          <div style={me
+                            ? { maxWidth: '80%', padding: '12px 16px', background: 'var(--umber)', border: '1px solid var(--seam)', borderRadius: 2, fontSize: 16, lineHeight: 1.5, color: 'var(--cream)' }
+                            : { maxWidth: '92%', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 19, lineHeight: 1.45, color: 'var(--cream)' }}>
+                            {msg.imageDataUrl && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={msg.imageDataUrl}
+                                alt="uploaded reference"
+                                style={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: msg.display ? 10 : 0, border: '1px solid var(--seam)' }}
+                              />
+                            )}
+                            {!me
+                              ? msg.display
+                                ? <div className="chat-answer" dangerouslySetInnerHTML={{ __html: formatRichText(msg.display, CHAT_MESSAGE) }} />
+                                : <span className="eyebrow" style={{ fontStyle: 'normal' }}>strung is checking your stash…</span>
+                              : msg.display}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                     <div ref={bottomRef} />
                   </div>
                 )}
               </div>
 
               {/* Input */}
-              <div style={{ position: 'sticky', bottom: 20, background: 'var(--bg)', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-
-                {/* Pending image preview */}
+              <div style={{ padding: 14, borderTop: '1px solid var(--seam)', position: 'sticky', bottom: 0, background: 'var(--mocha)' }}>
                 {pendingImage && (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <div className="well" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '10px 12px' }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={pendingImage.dataUrl} alt="attachment preview" style={{ height: 60, maxWidth: 100, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                    <img src={pendingImage.dataUrl} alt="attachment preview" style={{ height: 60, maxWidth: 100, objectFit: 'cover', border: '1px solid var(--seam)' }} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--moonstone)', letterSpacing: '0.1em', marginBottom: 4 }}>IMAGE ATTACHED</p>
-                      <p style={{ fontSize: 12, color: 'var(--muted)' }}>Add a message or send as-is</p>
+                      <p className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', marginBottom: 4 }}>Image attached</p>
+                      <p style={{ fontSize: 13, color: 'var(--meta)' }}>Add a message or send as-is</p>
                     </div>
-                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
+                    <button onClick={() => setPendingImage(null)} aria-label="Remove attached photo" style={{ background: 'none', border: 'none', color: 'var(--meta)', fontSize: 18, cursor: 'pointer', lineHeight: 1, padding: '0 4px' }}>×</button>
                   </div>
                 )}
-
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', paddingTop: 12 }}>
-                  {/* Image attach button */}
-                  <button
-                    onClick={pickImage}
-                    title="Attach a photo"
-                    aria-label="Attach a photo"
-                    style={{
-                      background: 'none', border: '1px solid var(--border)',
-                      color: pendingImage ? 'var(--madder)' : 'var(--muted)',
-                      width: 44, height: 44, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', fontSize: 22, transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--madder)'; e.currentTarget.style.color = 'var(--madder)' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = pendingImage ? 'var(--madder)' : 'var(--muted)' }}
-                  >
-                    +
-                  </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                  <button type="button" onClick={pickImage} title="Attach a photo" aria-label="Attach a photo" className="qty-btn"
+                    style={{ height: 'auto', minHeight: 46, flexShrink: 0, color: pendingImage ? 'var(--madder-text)' : 'var(--cream)' }}>+</button>
                   <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
-
                   <textarea
                     ref={inputRef}
                     className="input-base"
-                    style={{ flex: 1, resize: 'none', minHeight: 52, maxHeight: 140 }}
-                    placeholder="Describe what you're imagining…"
+                    style={{ flex: 1, minWidth: 0, resize: 'none', minHeight: 46, maxHeight: 140 }}
+                    aria-label="Message"
+                    placeholder="Describe what you're imagining"
                     value={input}
-                    rows={2}
+                    rows={1}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send() } }}
                   />
-                  <button className="btn-silver" onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} style={{ padding: '14px 20px', flexShrink: 0, fontSize: 18 }}>
-                    {loading ? <span className="spinner" /> : '↑'}
+                  <button className="btn-primary" onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} style={{ padding: '0 18px', flexShrink: 0 }}>
+                    {loading ? <span className="spinner" /> : 'Send'}
                   </button>
                 </div>
                 {attachError && (
-                  <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 6, letterSpacing: '0.06em' }}>{attachError}</p>
+                  <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', marginTop: 6, letterSpacing: '0.06em' }}>{attachError}</p>
                 )}
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--muted2)', marginTop: 6, letterSpacing: '0.08em' }}>⌘/Ctrl + Enter to send · + to attach a photo</p>
+                <p className="eyebrow eyebrow--sm" style={{ marginTop: 8, color: 'var(--muted2)', textTransform: 'none', letterSpacing: '.08em' }}>⌘/Ctrl + Enter to send · + to attach a photo</p>
               </div>
-            </div>
+            </section>
 
-            {/* Blueprint panel */}
-            <div style={{ position: 'sticky', top: 80 }}>
+            {/* Live blueprint */}
+            <section className="panel codesign-blueprint" aria-label="Live blueprint">
+              <div className="panel-head">
+                <span>Live blueprint</span>
+                {blueprint && <span style={{ color: 'var(--sage)' }}>● In sync</span>}
+              </div>
               {!blueprint ? (
-                <StrandEmpty line="Your blueprint will build up here as you chat. The AI will generate it once the design has enough shape." />
+                <StrandEmpty line="Your blueprint builds up here as you talk. It appears once the design has enough shape." />
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 'calc(100dvh - 120px)', overflowY: 'auto' }}>
-                  {/* Header */}
-                  <div className="card" style={{ padding: 24, borderTop: '2px solid var(--silver)' }}>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {blueprint.pieceType && <span className="tag">{blueprint.pieceType}</span>}
-                      {blueprint.difficulty && <span className="tag" style={{ borderColor: diffColor(blueprint.difficulty), color: diffColor(blueprint.difficulty) }}>{blueprint.difficulty}</span>}
-                      {blueprint.estimatedTime && <span className="tag">{blueprint.estimatedTime}</span>}
-                      {blueprint.materialsCheck && !blueprint.materialsCheck.allAvailable && (
-                        <span className="tag" style={{ borderColor: 'var(--rose)', color: 'var(--rose)' }}>⚠ Check materials</span>
-                      )}
+                <>
+                  <div style={{ background: 'var(--roast)', borderBottom: '1px solid var(--seam)' }}>
+                    <div role="tablist" aria-label="Blueprint view" className="chip-row" style={{ padding: 10 }}>
+                      {([['schematic', 'Diagram'], ['visual', 'Render']] as const).map(([v, label]) => (
+                        <button key={v} role="tab" aria-selected={view === v} className="chip" style={{ padding: '6px 12px', fontSize: 10 }} onClick={() => setView(v)}>{label}</button>
+                      ))}
                     </div>
-                    <h2 style={{ fontSize: 26, color: 'var(--cream)', fontFamily: 'var(--font-display)', fontWeight: 400, marginBottom: 6 }}>{blueprint.title}</h2>
-                    {blueprint.description && <p style={{ color: 'var(--text2)', fontSize: 13, lineHeight: 1.7, marginBottom: 10 }}>{blueprint.description}</p>}
+                    <div style={{ padding: '0 12px 12px' }}>
+                      {view === 'schematic' ? (
+                        <Schematic blueprint={blueprint} beads={beads} findings={findings} />
+                      ) : imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={imageUrl} alt={blueprint.title} style={{ width: '100%', display: 'block', aspectRatio: '1 / 1', objectFit: 'cover' }} />
+                      ) : imageLoading ? (
+                        <div className="render-well" style={{ minHeight: 0, aspectRatio: '1 / 1' }}>
+                          <StrandLoader label="Rendering design…" />
+                        </div>
+                      ) : (
+                        <div className="render-well" style={{ minHeight: 220, flexDirection: 'column', gap: 12, padding: 20, textAlign: 'center' }}>
+                          {imageError && <span style={{ fontSize: 14, color: 'var(--text2)' }}>{imageError}</span>}
+                          <button className="btn-outline" onClick={renderPreview}>{imageError ? 'Retry preview' : 'Render preview'}</button>
+                        </div>
+                      )}
+                      <p className="eyebrow eyebrow--sm" style={{ marginTop: 6, letterSpacing: '.12em', color: view === 'schematic' ? 'var(--meta)' : 'var(--tan)' }}>
+                        {view === 'schematic' ? 'Buildable diagram · matched to your stash' : 'AI render · for reference only'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <h2 className="display" style={{ fontSize: 40, lineHeight: 1, letterSpacing: '-.02em' }}>{blueprint.title}</h2>
+                    <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', letterSpacing: '.12em' }}>
+                      {[blueprint.pieceType, blueprint.difficulty, blueprint.estimatedTime].filter(Boolean).join(' · ')}
+                      {blueprint.materialsCheck && !blueprint.materialsCheck.allAvailable && <span style={{ color: 'var(--ochre)' }}> · Check materials</span>}
+                    </span>
+                    {blueprint.description && <p className="aside-line" style={{ color: 'var(--text2)' }}>{blueprint.description}</p>}
                     {blueprint.colourStory && (
-                      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', padding: '10px 12px' }}>
-                        <span className="mono" style={{ fontSize: 9, letterSpacing: '0.12em', color: 'var(--moonstone)' }}>COLOUR STORY</span>
-                        <p style={{ color: 'var(--text)', fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>{blueprint.colourStory}</p>
+                      <div className="well" style={{ padding: '12px 14px' }}>
+                        <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)' }}>Colour story</span>
+                        <p style={{ fontSize: 14, marginTop: 4, lineHeight: 1.6 }}>{blueprint.colourStory}</p>
                       </div>
+                    )}
+                    {blueprint.materialsCheck?.notes && (
+                      <div className="well" style={{ padding: '12px 14px' }}>
+                        <span className="eyebrow eyebrow--sm" style={{ color: 'var(--ochre)' }}>Materials note</span>
+                        <p style={{ fontSize: 14, marginTop: 4 }}>{blueprint.materialsCheck.notes}</p>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {(blueprint.components ?? []).map((c, i) => (
+                        <div key={i} className="row-line" style={{ padding: '9px 0', fontSize: 15, justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ color: 'var(--cream)' }}>{c.item}{c.note && <span style={{ display: 'block', fontSize: 12, color: 'var(--meta)' }}>{c.note}</span>}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--tan)' }}>×{c.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {(blueprint.steps ?? []).length > 0 && (
+                      <details className="steps-details">
+                        <summary className="eyebrow" style={{ letterSpacing: '.14em' }}>Build steps · {(blueprint.steps ?? []).length}</summary>
+                        <ol style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                          {(blueprint.steps ?? []).map((st, i) => (
+                            <li key={st.id ?? i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                              <span className="numeral" style={{ fontSize: 22, lineHeight: 1.1, color: 'var(--saddle)', minWidth: 26 }}>{String(i + 1).padStart(2, '0')}</span>
+                              <div>
+                                <p style={{ fontSize: 14, lineHeight: 1.5 }}>{st.instruction}</p>
+                                {st.technique && <span className="eyebrow eyebrow--sm" style={{ color: 'var(--tan)', display: 'block', marginTop: 3 }}>{st.technique}</span>}
+                                {st.tip && <p className="aside-line" style={{ fontSize: 14, marginTop: 3 }}>{st.tip}</p>}
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
                     )}
                     <button
-                      className={saved ? 'btn-outline' : 'btn-silver'}
+                      className={saved ? 'btn-outline' : 'btn-primary'}
                       onClick={saveToJournal}
                       disabled={saved || saving}
-                      style={{ width: '100%', justifyContent: 'center', marginTop: 14, fontSize: 11 }}
+                      style={{ width: '100%', padding: '14px 20px 13px', marginTop: 6 }}
                     >
-                      {saved ? '✓ Saved to Journal' : saving ? 'Saving…' : 'Save to Journal'}
+                      {saved ? '✓ Saved to journal' : saving ? 'Saving…' : 'Save to journal'}
                     </button>
                     {saveError && (
-                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--rose)', marginTop: 8, letterSpacing: '0.06em' }}>{saveError}</p>
+                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', letterSpacing: '0.06em' }}>{saveError}</p>
                     )}
                   </div>
-
-                  {/* Visual (AI render) + Schematic (buildable diagram) */}
-                  <div className="card" style={{ padding: 20 }}>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                      {([['visual', 'Visual'], ['schematic', 'Schematic']] as const).map(([v, label]) => (
-                        <button key={v} onClick={() => setView(v)} style={{
-                          padding: '5px 12px', fontFamily: 'var(--font-mono)', fontSize: 9,
-                          letterSpacing: '0.1em', textTransform: 'uppercase',
-                          background: view === v ? 'var(--surface2)' : 'var(--bg2)',
-                          border: `1px solid ${view === v ? 'var(--silver)' : 'var(--border)'}`,
-                          color: view === v ? 'var(--silver2)' : 'var(--muted)',
-                          cursor: 'pointer', transition: 'all 0.15s'
-                        }}>{label}</button>
-                      ))}
-                    </div>
-                    {view === 'schematic' ? (
-                      <Schematic blueprint={blueprint} beads={beads} findings={findings} />
-                    ) : imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={imageUrl}
-                        alt={blueprint.title}
-                        style={{ width: '100%', display: 'block', border: '1px solid var(--border)', aspectRatio: '1 / 1', objectFit: 'cover', background: 'var(--bg2)' }}
-                      />
-                    ) : imageLoading ? (
-                      <div style={{
-                        aspectRatio: '1 / 1', background: 'var(--roast)', border: '1px solid var(--seam)',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
-                      }}>
-                        <StrandLoader />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--meta)', letterSpacing: '0.1em' }}>
-                          RENDERING DESIGN…
-                        </span>
-                      </div>
-                    ) : (
-                      <div style={{
-                        padding: '28px 16px', border: '1px dashed var(--border)', textAlign: 'center',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-                      }}>
-                        {imageError && (
-                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text2)' }}>{imageError}</span>
-                        )}
-                        <button className="btn-outline" onClick={renderPreview}>
-                          {imageError ? 'Retry preview' : 'Render preview'}
-                        </button>
-                      </div>
-                    )}
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--muted2)', letterSpacing: '0.1em', marginTop: 6 }}>
-                      {view === 'schematic' ? 'BUILDABLE DIAGRAM · MATCHED TO YOUR STASH' : 'AI RENDER · FOR REFERENCE ONLY'}
-                    </p>
-                  </div>
-
-                  {/* Materials note */}
-                  {blueprint.materialsCheck?.notes && (
-                    <div style={{ background: 'rgba(200,112,112,0.05)', border: '1px solid rgba(200,112,112,0.2)', padding: '12px 16px' }}>
-                      <span className="mono" style={{ fontSize: 10, letterSpacing: '0.12em', color: 'var(--rose)' }}>MATERIALS NOTE</span>
-                      <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 6 }}>{blueprint.materialsCheck.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Components */}
-                  <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>Components</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                      {(blueprint.components ?? []).map((c, i) => (
-                        <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--silver)', minWidth: 20, marginTop: 2 }}>×{c.quantity}</span>
-                          <div>
-                            <p style={{ color: 'var(--cream)', fontSize: 13 }}>{c.item}</p>
-                            {c.note && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{c.note}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Steps */}
-                  <div className="card" style={{ padding: 20 }}>
-                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 400, color: 'var(--cream)', marginBottom: 12 }}>Build Steps</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {(blueprint.steps ?? []).map((s, i) => (
-                        <div key={s.id ?? i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                          <div style={{ width: 20, height: 20, background: 'var(--surface2)', border: '1px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--silver)', flexShrink: 0, marginTop: 1 }}>{s.id ?? i + 1}</div>
-                          <div>
-                            <p style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>{s.instruction}</p>
-                            {s.technique && (
-                              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.1em', color: 'var(--moonstone)', textTransform: 'uppercase', marginTop: 3, display: 'block' }}>{s.technique}</span>
-                            )}
-                            {s.tip && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3, fontStyle: 'italic' }}>{s.tip}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                </>
               )}
-            </div>
+            </section>
           </div>
         </div>
       </main>
