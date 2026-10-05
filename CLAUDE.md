@@ -139,6 +139,8 @@ Every value comes from the image, not from the source board's keyword tags (thos
 
 `src/components/Schematic.tsx` picks its layout from `normaliseAssembly()`: null (no assembly, `form: 'strand'`, or an unusable shape) renders the original single column, anything else renders the branched diagram — an anchor glyph at top centre with each strand hanging below it. `builds.design` is jsonb and rows saved before this field exist, so the single column must stay the default.
 
+Glyph radius scales with the matched stash bead's `size` via `src/lib/beadSize.ts`. `beads.size` is a **category** (`seed`/`small`/`medium`/`large`/`statement`), not a measurement — there is no millimetre column — so each category maps to the midpoint of its Calculator range; free text like `8mm` is read too. `medium` is the reference (scale 1), and an empty or unreadable size draws at the default radius, byte-identical to before. Findings never scale (their `size` is a gauge, length or ring diameter). Rows and the column margin widen only when a glyph is above the default radius. The size comes from the live stash, not from `builds.design`, so a design's diagram changes if the matched stash bead's size changes.
+
 ## Supabase Access
 
 ### Client-side

@@ -155,3 +155,41 @@ describe('Schematic — join glyphs from technique', () => {
     expect(container.querySelectorAll('.join-wrapped')).toHaveLength(2)
   })
 })
+
+describe('Schematic — bead size', () => {
+  const sized = (size: unknown) =>
+    [{ id: 's', name: 'Garnet rounds', colour: 'garnet', hex: '#7a1f2b', shape: 'round', quantity: 9, ...(size === undefined ? {} : { size }) }] as unknown as BeadItem[]
+  const blueprint = { components: [{ item: 'Garnet rounds', quantity: 4 }, { item: 'Garnet rounds', quantity: 4 }] }
+  const radius = (container: HTMLElement) => Number(container.querySelector('circle')!.getAttribute('r'))
+  const height = (container: HTMLElement) => svgOf(container).getAttribute('viewBox')!.split(' ').map(Number)[3]
+
+  it('renders a bead with no size at the default radius, identical to a medium bead', () => {
+    const none = render(<Schematic blueprint={blueprint} beads={sized(undefined)} />).container
+    const empty = render(<Schematic blueprint={blueprint} beads={sized('')} />).container
+    const medium = render(<Schematic blueprint={blueprint} beads={sized('medium')} />).container
+    expect(radius(none)).toBe(15)
+    expect(empty.innerHTML).toBe(none.innerHTML)
+    expect(medium.innerHTML).toBe(none.innerHTML)
+  })
+
+  it('scales the glyph radius with the stash size', () => {
+    const seed = radius(render(<Schematic blueprint={blueprint} beads={sized('seed')} />).container)
+    const statement = radius(render(<Schematic blueprint={blueprint} beads={sized('statement')} />).container)
+    expect(seed).toBeLessThan(15)
+    expect(statement).toBeGreaterThan(15)
+  })
+
+  it('opens the row spacing for oversized beads only', () => {
+    const base = height(render(<Schematic blueprint={blueprint} beads={sized('medium')} />).container)
+    const seed = height(render(<Schematic blueprint={blueprint} beads={sized('seed')} />).container)
+    const statement = height(render(<Schematic blueprint={blueprint} beads={sized('statement')} />).container)
+    expect(seed).toBe(base)
+    expect(statement).toBeGreaterThan(base)
+  })
+
+  it('does not scale findings by their size field', () => {
+    const sizedFinding = [{ ...findings[0], size: '40mm' }] as unknown as FindingItem[]
+    const { container } = render(<Schematic blueprint={{ components: [{ item: 'Brass hoop' }] }} findings={sizedFinding} />)
+    expect(radius(container)).toBe(15)
+  })
+})

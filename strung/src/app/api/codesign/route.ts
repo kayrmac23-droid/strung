@@ -25,7 +25,6 @@ type StashBead = {
   name: string
   colour: string
   size?: string
-  size_mm?: number
   quantity: number
   shape?: string
 }
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const stashLines: string[] = []
   if (safeBeads?.length) {
-    stashLines.push(`BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size || (typeof b.size_mm === 'number' ? `${b.size_mm}mm` : 'size unknown')}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
+    stashLines.push(`BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size || 'size unknown'}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`)
   }
   if (safeFindings?.length) {
     stashLines.push(`FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
