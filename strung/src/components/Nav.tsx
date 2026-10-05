@@ -46,6 +46,21 @@ function useSessionEmail(): string | null | undefined {
   return email
 }
 
+// Marks <html data-kbd> while the maker is navigating by keyboard, so the skip
+// link only appears for Tab users. :focus-visible alone wasn't enough: Chrome
+// counts some programmatic focus (route changes) as visible, and the link sat
+// over the wordmark for mouse users.
+function useKeyboardFlag() {
+  useEffect(() => {
+    const root = document.documentElement
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Tab') root.dataset.kbd = '' }
+    const onPointer = () => { delete root.dataset.kbd }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onPointer)
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onPointer) }
+  }, [])
+}
+
 export function Wordmark({ size = 21 }: { size?: number }) {
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -69,6 +84,7 @@ const barStyle = (height: string): React.CSSProperties => ({
 export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'public' }) {
   const path = usePathname() ?? ''
   const email = useSessionEmail()
+  useKeyboardFlag()
 
   if (variant === 'public') {
     return (
@@ -97,7 +113,7 @@ export default function Nav({ variant = 'studio' }: { variant?: 'studio' | 'publ
       <a href="#main" className="skip-link">Skip to content</a>
       <nav aria-label="Studio" style={barStyle('var(--nav-h)')}>
         <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '0 clamp(16px, 4vw, 44px)' }}>
-          <Link href="/bench" aria-label="strung — your bench"><Wordmark /></Link>
+          <Link href={email === null ? '/' : '/bench'} aria-label={email === null ? 'strung — home' : 'strung — your bench'}><Wordmark /></Link>
           <ul className="studio-nav-links">
             {studioLinks.map(l => (
               <li key={l.href}>

@@ -53,7 +53,7 @@ Client-side, `getSession()` from `@/lib/authClient` checks auth state before sav
 |---|---|---|
 | `/` | — | Public landing (public nav: How it works · Sign in · Start free) |
 | `/how-it-works` | How it works | Public five-step explainer |
-| `/bench` | Bench | Signed-in home — built only from the maker's own stash and builds |
+| `/bench` | Bench | Signed-in home — built only from the maker's own stash and builds. Redirects to `/` when signed out |
 | `/inventory` | Stash | Bead + findings ledger with colour-spectrum filter and detail panel (± quantity), photo identification, bulk text stash parsing |
 | `/make` | Make | AI design generator + refinement + GPT Image preview |
 | `/make/build/[id]` | — | Step-by-step build mode (no nav — its own bar and sticky Back/Next); optional stash decrement on completion |

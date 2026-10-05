@@ -225,7 +225,10 @@ h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 400; font-synthesis
   text-transform: uppercase;
   text-decoration: none;
 }
-.skip-link:focus {
+/* Only once the maker has pressed Tab (html[data-kbd], set in Nav) — a click
+   or a client-side route change can leave focus on the link, and it then sat
+   over the wordmark for mouse users. */
+html[data-kbd] .skip-link:focus {
   left: 8px;
   top: 8px;
 }

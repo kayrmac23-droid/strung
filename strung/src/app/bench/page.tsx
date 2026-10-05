@@ -2,10 +2,10 @@
 export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Nav from '@/components/Nav'
 import Bead, { Strand, StepStrand } from '@/components/Bead'
 import StrandLoader from '@/components/StrandLoader'
-import StrandEmpty from '@/components/StrandEmpty'
 import type { BeadItem } from '@/lib/supabase'
 import { getAuthHeaders } from '@/lib/authClient'
 import { beadFormFor, nominalPx, safeHex, stepColours, strandFromComponents } from '@/lib/bead'
@@ -43,6 +43,7 @@ const LOW = 10
 const today = () => new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '')
 
 export default function BenchPage() {
+  const router = useRouter()
   const [state, setState] = useState<'loading' | 'signedOut' | 'error' | 'ready'>('loading')
   const [beads, setBeads] = useState<BeadItem[]>([])
   const [builds, setBuilds] = useState<Build[]>([])
@@ -68,6 +69,9 @@ export default function BenchPage() {
 
   useEffect(() => { ;(async () => { await load() })() }, [])
 
+  // Signed out, the Bench has nothing to show — the landing page is home.
+  useEffect(() => { if (state === 'signedOut') router.replace('/') }, [state, router])
+
   const onBench = builds
     .filter(b => b.status === 'in_progress')
     .sort((a, b) => Date.parse(b.started_at ?? b.created_at) - Date.parse(a.started_at ?? a.created_at))[0]
@@ -87,12 +91,8 @@ export default function BenchPage() {
             </h1>
           </header>
 
-          {state === 'loading' ? (
+          {state === 'loading' || state === 'signedOut' ? (
             <div style={{ padding: 60 }}><StrandLoader label="Laying out your bench…" /></div>
-          ) : state === 'signedOut' ? (
-            <StrandEmpty line="Sign in and your bench lays itself out — stash, build in progress, saved ideas.">
-              <Link href="/account" className="btn-primary btn-md">Sign in →</Link>
-            </StrandEmpty>
           ) : state === 'error' ? (
             <div role="alert" className="well" style={{ padding: 28, display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <span>Couldn&apos;t load your bench. Check your connection and try again.</span>
