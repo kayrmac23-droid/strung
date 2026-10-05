@@ -1,6 +1,7 @@
 'use client'
 import type { BeadItem, FindingItem } from '@/lib/supabase'
 import { metalColours } from '@/lib/stash-colours'
+import { beadSizeMm, glyphScale } from '@/lib/beadSize'
 import {
   normaliseAssembly,
   expandStrands,
@@ -79,15 +80,33 @@ function matchFinding(matchStr: string, findings: FindingItem[]): FindingItem | 
   })
 }
 
-// Beads first, then findings — same precedence as the stash decrement.
-function resolveGlyph(matchStr: string, beads: BeadItem[], findings: FindingItem[]): { shape: string; fill: string } {
+type ResolvedGlyph = { shape: string; fill: string; r: number }
+
+// Beads first, then findings — same precedence as the stash decrement. Only a
+// matched bead's size scales the glyph; a finding's size means something else
+// per type (gauge, length, ring diameter), so findings and unmatched elements
+// keep the default radius.
+function resolveGlyph(matchStr: string, beads: BeadItem[], findings: FindingItem[]): ResolvedGlyph {
   const bead = matchBead(matchStr, beads)
   const finding = bead ? undefined : matchFinding(matchStr, findings)
   const fill =
     bead?.hex ||
     (finding ? metalColours[finding.metal] || metalColours.other : '') ||
     'var(--muted)'
-  return { shape: bead?.shape || 'round', fill }
+  const r = bead ? R * glyphScale(beadSizeMm(bead.size)) : R
+  return { shape: bead?.shape || 'round', fill, r }
+}
+
+// Extra row spacing so the largest glyph cannot reach its neighbour. 2.2 is the
+// tallest glyph's height in radii (tube; briolette is 1.2 above + 1 below). Zero
+// when nothing is drawn above the default radius, so those columns keep their
+// original spacing.
+function rowGrowth(glyphs: ResolvedGlyph[]): number {
+  return Math.ceil(2.2 * (maxGlyphR(glyphs) - R))
+}
+
+function maxGlyphR(glyphs: ResolvedGlyph[]): number {
+  return Math.max(R, ...glyphs.map((g) => g.r))
 }
 
 function truncate(label: string, max: number): string {
@@ -101,8 +120,9 @@ function hexPoints(cx: number, cy: number, r: number): string {
   }).join(' ')
 }
 
-// Bead shape enum → SVG glyph, centred on (cx, cy).
-function Glyph({ shape, cx, cy, fill }: { shape: string; cx: number; cy: number; fill: string }) {
+// Bead shape enum → SVG glyph of radius r, centred on (cx, cy). The prop is
+// bound to R so the shape maths below reads the same as the module constant.
+function Glyph({ shape, cx, cy, fill, r: R }: { shape: string; cx: number; cy: number; fill: string; r: number }) {
   const common = { fill, stroke: 'var(--border2)', strokeWidth: 1.5 }
   switch ((shape || '').toLowerCase()) {
     case 'rondelle':
@@ -204,17 +224,19 @@ function openRingPath(cx: number, cy: number, r: number): string {
   return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`
 }
 
-// The connection drawn in the gap between an upper glyph (cy1) and the lower
-// glyph (cy2) in column x. "straight" reproduces the original 2px centre-to-
-// centre line exactly, so a run of straight JoinGlyphs is visually identical to
-// the single spanning line it replaces.
-function JoinGlyph({ x, cy1, cy2, join, r }: { x: number; cy1: number; cy2: number; join: JoinTech; r: number }) {
+// The connection drawn in the gap between an upper glyph (cy1, radius r1) and
+// the lower glyph (cy2, radius r2) in column x. "straight" reproduces the original
+// 2px centre-to-centre line exactly, so a run of straight JoinGlyphs is visually
+// identical to the single spanning line it replaces. Loops and rings stay at the
+// base size — they are wire, not bead, and do not grow with the bead.
+function JoinGlyph({ x, cy1, cy2, join, r1, r2 }: { x: number; cy1: number; cy2: number; join: JoinTech; r1: number; r2: number }) {
   if (join === 'straight') {
     return <line className="join join-straight" x1={x} y1={cy1} x2={x} y2={cy2} stroke={JOIN_STROKE} strokeWidth={2} />
   }
 
-  const top = cy1 + r // bottom edge of the upper glyph
-  const bot = cy2 - r // top edge of the lower glyph
+  const r = R
+  const top = cy1 + r1 // bottom edge of the upper glyph
+  const bot = cy2 - r2 // top edge of the lower glyph
   const lr = r * 0.3 // small loop radius
 
   if (join === 'jumpring') {
@@ -276,28 +298,32 @@ function StrandSchematic({ elements, beads, findings, joinFor }: { elements: Nor
   // connects down to the next bead).
   const joins = elements.slice(0, -1).map((el) => joinFor(el.matchStr))
   const anyWrap = joins.some((j) => j !== 'straight')
-  const rowH = anyWrap ? WRAP_ROW_H : ROW_H
-  const height = TOP * 2 + (elements.length - 1) * rowH
-  const wireBottom = TOP + (elements.length - 1) * rowH
+  const glyphs = elements.map((el) => resolveGlyph(el.matchStr, beads, findings))
+  const rowH = (anyWrap ? WRAP_ROW_H : ROW_H) + rowGrowth(glyphs)
+  // Keep an oversized first or last glyph off the frame edge (1.2 radii: the
+  // briolette's point). Zero at the default radius, so TOP is unchanged then.
+  const top = TOP + Math.ceil(1.2 * (maxGlyphR(glyphs) - R))
+  const height = top * 2 + (elements.length - 1) * rowH
+  const wireBottom = top + (elements.length - 1) * rowH
 
   return (
     <svg viewBox={`0 0 ${VB_W} ${height}`} width="100%" role="img" aria-label="Build schematic" style={svgStyle}>
       {/* No wrapping join anywhere → keep the original single spanning line, so a
           design with no technique signal renders byte-identically. */}
       {elements.length > 1 && !anyWrap && (
-        <line x1={COL_X} y1={TOP} x2={COL_X} y2={wireBottom} stroke="var(--border2)" strokeWidth={2} />
+        <line x1={COL_X} y1={top} x2={COL_X} y2={wireBottom} stroke="var(--border2)" strokeWidth={2} />
       )}
       {anyWrap &&
         joins.map((join, i) => (
-          <JoinGlyph key={`join-${i}`} x={COL_X} cy1={TOP + i * rowH} cy2={TOP + (i + 1) * rowH} join={join} r={R} />
+          <JoinGlyph key={`join-${i}`} x={COL_X} cy1={top + i * rowH} cy2={top + (i + 1) * rowH} join={join} r1={glyphs[i].r} r2={glyphs[i + 1].r} />
         ))}
       {elements.map((el, i) => {
-        const cy = TOP + i * rowH
-        const { shape, fill } = resolveGlyph(el.matchStr, beads, findings)
+        const cy = top + i * rowH
+        const { shape, fill, r } = glyphs[i]
         return (
           <g key={i}>
             <text x={COL_X - 34} y={cy + 4} fill="var(--muted)" fontSize={11} fontFamily="var(--font-mono)" textAnchor="middle">{i + 1}</text>
-            <Glyph shape={shape} cx={COL_X} cy={cy} fill={fill} />
+            <Glyph shape={shape} cx={COL_X} cy={cy} fill={fill} r={r} />
             <text x={LABEL_X} y={el.dimensions ? cy - 2 : cy + 4} fill="var(--text2)" fontSize={13} fontFamily="var(--font-mono)">
               {truncate(el.label, 42)}
             </text>
@@ -326,32 +352,37 @@ function BranchedSchematic({ assembly, beads, findings, joinFor }: { assembly: A
   // Per glyph, the join to draw beneath it. Derived per expanded copy, so the
   // quantity expansion inserts a join between every copy.
   const strandJoins = strands.map((els) => els.map((el) => joinFor(el.matchStr)))
+  const strandGlyphs = strands.map((els) => els.map((el) => resolveGlyph(el.matchStr, beads, findings)))
   const anyWrap = strandJoins.some((js) => js.some((j) => j !== 'straight'))
-  const rowGapValue = anyWrap ? WRAP_ROW_GAP : ROW_GAP
+  const rowGapValue = (anyWrap ? WRAP_ROW_GAP : ROW_GAP) + rowGrowth(strandGlyphs.flat())
   const { width, height, anchorX, anchorY, strandTop, rowGap, columns } = layoutBranched(strands.map((s) => s.length), rowGapValue)
   const anchor = assembly.anchor ? normaliseElement({ item: assembly.anchor }) : null
   const anchorGlyph = anchor ? resolveGlyph(anchor.matchStr, beads, findings) : null
+  const anchorR = anchorGlyph ? anchorGlyph.r : R
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label="Build schematic" style={svgStyle}>
       {anchor && (
-        <text x={anchorX} y={anchorY - R - 12} fill="var(--text2)" fontSize={12} fontFamily="var(--font-mono)" textAnchor="middle">
+        <text x={anchorX} y={anchorY - anchorR - 12} fill="var(--text2)" fontSize={12} fontFamily="var(--font-mono)" textAnchor="middle">
           {truncate(anchor.label, 40)}
         </text>
       )}
       {/* Anchor down to the top of each strand. */}
       {columns.map((x, i) => (
-        <line key={`link-${i}`} x1={anchorX} y1={anchorY + R} x2={x} y2={strandTop - R} stroke="var(--border2)" strokeWidth={1.5} />
+        <line key={`link-${i}`} x1={anchorX} y1={anchorY + anchorR} x2={x} y2={strandTop - (strandGlyphs[i]?.[0]?.r ?? R)} stroke="var(--border2)" strokeWidth={1.5} />
       ))}
       {anchor && anchorGlyph && (
         <g>
-          <Glyph shape={anchorGlyph.shape} cx={anchorX} cy={anchorY} fill={anchorGlyph.fill} />
+          <Glyph shape={anchorGlyph.shape} cx={anchorX} cy={anchorY} fill={anchorGlyph.fill} r={anchorGlyph.r} />
           <title>{anchor.label}</title>
         </g>
       )}
       {strands.map((elements, s) => {
         const x = columns[s]
         const joins = strandJoins[s]
+        const glyphs = strandGlyphs[s]
+        const firstR = glyphs[0]?.r ?? R
+        const lastR = glyphs[glyphs.length - 1]?.r ?? R
         const strandHasWrap = joins.some((j) => j !== 'straight')
         const bottom = strandTop + (elements.length - 1) * rowGap
         return (
@@ -364,22 +395,22 @@ function BranchedSchematic({ assembly, beads, findings, joinFor }: { assembly: A
                 loop-jointed strand shows one join per link (a quantity-3 linked
                 element → cap + 2 gap joins = 3 links, 3 joins). */}
             {strandHasWrap && (joins[0] === 'wrapped' || joins[0] === 'briolette') && (
-              <circle className="join join-cap" cx={x} cy={strandTop - R - R * 0.3} r={R * 0.3} fill="none" stroke="var(--border2)" strokeWidth={1.5} />
+              <circle className="join join-cap" cx={x} cy={strandTop - firstR - R * 0.3} r={R * 0.3} fill="none" stroke="var(--border2)" strokeWidth={1.5} />
             )}
             {strandHasWrap &&
               joins.slice(0, -1).map((join, i) => (
-                <JoinGlyph key={`j-${i}`} x={x} cy1={strandTop + i * rowGap} cy2={strandTop + (i + 1) * rowGap} join={join} r={R} />
+                <JoinGlyph key={`j-${i}`} x={x} cy1={strandTop + i * rowGap} cy2={strandTop + (i + 1) * rowGap} join={join} r1={glyphs[i].r} r2={glyphs[i + 1].r} />
               ))}
             {elements.map((el, i) => {
-              const { shape, fill } = resolveGlyph(el.matchStr, beads, findings)
+              const { shape, fill, r } = glyphs[i]
               return (
                 <g key={i}>
-                  <Glyph shape={shape} cx={x} cy={strandTop + i * rowGap} fill={fill} />
+                  <Glyph shape={shape} cx={x} cy={strandTop + i * rowGap} fill={fill} r={r} />
                   <title>{el.dimensions ? `${el.label} (${el.dimensions})` : el.label}</title>
                 </g>
               )
             })}
-            <text x={x} y={bottom + R + 20} fill="var(--muted)" fontSize={11} fontFamily="var(--font-mono)" textAnchor="middle">{s + 1}</text>
+            <text x={x} y={bottom + lastR + 20} fill="var(--muted)" fontSize={11} fontFamily="var(--font-mono)" textAnchor="middle">{s + 1}</text>
           </g>
         )
       })}
