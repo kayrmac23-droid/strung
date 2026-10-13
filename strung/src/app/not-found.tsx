@@ -24,13 +24,13 @@ export default function NotFound() {
 
           <p className="section-eyebrow" style={{ marginBottom: 16 }}>404</p>
           <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: 'clamp(40px,7vw,72px)',
+            fontFamily: 'var(--font-display)', fontSize: 'var(--fs-display-md)',
             fontWeight: 400, color: 'var(--cream)', lineHeight: 1.1, marginBottom: 16
           }}>
             Lost in the stash.
           </h1>
           <p style={{
-            fontFamily: 'var(--font-body)', fontSize: 17, color: 'var(--text2)',
+            fontFamily: 'var(--font-body)', fontSize: 'var(--fs-base)', color: 'var(--text2)',
             lineHeight: 1.7, maxWidth: 380, margin: '0 auto 36px'
           }}>
             That page doesn&apos;t exist — it may have been moved or you followed a broken link.

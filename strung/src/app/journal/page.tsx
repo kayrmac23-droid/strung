@@ -136,7 +136,7 @@ export default function JournalPage() {
                 {([['Finished', counts.completed], ['On the bench', counts.in_progress], ['Ideas', counts.draft]] as const).map(([l, v]) => (
                   <div key={l} style={{ display: 'flex', flexDirection: 'column-reverse' }}>
                     <dt className="eyebrow eyebrow--sm">{l}</dt>
-                    <dd className="display" style={{ fontSize: 44, lineHeight: 1, margin: 0 }}>{v}</dd>
+                    <dd className="display" style={{ fontSize: 'var(--fs-heading-lg)', lineHeight: 1, margin: 0 }}>{v}</dd>
                   </div>
                 ))}
               </dl>
@@ -153,7 +153,7 @@ export default function JournalPage() {
             <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><StrandLoader /></div>
           ) : error ? (
             <div role="alert" className="well" style={{ textAlign: 'center', padding: '48px 20px', borderColor: 'var(--rose)' }}>
-              <p style={{ fontSize: 16, marginBottom: 16 }}>Couldn&apos;t load your journal. Check your connection and try again.</p>
+              <p style={{ fontSize: 'var(--fs-base)', marginBottom: 16 }}>Couldn&apos;t load your journal. Check your connection and try again.</p>
               <button onClick={load} className="btn-outline">Retry</button>
             </div>
           ) : signedOut && builds.length === 0 ? (
@@ -207,7 +207,7 @@ export default function JournalPage() {
                     <div style={{ padding: '0 20px 16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12 }}>
                       {confirmingId === build.id ? (
                         <>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text2)', letterSpacing: '0.06em' }}>Delete this piece?</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--text2)', letterSpacing: '0.06em' }}>Delete this piece?</span>
                           <button className="link-quiet" style={{ color: 'var(--madder-text)' }} onClick={() => deleteBuild(build.id)} disabled={deletingId === build.id}>
                             {deletingId === build.id ? 'removing…' : 'yes, delete'}
                           </button>
@@ -218,7 +218,7 @@ export default function JournalPage() {
                       )}
                     </div>
                     {deleteError === build.id && (
-                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--madder-text)', padding: '0 20px 14px', letterSpacing: '0.06em', textAlign: 'right' }}>
+                      <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', color: 'var(--madder-text)', padding: '0 20px 14px', letterSpacing: '0.06em', textAlign: 'right' }}>
                         Failed to delete. Try again.
                       </p>
                     )}

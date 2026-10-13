@@ -136,7 +136,7 @@ Loaded via `next/font/google` in `strung/src/app/layout.tsx`. **In:** Instrument
 
 | Face | Job | Setting |
 |---|---|---|
-| Instrument Sans | display + interface | 600 headings, tracked −0.02em; 500 UI emphasis; 400 body. Body 17px / 1.65. Never wide/extended cuts. |
+| Instrument Sans | display + interface | 600 headings, tracked −0.02em; 500 UI emphasis; 400 body. Body 16px / 1.65 (`--fs-base`; sizes come from the type-scale tokens in `globals.css`). Never wide/extended cuts. |
 | DM Mono | labels, data, honesty | 10–11px caps, 0.14em tracking: nav, tags, counts, timestamps, stamps ("AI RENDER · FOR REFERENCE ONLY"). |
 | Newsreader Italic | the hand in the margin | journal lines, AI marginalia, empty states. Nowhere else (Rule 2). |
 

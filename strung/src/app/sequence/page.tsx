@@ -53,7 +53,7 @@ function BeadSequenceStrip({ pattern, sequence, proof }: { pattern: string; sequ
             style={proof && luminance(hex) > 0.8 ? { boxShadow: '0 0 0 1px rgba(35,32,26,.25)' } : undefined} />
         })}
       </div>
-      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '.06em', color: proof ? 'var(--calico-meta)' : 'var(--meta)' }}>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 10, fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-2xs)', letterSpacing: '.06em', color: proof ? 'var(--calico-meta)' : 'var(--meta)' }}>
         {labels.map((l, i) => <span key={i}>{l} · {seqMap[l].colourName}</span>)}
       </div>
     </div>
@@ -127,7 +127,7 @@ export default function SequencePage() {
         <MakeTabs />
         <div className="wrap ss-up" style={{ paddingTop: 'clamp(28px,4vw,48px)', paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24, flexWrap: 'wrap' }}>
-            <h1 className="display" style={{ fontSize: 'clamp(44px,6vw,92px)', lineHeight: .95, maxWidth: '12ch' }}>Find the colour <em>first.</em></h1>
+            <h1 className="display" style={{ fontSize: 'var(--fs-display-lg)', lineHeight: .95, maxWidth: '12ch' }}>Find the colour <em>first.</em></h1>
             {result && (
               <button type="button" aria-pressed={proof} onClick={() => setProof(p => !p)} className="proof-toggle">
                 <span aria-hidden="true" className={`proof-switch${proof ? ' is-on' : ''}`} />Daylight proof
@@ -135,7 +135,7 @@ export default function SequencePage() {
             )}
           </div>
 
-          <p className="aside-line" style={{ fontSize: 18, maxWidth: '52ch' }}>
+          <p className="aside-line" style={{ fontSize: 'var(--fs-lead)', maxWidth: '52ch' }}>
             {!stashLoaded ? 'Checking your stash…'
               : beads.length > 0 ? `Pick a harmony and an anchor — it matches the palette against your ${beads.length} bead type${beads.length === 1 ? '' : 's'} where it can.`
               : 'Pick a harmony and an anchor. Works signed out; with a stash, it matches the palette to beads you own.'}
@@ -173,7 +173,7 @@ export default function SequencePage() {
             </div>
           </div>
 
-          {error && <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--madder-text)' }}>{error}</p>}
+          {error && <p role="alert" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', color: 'var(--madder-text)' }}>{error}</p>}
 
           {loading && (
             <div className="well" style={{ minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -190,7 +190,7 @@ export default function SequencePage() {
                   return (
                     <div key={i} title={p.beadSuggestion} style={{ background: hex, display: 'flex', alignItems: 'flex-end', padding: 14,
                       boxShadow: !proof && luminance(hex) < 0.2 ? 'inset 0 0 0 1px rgba(237,230,219,.12)' : proof && luminance(hex) > 0.8 ? 'inset 0 0 0 1px var(--calico-edge)' : 'none' }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.12em', lineHeight: 1.5, textTransform: 'uppercase', color: light ? '#23201A' : '#EDE6DB', overflowWrap: 'anywhere' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '.12em', lineHeight: 1.5, textTransform: 'uppercase', color: light ? '#23201A' : '#EDE6DB', overflowWrap: 'anywhere' }}>
                         {p.role}<br />{hex.toUpperCase()}
                       </span>
                     </div>
@@ -200,8 +200,8 @@ export default function SequencePage() {
               <div style={{ padding: 'clamp(20px,3vw,32px)', display: 'flex', flexDirection: 'column', gap: 26 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <span className="eyebrow eyebrow--sm" style={{ color: metaC }}>{result.harmonyType} · {pieceType} · {result.repeats} repeats · {totalBeads} beads</span>
-                  <h2 id="palette-h" className="display" style={{ fontSize: 'clamp(32px,3.6vw,52px)', lineHeight: 1, color: ink }}>{result.title}</h2>
-                  <p style={{ fontSize: 16, lineHeight: 1.6, color: body, maxWidth: '60ch' }}>{result.colourStory}</p>
+                  <h2 id="palette-h" className="display" style={{ fontSize: 'var(--fs-display-sm)', lineHeight: 1, color: ink }}>{result.title}</h2>
+                  <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.6, color: body, maxWidth: '60ch' }}>{result.colourStory}</p>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -213,16 +213,16 @@ export default function SequencePage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <span className="eyebrow eyebrow--sm" style={{ color: metaC }}>Palette</span>
                     {result.palette.map((p, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 15, color: ink }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: metaC, minWidth: 70 }}>{p.role}</span>
-                        <span>{p.name}{p.beadSuggestion && <span style={{ color: metaC, fontSize: 13 }}> — {p.beadSuggestion}</span>}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 'var(--fs-md)', color: ink }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '.12em', textTransform: 'uppercase', color: metaC, minWidth: 70 }}>{p.role}</span>
+                        <span>{p.name}{p.beadSuggestion && <span style={{ color: metaC, fontSize: 'var(--fs-sm)' }}> — {p.beadSuggestion}</span>}</span>
                       </div>
                     ))}
                   </div>
                   {result.metalRecommendation && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span className="eyebrow eyebrow--sm" style={{ color: metaC }}>Metal</span>
-                      <p style={{ fontSize: 16, lineHeight: 1.55, color: body }}><span style={{ color: ink }}>{result.metalRecommendation.name}</span> — {result.metalRecommendation.reason}</p>
+                      <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.55, color: body }}><span style={{ color: ink }}>{result.metalRecommendation.name}</span> — {result.metalRecommendation.reason}</p>
                     </div>
                   )}
                   {result.stashMatches && result.stashMatches.length > 0 && (
@@ -231,8 +231,8 @@ export default function SequencePage() {
                       {result.stashMatches.map((m, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '6px 0' }}>
                           {m.hex ? <Bead hex={safeHex(m.hex)} size={14} style={{ marginTop: 5 }} /> : <span style={{ width: 14 }} />}
-                          <span style={{ flex: 1, fontSize: 15, color: ink }}>{m.beadName}{m.note && <span style={{ display: 'block', fontSize: 13, color: body }}>{m.note}</span>}</span>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: proof ? '#4E6B44' : 'var(--sage)' }}>{m.role}</span>
+                          <span style={{ flex: 1, fontSize: 'var(--fs-md)', color: ink }}>{m.beadName}{m.note && <span style={{ display: 'block', fontSize: 'var(--fs-sm)', color: body }}>{m.note}</span>}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-3xs)', letterSpacing: '.12em', textTransform: 'uppercase', color: proof ? '#4E6B44' : 'var(--sage)' }}>{m.role}</span>
                         </div>
                       ))}
                     </div>
@@ -240,7 +240,7 @@ export default function SequencePage() {
                 </div>
 
                 {result.tip && (
-                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 17, lineHeight: 1.5, color: proof ? 'var(--calico-meta)' : 'var(--tan)', paddingTop: 18, borderTop: `1px solid ${proof ? 'var(--calico-edge)' : 'var(--seam)'}` }}>{result.tip}</p>
+                  <p style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: proof ? 'var(--calico-meta)' : 'var(--tan)', paddingTop: 18, borderTop: `1px solid ${proof ? 'var(--calico-edge)' : 'var(--seam)'}` }}>{result.tip}</p>
                 )}
               </div>
             </section>
