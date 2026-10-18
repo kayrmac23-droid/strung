@@ -79,12 +79,12 @@ describe('logUsage', () => {
   it('logs one ai-usage line with token counts and the stop reason', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     logUsage('make', { usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 5 }, stop_reason: 'max_tokens' })
-    expect(log).toHaveBeenCalledWith('ai-usage', JSON.stringify({ route: 'make', input: 10, output: 20, cacheRead: 5, stop: 'max_tokens' }))
+    expect(log).toHaveBeenCalledWith('ai-usage', JSON.stringify({ route: 'make', input: 10, output: 20, cacheRead: 5, cacheWrite: 0, stop: 'max_tokens' }))
   })
 
   it('tolerates a response with no usage', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {})
     expect(() => logUsage('x', undefined)).not.toThrow()
-    expect(log).toHaveBeenCalledWith('ai-usage', JSON.stringify({ route: 'x', input: 0, output: 0, cacheRead: 0, stop: null }))
+    expect(log).toHaveBeenCalledWith('ai-usage', JSON.stringify({ route: 'x', input: 0, output: 0, cacheRead: 0, cacheWrite: 0, stop: null }))
   })
 })

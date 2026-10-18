@@ -79,7 +79,7 @@ describe('streamTextResponse: max_tokens and usage', () => {
     await res.text()
     expect(log).toHaveBeenCalledWith(
       'ai-usage',
-      JSON.stringify({ route: 'Advice', input: 12, output: 40, cacheRead: 0, stop: 'end_turn' }),
+      JSON.stringify({ route: 'Advice', input: 12, output: 40, cacheRead: 0, cacheWrite: 0, stop: 'end_turn' }),
     )
     log.mockRestore()
   })
