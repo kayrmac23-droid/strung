@@ -110,7 +110,16 @@ Every AI route uses the same model, exported as `MODEL` from `src/lib/apiRequest
 - `STREAM_ERROR_MARKER` — appended in-band when a stream dies partway. Past the first chunk the status line is already sent, so this is the only way to tell the reader the text is incomplete.
 - `streamTextResponse(stream, label)` — the whole streaming response for `/api/advice` and `/api/codesign`; see AI Response Patterns.
 - `withEffort(level)` — spread into every `messages.create()` and `messages.stream()`. On `claude-sonnet-5-5`, omitting `output_config` runs adaptive thinking at default effort: those tokens bill as output and count against `max_tokens`. Levels in use: `medium` for `/api/make`, `/api/identify` and `/api/codesign`, `low` for the image-prompt writer, `/api/parse-stash`, `/api/sequence` and `/api/advice`. Do not pass `temperature`/`top_p`/`top_k` — non-default sampling values are rejected on this model.
-- `logUsage(label, msg)` — one `ai-usage` JSON line (input/output/cache tokens, stop reason) per call; grep the runtime logs for it to see real cost and whether a reply was cut off by `max_tokens`.
+- `logUsage(label, msg)` — one `ai-usage` JSON line (input/output tokens, `cacheRead` / `cacheWrite`, stop reason) per call; grep the runtime logs for it to see real cost, whether the cache is hitting, and whether a reply was cut off by `max_tokens`.
+- `CACHE_EPHEMERAL` — the `cache_control` marker for a prompt-cache breakpoint (5-minute TTL). Reads bill at 0.1× input, writes at 1.25×, and a prefix under 512 tokens is silently not cached.
+
+## Prompt Caching
+
+Caching is a byte-exact prefix match, so prompts are ordered by how often each part changes: static instructions → the maker's stash → the request. **Never interpolate anything per-request (stash, style, a date) into a cached static block** — it silently turns every read back into a full-price write.
+
+- `/api/make`: `MAKE_SYSTEM` (`src/lib/makePrompt.ts`) is the static rules, example and schema as one cached system block. The user turn is `makeUserContent()`: the stash block (breakpoint), then the request, then on the repair retry the feedback — so the retry and any refine within five minutes read the system prompt and stash from the cache. The retry shows the model the design it is correcting (`retryFeedbackText()`); it used to say "keep everything else the same" without it.
+- `/api/codesign`: the static `CODESIGN_SYSTEM_PROMPT` (breakpoint) then the stash as a second system block, plus top-level `cache_control` so each turn reads the earlier turns, photos included, back from the cache.
+- `/api/advice`, `/api/identify`, `/api/parse-stash`, `/api/sequence` and the image-prompt writer are not cached: their static text is near or under the 512-token minimum, and they are one-shot calls.
 
 `src/lib/richText.ts` is the single HTML escaper and formatter for everything rendered through `dangerouslySetInnerHTML` (the guide body, the advisor answer, the co-design chat bubble). Call `formatRichText(text, PRESET)` with `GUIDE_PROSE`, `ADVISOR_ANSWER` or `CHAT_MESSAGE`. **Escaping runs over the raw text before any markdown replacement** — reversing that order would let markup in the source survive as live HTML. Do not add a fourth local escaper.
 

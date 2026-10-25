@@ -2,7 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest } from 'next/server'
 import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
-import { MODEL, getToken, parseBody, truncStr, streamTextResponse, withEffort } from '@/lib/apiRequest'
+import { MODEL, CACHE_EPHEMERAL, getToken, parseBody, truncStr, streamTextResponse, withEffort } from '@/lib/apiRequest'
 import { sanitiseChatMessages } from '@/lib/chatMessages'
 import {
   TECHNIQUE_LIST_TEXT,
@@ -20,6 +20,41 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const RATE_LIMIT = 30
 const RATE_WINDOW_MS = 60_000
+
+// Newest rows of each table that go into the prompt. Applied in the query: the
+// rows past it used to be fetched in full and then sliced off here.
+const MAX_STASH_ROWS = 200
+
+// Everything in the co-design system prompt that does not depend on the maker.
+// It must stay byte-identical between requests: anything per-request
+// interpolated here turns every cache read back into a full-price write.
+const CODESIGN_SYSTEM_PROMPT = `You are an expert beaded jewellery co-designer. Work collaboratively with the maker through natural conversation — ask focused questions (one or two at a time), suggest specific ideas, reference their actual materials when relevant, and refine the design until they're happy. Be warm, creative, and direct. Don't overwhelm with questions.
+
+Assume basic findings are available even if not listed (jump rings, ear wires, head pins, clasps, standard wire, crimps). If the stash includes findings of type "statement_component", treat those as primary focal structures (like earring frames or chandelier bases) and design around them first. The maker's stash, when they have one, follows these instructions.
+
+When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact JSON format with no markdown fences:
+
+<blueprint>
+{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],${ASSEMBLY_SCHEMA_COMPACT},"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
+</blueprint>
+
+Each step's "technique" must be null or from this exact list only: ${TECHNIQUE_LIST_TEXT}.
+
+${TECHNIQUE_GLOSSARY}
+
+${METAL_COHESION_RULE}
+
+${DIFFICULTY_RUBRIC}
+
+${REPEAT_STEP_RULE}
+
+${ASSEMBLY_RULES}
+
+Settle on ONE style early and hold it for the whole design rather than blending aesthetics — a piece should read as one of these:
+${STYLE_MENU}
+${STYLE_OVERRIDE_RULE}
+
+Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
 
 type StashBead = {
   name: string
@@ -52,15 +87,15 @@ export async function POST(req: NextRequest) {
   // Read the stash server-side rather than trusting a client-supplied copy.
   const supabase = getAuthenticatedClient(getToken(req))
   const [beadsRes, findingsRes] = await Promise.all([
-    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(MAX_STASH_ROWS),
+    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(MAX_STASH_ROWS),
   ])
   if (beadsRes.error || findingsRes.error) {
     console.error('codesign stash load error:', beadsRes.error || findingsRes.error)
     return new Response('Could not load your stash', { status: 500 })
   }
-  const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
-  const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
+  const beads = (beadsRes.data || []) as StashBead[]
+  const findings = (findingsRes.data || []) as StashFinding[]
   const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50) }))
 
@@ -71,37 +106,16 @@ export async function POST(req: NextRequest) {
   if (safeFindings?.length) {
     stashLines.push(`FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity})`).join('\n')}`)
   }
-  const stashContext = stashLines.length
-    ? `\n\nThe user's stash:\n${stashLines.join('\n\n')}`
-    : ''
-
-  const system = `You are an expert beaded jewellery co-designer. Work collaboratively with the maker through natural conversation — ask focused questions (one or two at a time), suggest specific ideas, reference their actual materials when relevant, and refine the design until they're happy. Be warm, creative, and direct. Don't overwhelm with questions.
-
-Assume basic findings are available even if not listed (jump rings, ear wires, head pins, clasps, standard wire, crimps). If the stash includes findings of type "statement_component", treat those as primary focal structures (like earring frames or chandelier bases) and design around them first.${stashContext}
-
-When you have enough detail to create a design (usually after 3–4 exchanges), embed a blueprint using this exact JSON format with no markdown fences:
-
-<blueprint>
-{"title":"short evocative name","description":"one sentence — what it is and the feeling it has","colourStory":"why these specific materials work together visually — be specific about the beads","difficulty":"Beginner|Intermediate|Advanced","estimatedTime":"e.g. 35 mins","pieceType":"earrings|necklace|bracelet|pendant|ring|anklet","materialsCheck":{"allAvailable":true,"notes":"any quantity concerns or substitution suggestions"},"components":[{"item":"exact material name","quantity":1,"note":"how it's used"}],${ASSEMBLY_SCHEMA_COMPACT},"steps":[{"id":1,"instruction":"clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count","material":"exact material name used in this step, or null","technique":"one of the allowed technique tags, or null","tip":"a practical tip for this step, or null"}]}
-</blueprint>
-
-Each step's "technique" must be null or from this exact list only: ${TECHNIQUE_LIST_TEXT}.
-
-${TECHNIQUE_GLOSSARY}
-
-${METAL_COHESION_RULE}
-
-${DIFFICULTY_RUBRIC}
-
-${REPEAT_STEP_RULE}
-
-${ASSEMBLY_RULES}
-
-Settle on ONE style early and hold it for the whole design rather than blending aesthetics — a piece should read as one of these:
-${STYLE_MENU}
-${STYLE_OVERRIDE_RULE}
-
-Keep your conversational text concise and engaging. After generating a blueprint keep chatting — update it whenever the design changes by emitting a new <blueprint> block. The blueprint should get more detailed as the conversation progresses.`
+  // Static instructions first (cached across every conversation), then this
+  // maker's stash. Automatic caching on the request marks the end of the
+  // history, so each turn reads the previous turns — photos included — back
+  // at a tenth of the price instead of re-billing the whole conversation.
+  const system: Anthropic.TextBlockParam[] = [
+    { type: 'text', text: CODESIGN_SYSTEM_PROMPT, cache_control: CACHE_EPHEMERAL },
+  ]
+  if (stashLines.length) {
+    system.push({ type: 'text', text: `The user's stash:\n${stashLines.join('\n\n')}` })
+  }
 
   // A blueprint is the same design JSON /api/make asks for (which allows 4500
   // tokens at medium effort) plus the conversational reply around it. At 3000
@@ -113,6 +127,7 @@ Keep your conversational text concise and engaging. After generating a blueprint
     ...withEffort('medium'),
     system,
     messages,
+    cache_control: CACHE_EPHEMERAL,
   })
   return streamTextResponse(stream, 'Codesign')
 }

@@ -108,6 +108,18 @@ export function withEffort(effort: 'low' | 'medium' | 'high') {
 }
 
 /**
+ * `cache_control` marker for a prompt-cache breakpoint (5-minute TTL).
+ *
+ * Caching is a prefix match: everything up to the marked block is cached and
+ * read back at a tenth of the input price by any later call whose prompt starts
+ * with the same bytes. Writes cost 1.25x, so a marker only pays when it sits at
+ * the end of content that genuinely repeats — static instructions, a maker's
+ * stash, a conversation's history — never after per-request text. On this
+ * model a prefix under 512 tokens is not cached at all (silently, no error).
+ */
+export const CACHE_EPHEMERAL = { type: 'ephemeral' } as const
+
+/**
  * Log what one model call consumed, as a single greppable line.
  *
  * Nothing recorded token usage, so cost was a guess and a truncated reply
@@ -127,6 +139,7 @@ export function logUsage(
       input: n(u.input_tokens),
       output: n(u.output_tokens),
       cacheRead: n(u.cache_read_input_tokens),
+      cacheWrite: n(u.cache_creation_input_tokens),
       stop: typeof msg?.stop_reason === 'string' ? msg.stop_reason : null,
     }),
   )

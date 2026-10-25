@@ -4,26 +4,26 @@ import { getUserFromRequest, getAuthenticatedClient } from '@/lib/auth'
 import { parseJsonLoose } from '@/lib/colour'
 import { rateLimit, tooManyRequests } from '@/lib/rateLimit'
 import { MODEL, getToken, firstTextBlock, truncStr, withEffort, logUsage } from '@/lib/apiRequest'
+import { ALLOWED_TECHNIQUES, isValidStyle, type Style } from '@/lib/designVocab'
+import { validateAssembly } from '@/lib/assembly'
 import {
-  ALLOWED_TECHNIQUES,
-  TECHNIQUE_LIST_TEXT,
-  TECHNIQUE_GLOSSARY,
-  METAL_COHESION_RULE,
-  DIFFICULTY_RUBRIC,
-  REPEAT_STEP_RULE,
-  ASSEMBLY_RULES,
-  ASSEMBLY_SCHEMA_TEXT,
-  isValidStyle,
-  styleConstraint,
-  type Style,
-} from '@/lib/designVocab'
-import { validateAssembly, isStructuralFindingType } from '@/lib/assembly'
+  MAKE_SYSTEM,
+  stashSummaryText,
+  makeRequestText,
+  makeUserContent,
+  retryFeedbackText,
+  type TimeAvailable,
+} from '@/lib/makePrompt'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 // Per-user cap on design generations (calls Claude at up to 4500 tokens twice).
 const RATE_LIMIT = 20
 const RATE_WINDOW_MS = 60_000
+
+// Newest rows of each table that go into the prompt. Applied in the query: the
+// rows past it used to be fetched in full and then sliced off here.
+const MAX_STASH_ROWS = 200
 
 // previousDesign is JSON.stringify'd whole into the refine prompt, so cap it
 // like every other free-text field. A real design is a few KB; this leaves
@@ -45,8 +45,6 @@ type StashFinding = {
   quantity: number
   size?: string
 }
-
-type TimeAvailable = '15min' | '1hour' | 'afternoon'
 
 const VALID_PIECE_TYPES = ['earrings', 'necklace', 'bracelet', 'pendant', 'ring', 'anklet', 'any']
 const VALID_TIME: TimeAvailable[] = ['15min', '1hour', 'afternoon']
@@ -188,15 +186,15 @@ export async function POST(req: NextRequest) {
   // than trusting a client-supplied copy.
   const supabase = getAuthenticatedClient(getToken(req))
   const [beadsRes, findingsRes] = await Promise.all([
-    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('beads').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(MAX_STASH_ROWS),
+    supabase.from('findings').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(MAX_STASH_ROWS),
   ])
   if (beadsRes.error || findingsRes.error) {
     console.error('make stash load error:', beadsRes.error || findingsRes.error)
     return NextResponse.json({ error: 'Could not load your stash' }, { status: 500 })
   }
-  const beads = (beadsRes.data || []).slice(0, 200) as StashBead[]
-  const findings = (findingsRes.data || []).slice(0, 200) as StashFinding[]
+  const beads = (beadsRes.data || []) as StashBead[]
+  const findings = (findingsRes.data || []) as StashFinding[]
 
   const safeBeads = beads.map(b => ({ ...b, name: truncStr(b.name, 200), colour: truncStr(b.colour, 100), size: truncStr(b.size, 50), shape: truncStr(b.shape, 50) }))
   const safeFindings = findings.map(f => ({ ...f, name: truncStr(f.name, 200), type: truncStr(f.type, 50), metal: truncStr(f.metal, 50), size: truncStr(f.size, 50) }))
@@ -227,130 +225,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid time' }, { status: 400 })
   }
 
-  const stashSummary = [
-    safeBeads.length > 0
-      ? `BEADS:\n${safeBeads.map((b) => `- ${b.name} (${b.colour}, ${b.size || 'size unknown'}, qty: ${b.quantity}${b.shape ? ', ' + b.shape : ''})`).join('\n')}`
-      : 'No beads in stash.',
-    safeFindings.length > 0
-      ? `FINDINGS:\n${safeFindings.map((f) => `- ${f.name} (${f.type}, ${f.metal}, qty: ${f.quantity}${f.size ? ', ' + f.size : ''})${isStructuralFindingType(f.type) ? ' [structural — can be an assembly anchor]' : ''}`).join('\n')}`
-      : 'No findings in stash.',
-  ].join('\n\n')
-
-  const timeMap: Record<TimeAvailable, string> = {
-    '15min': '15 minutes — extremely simple, 3-5 steps maximum',
-    '1hour': 'about 1 hour — moderate complexity, up to 10 steps',
-    'afternoon': 'a few hours — can be complex, multiple techniques fine',
-  }
-  const selectedTime = timeAvailable ? timeMap[timeAvailable] : '1 hour'
-
-  let prompt = `You are an expert beaded jewellery designer. Generate ONE complete, specific design for a hobbyist maker to build right now using ONLY the materials in their stash.
-
-THEIR STASH:
-${stashSummary}
-
-THEIR REQUEST:
-- Piece type: ${pieceTypeNorm || 'any — choose the best fit for the stash'}
-- Time available: ${selectedTime}
-${styleNorm ? `\n${styleConstraint(styleNorm)}\n` : ''}
-- Mood/vibe (secondary nuance only${styleNorm ? ', subordinate to the style above' : ''}): ${moodNorm || 'open'}
-
-CRITICAL RULES:
-- Only use materials they actually have. Check quantities — if they have qty:2 of something, use at most 2.
-- Assume basic findings are available by default (e.g. jump rings, ear wires, head pins, clasps, standard wire, and crimps) even if not listed.
-- Treat stash findings marked as "statement_component" as the featured structural pieces (e.g. earring frames, chandeliers, focal connectors) and prioritise using them when present.
-- If stash is empty or very sparse, design a simple piece and note what basic materials they'd need.
-- The steps must be genuinely sequential and buildable — someone should be able to follow them with their hands.
-- Technique tags must be from this exact list only: ${TECHNIQUE_LIST_TEXT}
-${TECHNIQUE_GLOSSARY}
-- ${REPEAT_STEP_RULE}
-- Earrings: every bead and dangle component must be used in even quantities so the pair is symmetric. If a focal bead has an odd quantity, design around a matched pair or choose a different piece type.
-- Necklaces and bracelets: do rough length math — state the target length and confirm the specified bead counts and sizes plausibly reach it. Bracelets are ~18cm, necklaces 40–45cm unless the design says otherwise.
-- Seed beads cannot go on thick wire or leather; large-hole beads slide off fine chain — keep the stringing material sensible for the bead sizes used.
-- ${METAL_COHESION_RULE}
-- ${DIFFICULTY_RUBRIC}
-
-${ASSEMBLY_RULES}
-
-Here is an EXAMPLE of the quality and granularity expected — it uses a made-up stash. Do NOT copy its materials or wording; only mirror its structure and level of detail:
-EXAMPLE STASH — BEADS: matte teal seed beads (2mm, qty:40), amazonite rounds (8mm, qty:6), rose quartz chips (qty:14). FINDINGS: silver lobster clasp (qty:1), silver jump rings (qty:20).
-EXAMPLE OUTPUT:
-{
-  "title": "Tidepool Wrap",
-  "description": "A calm amazonite bracelet with a whisper of teal — everyday sea-glass softness.",
-  "colourStory": "Milky amazonite rounds carry a soft blue-green, punctuated by matte teal seed beads that deepen the tone, with rose quartz chips warming the palette at the ends.",
-  "difficulty": "Beginner",
-  "estimatedTime": "20 mins",
-  "pieceType": "bracelet",
-  "materialsCheck": { "allAvailable": true, "notes": "Targets ~18cm: six 8mm amazonite plus seed-bead spacers reach length comfortably within stock." },
-  "components": [
-    { "item": "amazonite rounds", "quantity": 6, "note": "main stations along the strand" },
-    { "item": "matte teal seed beads", "quantity": 20, "note": "spacers between each amazonite round" },
-    { "item": "rose quartz chips", "quantity": 6, "note": "warm accents near the clasp" },
-    { "item": "silver lobster clasp", "quantity": 1, "note": "closure" }
-  ],
-  "steps": [
-    { "id": 1, "instruction": "Cut ~22cm of beading wire and crimp one end to the lobster clasp loop.", "material": "silver lobster clasp", "technique": "Crimping", "tip": "Leave a 2cm tail to thread back through the crimp bead." },
-    { "id": 2, "instruction": "String three rose quartz chips, then one amazonite round.", "material": "rose quartz chips", "technique": "Stringing", "tip": "Keep tension snug so no wire shows between beads." },
-    { "id": 3, "instruction": "Add four teal seed beads, then another amazonite round; repeat to the last round.", "material": "matte teal seed beads", "technique": "Stringing", "tip": "Check length against your wrist near the 18cm mark." },
-    { "id": 4, "instruction": "Finish with three rose quartz chips to mirror the start.", "material": "rose quartz chips", "technique": "Stringing", "tip": "Symmetry at both ends reads as intentional." },
-    { "id": 5, "instruction": "Crimp the closing end to a jump ring and trim the tail flush.", "material": "silver jump rings", "technique": "Crimping", "tip": "Twist jump rings sideways to open, never pull them apart." }
-  ]
-}
-This example shows the target granularity — one physical action per step (with repeating units collapsed into a single step carrying a repeat count), a real material and technique on each, and a colourStory that names specific beads. It is an example of quality, not content to reuse.
-
-Return ONLY valid JSON, no markdown, no backticks:
-{
-  "title": "Short evocative name",
-  "description": "One sentence — what it is and the feeling it has",
-  "colourStory": "Why these specific materials work together visually — be specific about the beads",
-  "difficulty": "Beginner|Intermediate|Advanced",
-  "estimatedTime": "e.g. 35 mins",
-  "pieceType": "earrings|necklace|bracelet|pendant|ring|anklet",
-  "materialsCheck": {
-    "allAvailable": true,
-    "notes": "Any quantity concerns or substitution suggestions"
-  },
-  "components": [
-    { "item": "exact name from stash", "quantity": 1, "note": "how it's used" }
-  ],
-  ${ASSEMBLY_SCHEMA_TEXT},
-  "steps": [
-    {
-      "id": 1,
-      "instruction": "Clear, specific instruction — one action per step, or one repeating unit with an explicit repeat count",
-      "material": "Exact material name being used in this step, or null",
-      "technique": "One of the allowed technique tags, or null",
-      "tip": "A practical tip for this specific step, or null"
-    }
-  ]
-}`
-
-  if (recentTitlesClean.length > 0) {
-    prompt += `
-
-Do not repeat these recent designs — differ meaningfully in structure or featured materials: ${recentTitlesClean.join(', ')}`
-  }
-
-  if (isRefine) {
-    prompt += `
-
-The maker already has this design:
-${JSON.stringify(previousDesign)}
-
-Apply ONLY this requested change: "${(adjustment as string).trim()}"
-Produce a revised version of the SAME design that applies this change while keeping everything else as stable as possible — keep the title, overall structure, and any unaffected components and steps unchanged unless the change requires otherwise. Return the full revised design in the exact same JSON schema described above, ONLY valid JSON, no markdown, no backticks.`
-  }
+  const stashSummary = stashSummaryText(safeBeads, safeFindings)
+  const requestText = makeRequestText({
+    pieceType: pieceTypeNorm,
+    style: styleNorm,
+    mood: moodNorm,
+    timeAvailable,
+    recentTitles: recentTitlesClean,
+    refine: isRefine ? { previousDesign, adjustment: adjustment as string } : undefined,
+  })
 
   // One model call, parsed and checked. Never throws: a truncated reply, a
   // reply that is not JSON, and a reply that is JSON but not a design all come
   // back as violations, so every failure mode feeds the same one-shot retry.
   // (A parse failure used to throw straight past the retry to a 500.)
-  async function attempt(text: string): Promise<{ design: unknown; violations: string[] }> {
+  async function attempt(retryFeedback?: string): Promise<{ design: unknown; violations: string[] }> {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4500,
       ...withEffort('medium'),
-      messages: [{ role: 'user', content: text }],
+      system: MAKE_SYSTEM,
+      messages: [{ role: 'user', content: makeUserContent(stashSummary, requestText, retryFeedback) }],
     })
     logUsage('make', response)
     if (response.stop_reason === 'max_tokens') {
@@ -368,17 +263,14 @@ Produce a revised version of the SAME design that applies this change while keep
   }
 
   try {
-    let { design, violations } = await attempt(prompt)
+    let { design, violations } = await attempt()
 
     if (violations.length > 0) {
-      // Retry ONCE: hand the model the exact violations and ask it to fix only those.
-      const retryPrompt = `${prompt}
-
-Your previous design had these problems that must be corrected:
-${violations.map((v) => `- ${v}`).join('\n')}
-Correct ONLY these issues while keeping everything else the same, and return the full corrected design in the exact same JSON schema, ONLY valid JSON, no markdown, no backticks.`
+      // Retry ONCE: hand the model the exact violations (and, when it parsed,
+      // the design they apply to) and ask it to fix only those. The system
+      // prompt and stash are read back from the cache the first call wrote.
       try {
-        const retry = await attempt(retryPrompt)
+        const retry = await attempt(retryFeedbackText(violations, design))
         if (retry.design) {
           // Prefer the retry whenever it produced a usable design, even one that
           // still has stash issues — they are surfaced below.
